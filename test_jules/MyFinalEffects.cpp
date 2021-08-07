@@ -1,11 +1,12 @@
 #include "MyFinalEffects.h"
+#include "ColorPalette.h"
 #include "EffectsMixer.h"
 
 namespace FinalEffects {
 
 FINAL_EFFECT(ScrollingGradient)
 {
-    return in.pos + in.time;
+    return palette_rainbow.eval(in.pos + in.time);
 }
 
 } // namespace FinalEffects

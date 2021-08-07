@@ -1,6 +1,6 @@
 #pragma once
-#include <pixeltypes.h>
-#include "util.h"
+
+#include "Arduino.h"
 
 class vec3 {
 public:
@@ -26,25 +26,25 @@ public:
         c += v;
         return c;
     }
-    vec3 operator-(const vec3& v)
+    vec3 operator-(const vec3& v) const
     {
         vec3 c = *this;
         c -= v;
         return c;
     }
-    vec3 operator/(float v)
+    vec3 operator/(float v) const
     {
         vec3 c = *this;
         c /= v;
         return c;
     }
-    vec3 operator*(float v)
+    vec3 operator*(float v) const
     {
         vec3 c = *this;
         c *= v;
         return c;
     }
-    vec3 operator*(vec3 v)
+    vec3 operator*(vec3 v) const
     {
         vec3 c = *this;
         return {
@@ -53,15 +53,11 @@ public:
             c.z * v.z};
     }
     operator float*() { return (float*)this; }
-    operator CRGB() { return CRGB{
-        clamp(x * 255),
-        clamp(y * 255),
-        clamp(z * 255)}; }
 
     float length() const { return sqrt(x * x + y * y + z * z); }
 };
 
-vec3 cos(vec3 v)
+inline vec3 cos(vec3 v)
 {
     return {
         cos(v.x),

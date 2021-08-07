@@ -19,8 +19,9 @@ void setup()
     }
     //
     EffectsMixer::layers[0] = &Effects::InvertTime;
-    EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
+    // EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
     EffectsMixer::layers[2] = &Effects::PingPong;
+    // EffectsMixer::layers[3] = &Effects::FreezeTime;
 }
 
 void loop()
@@ -28,10 +29,14 @@ void loop()
     static EffectInput input;
 
     for (int i = 0; i < NUM_LEDS; ++i) {
-        input.pos = i / (float)(NUM_LEDS - 1);
-        float t   = EffectsMixer::eval(input);
-        leds[i]   = palette_rainbow.eval(t);
+        input.pos      = i / (float)(NUM_LEDS - 1);
+        const auto col = EffectsMixer::eval(input);
+        leds[i]        = CRGB{
+            clamp(col.x * 255),
+            clamp(col.y * 255),
+            clamp(col.z * 255)};
     }
+
     FastLED.show();
     delay(50);
     input.time = fract(input.time + 0.025f);

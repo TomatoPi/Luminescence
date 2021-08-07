@@ -3,7 +3,7 @@
 
 // From https://iquilezles.org/www/articles/palettes/palettes.htm
 struct ColorPalette {
-    CRGB eval(float t) { return a + b * cos((c * t + d) * 6.28f); }
+    vec3 eval(float t) const { return a + b * cos((c * t + d) * 6.28f); }
 
     vec3 a;
     vec3 b;
