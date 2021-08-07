@@ -1,17 +1,32 @@
 #include <FastLED.h>
 #include "ColorPalette.h"
 #include "Comet.h"
+#include "Generators.h"
 #include "util.h"
 
 #define DATA_PIN 2
 
 CRGB leds[NUM_LEDS];
 
-void setup() { FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS); }
+void setup()
+{
+    FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+    Generators::Init();
+}
 
 void loop()
 {
-    gradient(palette_rainbow);
+    static GeneratorInput input;
+
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        input.pos = i / (float)(NUM_LEDS - 1);
+        float t   = Generators::eval(input);
+        leds[i]   = palette_rainbow.eval(t);
+    }
+    FastLED.show();
+    delay(50);
+    input.time = fract(input.time + 0.05f);
+    // gradient(palette_rainbow);
     // ping_pong();
     // test();
 }
