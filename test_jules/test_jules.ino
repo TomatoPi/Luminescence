@@ -12,11 +12,15 @@ CRGB leds[NUM_LEDS];
 void setup()
 {
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+    // INIT
     EffectsMixer::final = &FinalEffects::ScrollingGradient;
     for (auto& layer : EffectsMixer::layers) {
         layer = &Effects::Identity;
     }
-    EffectsMixer::layers[0] = &Effects::FreezeTime;
+    //
+    EffectsMixer::layers[0] = &Effects::InvertTime;
+    EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
+    EffectsMixer::layers[2] = &Effects::PingPong;
 }
 
 void loop()
@@ -30,5 +34,5 @@ void loop()
     }
     FastLED.show();
     delay(50);
-    input.time = fract(input.time + 0.05f);
+    input.time = fract(input.time + 0.025f);
 }
