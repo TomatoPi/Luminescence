@@ -1,14 +1,5 @@
-#include "Effects.h"
+#include "MyEffects.h"
 #include "EffectsMixer.h"
-
-namespace FinalEffects {
-
-FINAL_EFFECT(ScrollingGradient)
-{
-    return in.pos + in.time;
-}
-
-} // namespace FinalEffects
 
 namespace Effects {
 

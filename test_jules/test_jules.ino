@@ -1,7 +1,8 @@
 #include <FastLED.h>
 #include "ColorPalette.h"
-#include "Effects.h"
 #include "EffectsMixer.h"
+#include "MyEffects.h"
+#include "MyFinalEffects.h"
 #include "util.h"
 
 #define DATA_PIN 2

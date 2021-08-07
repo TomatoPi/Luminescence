@@ -2,12 +2,6 @@
 
 #include "Effect.h"
 
-namespace FinalEffects {
-
-FINAL_EFFECT(ScrollingGradient);
-
-}
-
 namespace Effects {
 
 EFFECT(Identity);
