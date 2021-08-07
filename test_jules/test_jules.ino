@@ -22,6 +22,7 @@ void setup()
     // EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
     EffectsMixer::layers[2] = &Effects::PingPong;
     // EffectsMixer::layers[3] = &Effects::FreezeTime;
+    EffectsMixer::layers[3] = &Effects::SinusoidalBlink;
 }
 
 void loop()
@@ -38,6 +39,6 @@ void loop()
     }
 
     FastLED.show();
-    delay(50);
-    input.time = fract(input.time + 0.025f);
+    delay(10);
+    input.time = fract(input.time + 0.005f);
 }

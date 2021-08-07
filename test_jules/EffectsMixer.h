@@ -2,7 +2,7 @@
 
 #include "Effect.h"
 
-#define NUM_LAYERS 4
+#define NUM_LAYERS 8
 
 #define APPLY_NEXT_EFFECT() EffectsMixer::eval(in, idx)
 

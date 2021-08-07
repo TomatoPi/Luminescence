@@ -2,7 +2,6 @@
 #include "Arduino.h"
 #include "EffectsMixer.h"
 
-
 namespace Effects {
 
 EFFECT(Identity)
@@ -49,6 +48,16 @@ EFFECT(PingPong)
     //               : 1.f - 2.f * (in.time - 0.5f);
     in.time = sin(3.141 * in.time);
     return APPLY_NEXT_EFFECT();
+}
+
+EFFECT(InvertColors)
+{
+    return vec3{1.f, 1.f, 1.f} - APPLY_NEXT_EFFECT();
+}
+
+EFFECT(SinusoidalBlink)
+{
+    return APPLY_NEXT_EFFECT() * (sin(in.time * 6.28) * 0.5 + 0.5);
 }
 
 } // namespace Effects

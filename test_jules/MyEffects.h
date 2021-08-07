@@ -11,5 +11,7 @@ EFFECT(InvertTime);
 EFFECT(InvertSpace);
 EFFECT(SplitRangeInTwo);
 EFFECT(PingPong);
+EFFECT(InvertColors);
+EFFECT(SinusoidalBlink);
 
 } // namespace Effects
