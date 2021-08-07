@@ -1,4 +1,4 @@
 #include "EffectsMixer.h"
 
 FinalEffect EffectsMixer::final;
-Effect      EffectsMixer::layers[4];
+Effect      EffectsMixer::layers[NUM_LAYERS];
