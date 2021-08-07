@@ -1,7 +1,8 @@
 #include <FastLED.h>
 #include "ColorPalette.h"
 #include "Comet.h"
-#include "Generators.h"
+#include "Effects.h"
+#include "EffectsMixer.h"
 #include "util.h"
 
 #define DATA_PIN 2
@@ -11,16 +12,20 @@ CRGB leds[NUM_LEDS];
 void setup()
 {
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-    Generators::Init();
+    EffectsMixer::final = &FinalEffects::ScrollingGradient;
+    for (auto& layer : EffectsMixer::layers) {
+        layer = &Effects::Identity;
+    }
+    EffectsMixer::layers[0] = &Effects::FreezeTime;
 }
 
 void loop()
 {
-    static GeneratorInput input;
+    static EffectInput input;
 
     for (int i = 0; i < NUM_LEDS; ++i) {
         input.pos = i / (float)(NUM_LEDS - 1);
-        float t   = Generators::eval(input);
+        float t   = EffectsMixer::eval(input);
         leds[i]   = palette_rainbow.eval(t);
     }
     FastLED.show();
