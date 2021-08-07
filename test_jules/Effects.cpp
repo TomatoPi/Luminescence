@@ -14,19 +14,19 @@ namespace Effects {
 
 EFFECT(Identity)
 {
-    return FORWARD();
+    return APPLY_NEXT_EFFECT();
 }
 
 EFFECT(Blink)
 {
     in.time = in.time < 0.5f ? 0.f : 0.5f;
-    return FORWARD();
+    return APPLY_NEXT_EFFECT();
 }
 
 EFFECT(FreezeTime)
 {
     in.time = 0.f;
-    return FORWARD();
+    return APPLY_NEXT_EFFECT();
 }
 
 } // namespace Effects
