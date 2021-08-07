@@ -19,10 +19,11 @@ void setup()
     }
     //
     EffectsMixer::layers[0] = &Effects::InvertTime;
-    // EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
+    EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
     EffectsMixer::layers[2] = &Effects::PingPong;
     // EffectsMixer::layers[3] = &Effects::FreezeTime;
     EffectsMixer::layers[3] = &Effects::SinusoidalBlink;
+    EffectsMixer::layers[4] = &Effects::OffsetRangeInTime;
 }
 
 void loop()

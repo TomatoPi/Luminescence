@@ -60,4 +60,10 @@ EFFECT(SinusoidalBlink)
     return APPLY_NEXT_EFFECT() * (sin(in.time * 6.28) * 0.5 + 0.5);
 }
 
+EFFECT(OffsetRangeInTime)
+{
+    in.time += in.pos;
+    return APPLY_NEXT_EFFECT();
+}
+
 } // namespace Effects

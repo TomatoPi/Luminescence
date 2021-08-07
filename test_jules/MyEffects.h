@@ -13,5 +13,6 @@ EFFECT(SplitRangeInTwo);
 EFFECT(PingPong);
 EFFECT(InvertColors);
 EFFECT(SinusoidalBlink);
+EFFECT(OffsetRangeInTime);
 
 } // namespace Effects
