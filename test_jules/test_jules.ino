@@ -18,12 +18,13 @@ void setup()
         layer = &Effects::Identity;
     }
     //
-    EffectsMixer::layers[0] = &Effects::InvertTime;
-    EffectsMixer::layers[1] = &Effects::SplitRangeInTwo;
-    EffectsMixer::layers[2] = &Effects::PingPong;
-    // EffectsMixer::layers[3] = &Effects::FreezeTime;
-    EffectsMixer::layers[3] = &Effects::SinusoidalBlink;
-    EffectsMixer::layers[4] = &Effects::OffsetRangeInTime;
+    // EffectsMixer::layers[6] = &Effects::FreezeTime;
+    EffectsMixer::layers[0] = &Effects::ReduceIntensity;
+    EffectsMixer::layers[1] = &Effects::InvertTime;
+    // EffectsMixer::layers[2] = &Effects::SplitRangeInTwo;
+    // EffectsMixer::layers[3] = &Effects::PingPong;
+    // EffectsMixer::layers[4] = &Effects::SinusoidalBlink;
+    // EffectsMixer::layers[5] = &Effects::OffsetRangeInTime;
 }
 
 void loop()
@@ -41,5 +42,5 @@ void loop()
 
     FastLED.show();
     delay(10);
-    input.time = fract(input.time + 0.005f);
+    input.time = fract(input.time + 0.0003f);
 }

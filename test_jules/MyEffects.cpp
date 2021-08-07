@@ -66,4 +66,9 @@ EFFECT(OffsetRangeInTime)
     return APPLY_NEXT_EFFECT();
 }
 
+EFFECT(ReduceIntensity)
+{
+    return APPLY_NEXT_EFFECT() * 0.67f;
+}
+
 } // namespace Effects

@@ -14,5 +14,6 @@ EFFECT(PingPong);
 EFFECT(InvertColors);
 EFFECT(SinusoidalBlink);
 EFFECT(OffsetRangeInTime);
+EFFECT(ReduceIntensity);
 
 } // namespace Effects
