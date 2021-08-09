@@ -2,7 +2,7 @@
 
 #include "Arduino.h"
 
-#define NUM_LEDS 16
+#define NUM_LEDS 1200
 
 inline int clamp(int i) { return min(max(i, 0), 255); }
 
