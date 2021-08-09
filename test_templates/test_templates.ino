@@ -1,4 +1,5 @@
 #include "FastLED.h"
+#include "fixed_point.h"
 
 template <typename T, unsigned int _SizeMax>
 struct Array
@@ -34,18 +35,18 @@ struct Array
 };
 
 struct RenderDatas {
-    unsigned int pixel_index = 0;
-    CRGB old_color = CRGB::Black;
+  unsigned int pixel_index = 0;
+  CRGB old_color = CRGB::Black;
 
-    unsigned int ribbon_length = 0;
-    unsigned int ribbon_index = 0;
-    unsigned int ribbon_count = 0;
+  unsigned int ribbon_length = 0;
+  unsigned int ribbon_index = 0;
+  unsigned int ribbon_count = 0;
 
-    unsigned int segment_index = 0;
-    unsigned int segment_count = 0;
+  unsigned int segment_index = 0;
+  unsigned int segment_count = 0;
 };
 
-CRGB render_color_wheel(const RenderDatas& datas, const void* state)
+CRGB render_color_wheel(const RenderDatas& datas, const void* _state)
 {
   // Convert pixel index to position on a circle
   // based on number of leds per metter, pixel index for radial distance
@@ -116,7 +117,6 @@ struct Calibrator
       tracer.cptr = 0;
     }
   }
-
 
 };
 
@@ -217,7 +217,10 @@ struct Optopoulpe_t
 Array<Optopoulpe_t::Segment, Optopoulpe_t::SegmentPoolSize> Optopoulpe_t::Segment::Pool;
 
 void setup() {
-  delay(3000);
+
+  Serial.begin(9600);
+  while (!Serial) ;
+
   FastLED.addLeds<NEOPIXEL, 2>(Optopoulpe.leds, Optopoulpe.MaxLedsCount);
   memset(Optopoulpe.leds, 0, sizeof(CRGB) * Optopoulpe.MaxLedsCount);
   FastLED.show();
@@ -230,6 +233,22 @@ void setup() {
   t1.add_segment(2, 0);
   t1.add_segment(2, 2);
   t1.add_segment(3, 10);
+
+  Fixed zero(0.);
+  Fixed one(1.);
+  Fixed half(0.5);
+
+  Serial.println(Fixed::IntMax);
+
+  Serial.println(zero.raw);
+  Serial.println(one.raw);
+  Serial.println(half.raw);
+  Serial.println((one * half).raw);
+
+  Serial.println((float)zero);
+  Serial.println((float)one);
+  Serial.println((float)half);
+  Serial.println((float)(one * half));
 }
 
 void loop() {
