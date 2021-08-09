@@ -1,38 +1,7 @@
 #include "FastLED.h"
 #include "fixed_point.h"
-
-template <typename T, unsigned int _SizeMax>
-struct Array
-{
-  static constexpr const unsigned int SizeMax = _SizeMax;
-
-  T array[SizeMax];
-  unsigned int size = 0;
-
-  const T& add(const T& obj) 
-  {
-    if (size < SizeMax)
-    {
-      array[size] = obj;
-      size++;
-    }
-    return obj;
-  }
-  const T& add(T&& obj) 
-  {
-    if (size < SizeMax)
-    {
-      array[size] = obj;
-      size++;
-    }
-    return array[size-1];
-  }
-
-  void clear() { size = 0; }
-
-  const T& operator[] (unsigned int i) const { return array[i]; }
-  T& operator[] (unsigned int i) { return array[i]; }
-};
+#include "midi.h"
+#include "array.h"
 
 struct RenderDatas {
   unsigned int pixel_index = 0;
@@ -100,9 +69,9 @@ struct Calibrator
   Mode mode = ColorWheel;
   TracerState tracer;
   
-  CRGB render(const RenderDatas& datas)
+  CRGB render(const RenderDatas& datas) const
   {
-    static Generator generators[Mode::ModeCount] = {render_color_wheel, render_tracer, render_turnstile};
+    static const Generator generators[Mode::ModeCount] = {render_color_wheel, render_tracer, render_turnstile};
     const void* states[Mode::ModeCount] = {0, &tracer, 0};
     return generators[mode](datas, states[mode]);
   }
@@ -118,6 +87,22 @@ struct Calibrator
     }
   }
 
+};
+
+struct RGBControler
+{
+  uint8_t red = 128;
+  uint8_t green = 0;
+  uint8_t blue = 0;
+
+  CRGB render(const RenderDatas& datas) const
+  {
+    return CRGB(red, green, blue);
+  }
+
+  void evolve()
+  {
+  }
 };
 
 
@@ -166,10 +151,11 @@ struct Optopoulpe_t
   Array<Tentacle,MaxTentaclesCount> tentacles;
 
   Calibrator calibrator;
+  RGBControler rgb_controler;
 
   CRGB compute_pixel_color(const RenderDatas& datas) const
   {
-    return calibrator.render(datas);
+    return rgb_controler.render(datas);
   }
 
   void compute_frame() const
@@ -210,11 +196,13 @@ struct Optopoulpe_t
     // More complicated, something like
     // for each modifier, generator, etc... update it's parameters
     calibrator.evolve();
+    rgb_controler.evolve();
   }
 
 } Optopoulpe;
 
 Array<Optopoulpe_t::Segment, Optopoulpe_t::SegmentPoolSize> Optopoulpe_t::Segment::Pool;
+sfx::midi::Parser<128, 128> MidiParser;
 
 void setup() {
 
@@ -238,22 +226,34 @@ void setup() {
   Fixed one(1.);
   Fixed half(0.5);
 
-  Serial.println(Fixed::IntMax);
-
-  Serial.println(zero.raw);
-  Serial.println(one.raw);
-  Serial.println(half.raw);
-  Serial.println((one * half).raw);
-
-  Serial.println((float)zero);
-  Serial.println((float)one);
-  Serial.println((float)half);
-  Serial.println((float)(one * half));
+  MidiParser.Init();
 }
 
 void loop() {
   Optopoulpe.compute_frame();
   FastLED.show();
   Optopoulpe.evolve();
+  
+  while (Serial.available()) 
+  {
+    int input_byte = Serial.read();
+    if (input_byte < 0)
+      continue;
+    MidiParser.Parse(input_byte);
+  }
+  
+  while (MidiParser.HasNext())
+  {
+    sfx::midi::Event event = MidiParser.NextEvent();
+    if (sfx::midi::ControlChange == event.status && 0x07 == event.d1)
+    {
+      if (0 == event.channel)
+        Optopoulpe.rgb_controler.red = event.d2;
+      else if (1 == event.channel)
+        Optopoulpe.rgb_controler.green = event.d2;
+      else if (2 == event.channel)
+        Optopoulpe.rgb_controler.blue = event.d2;
+    }
+  }
   delay(10);
 }
