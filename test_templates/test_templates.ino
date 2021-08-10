@@ -6,6 +6,39 @@
 
 using coef_t = float;
 
+
+struct Timebase
+{
+  unsigned long clock = 0;
+  unsigned long length = ~(0ul);
+  
+  coef_t phase = coef_t(0.0);
+
+  unsigned long last_hit = 0;
+
+  template <typename T>
+  constexpr T eval(T max = T(0), T min = T(0))
+  {
+    return T((max - min) * phase);
+  }
+
+  void evolve(unsigned long t)
+  {
+    clock = t - last_hit;
+    phase = length == 0 ? coef_t(1.0) : coef_t(clock % length) / coef_t(length);
+  }
+
+  void hit(unsigned long t)
+  {
+    length = t - last_hit;
+    clock = 0;
+
+    phase = coef_t(0.0);
+
+    last_hit = t;
+  }
+};
+
 struct RenderDatas {
   unsigned int pixel_index = 0;
   CRGB old_color = CRGB::Black;
@@ -16,6 +49,8 @@ struct RenderDatas {
 
   unsigned int segment_index = 0;
   unsigned int segment_count = 0;
+
+  const Timebase* timebase = nullptr; 
 };
 
 CRGB render_color_wheel(const RenderDatas& datas, const void* _state)
@@ -79,7 +114,7 @@ struct Calibrator
     return generators[mode](datas, states[mode]);
   }
 
-  void evolve()
+  void evolve(unsigned long)
   {
     cptr = (cptr+1) % period;
     tracer.cptr += 1;
@@ -103,7 +138,7 @@ struct RGBControler
     return CRGB(red, green, blue);
   }
 
-  void evolve()
+  void evolve(unsigned long)
   {
   }
 };
@@ -114,7 +149,7 @@ struct PaleteGenerator
   {
     float fpos = (float)datas.pixel_index / datas.ribbon_length;
     coef_t pos = coef_t(fpos);
-    vec3<coef_t> color = palette.eval(pos);
+    vec3<coef_t> color = palette.eval(pos) * datas.timebase->eval(coef_t(1.0));
     return CRGB(color.r * 255, color.g * 255, color.b * 255); 
   }
   
@@ -122,7 +157,6 @@ struct PaleteGenerator
     {0.5, 0.5, 0.5}, {0.5, 0.5, 0.5}, {2.0, 1.0, 0.0}, {0.5, 0.2, 0.25}
   };
 };
-
 
 struct Optopoulpe_t
 {
@@ -172,6 +206,7 @@ struct Optopoulpe_t
   RGBControler rgb_controler;
 
   PaleteGenerator palette_0;
+  Timebase timebase;
 
   CRGB compute_pixel_color(const RenderDatas& datas) const
   {
@@ -205,18 +240,22 @@ struct Optopoulpe_t
 
             datas.segment_index = segindex;
             datas.segment_count = tentacle.chain_length;
+
+            datas.timebase = &timebase;
+
           leds[index] = compute_pixel_color(datas);
         }
       }
     }
   }
 
-  void evolve()
+  void evolve(unsigned long t)
   {
     // More complicated, something like
     // for each modifier, generator, etc... update it's parameters
-    calibrator.evolve();
-    rgb_controler.evolve();
+    calibrator.evolve(t);
+    rgb_controler.evolve(t);
+    timebase.evolve(t);
   }
 
 } Optopoulpe;
@@ -242,7 +281,7 @@ void setup() {
 void loop() {
   Optopoulpe.compute_frame();
   FastLED.show();
-  Optopoulpe.evolve();
+  Optopoulpe.evolve(micros());
   
   while (Serial.available()) 
   {
@@ -284,6 +323,13 @@ void loop() {
 
         unsigned int param = idx % 4;
         Optopoulpe.palette_0.palette[param][coef] = event.d2 / 255.f;
+      }
+    }
+    else if (sfx::midi::NoteOn == event.status)
+    {
+      if (0x63 == event.d1)
+      {
+        Optopoulpe.timebase.hit(micros());
       }
     }
   }
