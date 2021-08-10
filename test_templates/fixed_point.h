@@ -10,12 +10,15 @@ struct Fixed
     uint32_t v;
   };
 
-  explicit constexpr Fixed(uint32_t raw = 0) : raw(raw) {}
-  explicit constexpr Fixed(float f = 0.f) : raw(static_cast<uint32_t>(f * IntMax)) {}
-  explicit constexpr Fixed(double f = 0.f) : raw(static_cast<uint32_t>(f * IntMax)) {}
+  constexpr Fixed(uint32_t raw = 0) : raw(raw) {}
+  constexpr Fixed(float f = 0.f) : raw(static_cast<uint32_t>(f * IntMax)) {}
+  constexpr Fixed(double f = 0.f) : raw(static_cast<uint32_t>(f * IntMax)) {}
 
   explicit constexpr operator float() const {
     return static_cast<float>(val) / static_cast<float>(IntMax);
+  }
+  explicit constexpr operator uint8_t() const {
+    return raw >> 24;
   }
 
   constexpr Fixed operator + (Fixed f) const

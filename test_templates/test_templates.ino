@@ -1,7 +1,10 @@
 #include "FastLED.h"
+#include "color_palette.h"
 #include "fixed_point.h"
 #include "midi.h"
 #include "array.h"
+
+using coef_t = float;
 
 struct RenderDatas {
   unsigned int pixel_index = 0;
@@ -105,6 +108,21 @@ struct RGBControler
   }
 };
 
+struct PaleteGenerator
+{
+  CRGB render(const RenderDatas& datas) const
+  {
+    float fpos = (float)datas.pixel_index / datas.ribbon_length;
+    coef_t pos = coef_t(fpos);
+    vec3<coef_t> color = palette.eval(pos);
+    return CRGB(color.r * 255, color.g * 255, color.b * 255); 
+  }
+  
+  ColorPalette<coef_t> palette = {
+    {0.5, 0.5, 0.5}, {0.5, 0.5, 0.5}, {2.0, 1.0, 0.0}, {0.5, 0.2, 0.25}
+  };
+};
+
 
 struct Optopoulpe_t
 {
@@ -153,9 +171,11 @@ struct Optopoulpe_t
   Calibrator calibrator;
   RGBControler rgb_controler;
 
+  PaleteGenerator palette_0;
+
   CRGB compute_pixel_color(const RenderDatas& datas) const
   {
-    return rgb_controler.render(datas);
+    return palette_0.render(datas);
   }
 
   void compute_frame() const
@@ -214,17 +234,7 @@ void setup() {
   FastLED.show();
 
   auto& t0 = Optopoulpe.tentacles.add(Optopoulpe_t::Tentacle());
-  t0.add_segment(3,0);
-  t0.add_segment(4,3);
-
-  auto& t1 = Optopoulpe.tentacles.add(Optopoulpe_t::Tentacle());
-  t1.add_segment(2, 0);
-  t1.add_segment(2, 2);
-  t1.add_segment(3, 10);
-
-  Fixed zero(0.);
-  Fixed one(1.);
-  Fixed half(0.5);
+  t0.add_segment(14,0);
 
   MidiParser.Init();
 }
@@ -245,14 +255,36 @@ void loop() {
   while (MidiParser.HasNext())
   {
     sfx::midi::Event event = MidiParser.NextEvent();
-    if (sfx::midi::ControlChange == event.status && 0x07 == event.d1)
+    if (sfx::midi::ControlChange == event.status)
     {
-      if (0 == event.channel)
-        Optopoulpe.rgb_controler.red = event.d2;
-      else if (1 == event.channel)
-        Optopoulpe.rgb_controler.green = event.d2;
-      else if (2 == event.channel)
-        Optopoulpe.rgb_controler.blue = event.d2;
+      if (0x07 == event.d1)
+      {
+        if (0 == event.channel)
+          Optopoulpe.rgb_controler.red = event.d2;
+        else if (1 == event.channel)
+          Optopoulpe.rgb_controler.green = event.d2;
+        else if (2 == event.channel)
+          Optopoulpe.rgb_controler.blue = event.d2;
+      }
+      else if ((0x30 <= event.d1 && event.d1 <= 0x37) || (0x10 <= event.d1 && event.d1 <= 0x13))
+      {
+        unsigned int idx = 0;
+        unsigned int coef = 0;
+
+        if (0x30 <= event.d1 && event.d1 <= 0x37)
+        {
+          idx = event.d1 - 0x30;
+          coef = idx / 4;
+        }
+        if (0x10 <= event.d1 && event.d1 <= 0x13)
+        {
+          idx = event.d1 - 0x10;
+          coef = 2;
+        }
+
+        unsigned int param = idx % 4;
+        Optopoulpe.palette_0.palette[param][coef] = event.d2 / 255.f;
+      }
     }
   }
   delay(10);

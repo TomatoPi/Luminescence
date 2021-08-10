@@ -47,7 +47,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  int arduino = serialport_init("/dev/ttyACM1", B9600);
+  int arduino = serialport_init(argv[1], B9600);
   if (arduino < 0)
     return -100;
 
@@ -75,7 +75,7 @@ int main(int argc, const char* argv[])
       for (const auto& byte : event)
       {
         serialport_writebyte(arduino, byte);
-        fprintf(stderr, "%02x ", byte);
+        fprintf(stderr, "0x%02x ", byte);
       }
       fprintf(stderr, "\n");
       midi_queue.pop();
