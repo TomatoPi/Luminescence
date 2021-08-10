@@ -3,55 +3,8 @@
 #include "fixed_point.h"
 #include "midi.h"
 #include "array.h"
-
-using coef_t = float;
-
-
-struct Timebase
-{
-  unsigned long clock = 0;
-  unsigned long length = ~(0ul);
-  
-  coef_t phase = coef_t(0.0);
-
-  unsigned long last_hit = 0;
-
-  template <typename T>
-  constexpr T eval(T max = T(0), T min = T(0))
-  {
-    return T((max - min) * phase);
-  }
-
-  void evolve(unsigned long t)
-  {
-    clock = t - last_hit;
-    phase = length == 0 ? coef_t(1.0) : coef_t(clock % length) / coef_t(length);
-  }
-
-  void hit(unsigned long t)
-  {
-    length = t - last_hit;
-    clock = 0;
-
-    phase = coef_t(0.0);
-
-    last_hit = t;
-  }
-};
-
-struct RenderDatas {
-  unsigned int pixel_index = 0;
-  CRGB old_color = CRGB::Black;
-
-  unsigned int ribbon_length = 0;
-  unsigned int ribbon_index = 0;
-  unsigned int ribbon_count = 0;
-
-  unsigned int segment_index = 0;
-  unsigned int segment_count = 0;
-
-  const Timebase* timebase = nullptr; 
-};
+#include "types.h"
+#include "lfo.h"
 
 CRGB render_color_wheel(const RenderDatas& datas, const void* _state)
 {
@@ -149,7 +102,7 @@ struct PaleteGenerator
   {
     float fpos = (float)datas.pixel_index / datas.ribbon_length;
     coef_t pos = coef_t(fpos);
-    vec3<coef_t> color = palette.eval(pos) * datas.timebase->eval(coef_t(1.0));
+    vec3<coef_t> color = palette.eval(pos);
     return CRGB(color.r * 255, color.g * 255, color.b * 255); 
   }
   
@@ -207,10 +160,13 @@ struct Optopoulpe_t
 
   PaleteGenerator palette_0;
   Timebase timebase;
+  LFO<coef_t> oscillator_0;
 
   CRGB compute_pixel_color(const RenderDatas& datas) const
   {
-    return palette_0.render(datas);
+    CRGB color = palette_0.render(datas);
+    coef_t level = oscillator_0.eval(timebase.phase);
+    return CRGB(color.r * level, color.g * level, color.b * level);
   }
 
   void compute_frame() const
@@ -269,6 +225,11 @@ void setup() {
   while (!Serial) ;
 
   FastLED.addLeds<NEOPIXEL, 2>(Optopoulpe.leds, Optopoulpe.MaxLedsCount);
+  
+  memset(Optopoulpe.leds, 127, sizeof(CRGB) * Optopoulpe.MaxLedsCount);
+  FastLED.show();
+  delay(100);
+  
   memset(Optopoulpe.leds, 0, sizeof(CRGB) * Optopoulpe.MaxLedsCount);
   FastLED.show();
 
@@ -299,11 +260,11 @@ void loop() {
       if (0x07 == event.d1)
       {
         if (0 == event.channel)
-          Optopoulpe.rgb_controler.red = event.d2;
+          Optopoulpe.rgb_controler.red = event.d2 * 2;
         else if (1 == event.channel)
-          Optopoulpe.rgb_controler.green = event.d2;
+          Optopoulpe.rgb_controler.green = event.d2 * 2;
         else if (2 == event.channel)
-          Optopoulpe.rgb_controler.blue = event.d2;
+          Optopoulpe.rgb_controler.blue = event.d2 * 2;
       }
       else if ((0x30 <= event.d1 && event.d1 <= 0x37) || (0x10 <= event.d1 && event.d1 <= 0x13))
       {
@@ -322,7 +283,28 @@ void loop() {
         }
 
         unsigned int param = idx % 4;
-        Optopoulpe.palette_0.palette[param][coef] = event.d2 / 255.f;
+        Optopoulpe.palette_0.palette[param][coef] = event.d2 / 127.f;
+      }
+      else if (0x14 <= event.d1 && event.d1 <= 0x17)
+      {
+        if (0x14 == event.d1)
+        {
+          uint8_t val = ((uint32_t)event.d2 * LFO<coef_t>::WaveForm::Count) >> 7;
+          Optopoulpe.oscillator_0.tfunc = LFO<coef_t>::castWaveform(
+            static_cast<LFO<coef_t>::WaveForm>(val));
+        }
+        else if (0x15 == event.d1)
+        {
+          Optopoulpe.oscillator_0.param1 = event.d2 / 127.f;
+        }
+        else if (0x16 == event.d1)
+        {
+          Optopoulpe.oscillator_0.param2 = event.d2 / 127.f;
+        }
+        else if (0x17 == event.d1)
+        {
+          
+        }
       }
     }
     else if (sfx::midi::NoteOn == event.status)
@@ -330,6 +312,14 @@ void loop() {
       if (0x63 == event.d1)
       {
         Optopoulpe.timebase.hit(micros());
+      }
+      else if (0x64 == event.d1)
+      {
+        Optopoulpe.timebase.subdivide();
+      }
+      else if (0x65 == event.d1)
+      {
+        Optopoulpe.timebase.unsubdivide();
       }
     }
   }
