@@ -303,7 +303,7 @@ void loop() {
         }
         else if (0x17 == event.d1)
         {
-          
+          Optopoulpe.oscillator_0.param2 = event.d2 / 127.f;   
         }
       }
     }

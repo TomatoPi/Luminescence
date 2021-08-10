@@ -89,7 +89,7 @@ struct LFO
    **/
   static inline sfx::sample_t w_sqr(sfx::sample_t in, float s, float p1, float p2)
   {
-    return (sfx::sample_t)((in - 0.5 < 0) ? s * (-1) : s);
+    return (sfx::sample_t)((in - p1 < 0) ? s * (-1) : s);
   }
 
   /**

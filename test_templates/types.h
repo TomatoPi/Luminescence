@@ -8,7 +8,8 @@ struct Timebase
   unsigned long length = ~(0ul);
   int subdivide_level = 0;
   
-  coef_t phase = coef_t(0.0);
+  coef_t phase = coef_t(0.);
+  coef_t offset = coef_t(0.);
 
   unsigned long last_hit = 0;
 
@@ -36,7 +37,7 @@ struct Timebase
   void evolve(unsigned long t)
   {
     clock = t - last_hit;
-    phase = compute_phase(subdivide_level);
+    phase = fmod(compute_phase(0) + offset, 1.);
   }
 
   void hit(unsigned long t)
