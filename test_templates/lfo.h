@@ -149,7 +149,7 @@ struct LFO
 
   typedef sfx::sample_t(*transfert_f)(sfx::sample_t, float, float, float);
 
-  sfx::sample_t param1 = 0, param2 = 0;
+  sfx::sample_t param1 = 0, param2 = 0, phase = 0;
   transfert_f tfunc = w_sin;
 
   ////////////////////////////////////////////////////////////////////

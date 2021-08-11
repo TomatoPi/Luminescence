@@ -116,6 +116,7 @@ struct Optopoulpe_t
   static constexpr const unsigned int MaxTentaclesCount = 16;
   static constexpr const unsigned int MaxLedsCount = 14;
   static constexpr const unsigned int SegmentPoolSize = 64;
+  static constexpr const unsigned int TrackCount = 8;
   
   struct Segment
   {
@@ -158,15 +159,55 @@ struct Optopoulpe_t
   Calibrator calibrator;
   RGBControler rgb_controler;
 
-  PaleteGenerator palette_0;
   Timebase timebase;
-  LFO<coef_t> oscillator_0;
+
+  struct Track
+  {
+    PaleteGenerator palette;
+    LFO<coef_t>     oscillator;
+    bool            is_active = false;
+    uint8_t         level = 0;
+
+    CRGB render(const RenderDatas& datas) const
+    {
+      return palette.render(datas);
+    }
+
+    void evolve(unsigned long time) const
+    {
+
+    }
+  };
+
+  StaticArray<Track, TrackCount> tracks;
+  uint8_t current_track = 0;
+
+  const Track& edited_track() const { return tracks[current_track]; }
+  Track& edited_track() { return tracks[current_track]; }
 
   CRGB compute_pixel_color(const RenderDatas& datas) const
   {
-    CRGB color = palette_0.render(datas);
-    coef_t level = oscillator_0.eval(timebase.phase);
-    return CRGB(color.r * level, color.g * level, color.b * level);
+    if (TrackCount == current_track)
+    {
+      CRGB color = CRGB::Black;
+      for (unsigned int i = 0 ; i < TrackCount ; ++i)
+      {
+        const Track& track = tracks[i];
+        if (!track.is_active)
+          continue;
+        color = blend(color, track.render(datas), track.level);
+        coef_t level = track.oscillator.eval(timebase.eval(track.oscillator.phase, 1.f, 0.f));
+        color = CRGB(color.r * level, color.g * level, color.b * level);
+      }
+      return color; 
+    }
+    else
+    {
+      const Track& track = edited_track();
+      CRGB color = track.render(datas);
+      coef_t level = track.oscillator.eval(timebase.eval(track.oscillator.phase, 1.f, 0.f));
+      return CRGB(color.r * level, color.g * level, color.b * level);
+    }
   }
 
   void compute_frame() const
@@ -212,6 +253,10 @@ struct Optopoulpe_t
     calibrator.evolve(t);
     rgb_controler.evolve(t);
     timebase.evolve(t);
+    for (unsigned int i = 0 ; i < TrackCount ; ++i) 
+    {
+      tracks[i].evolve(t);
+    }
   }
 
 } Optopoulpe;
@@ -259,12 +304,10 @@ void loop() {
     {
       if (0x07 == event.d1)
       {
-        if (0 == event.channel)
-          Optopoulpe.rgb_controler.red = event.d2 * 2;
-        else if (1 == event.channel)
-          Optopoulpe.rgb_controler.green = event.d2 * 2;
-        else if (2 == event.channel)
-          Optopoulpe.rgb_controler.blue = event.d2 * 2;
+        if (event.channel < Optopoulpe.TrackCount)
+        {
+          Optopoulpe.tracks[event.channel].level = event.d2 << 1;
+        }
       }
       else if ((0x30 <= event.d1 && event.d1 <= 0x37) || (0x10 <= event.d1 && event.d1 <= 0x13))
       {
@@ -283,33 +326,46 @@ void loop() {
         }
 
         unsigned int param = idx % 4;
-        Optopoulpe.palette_0.palette[param][coef] = event.d2 / 127.f;
+        Optopoulpe.edited_track().palette.palette[param][coef] = event.d2 / 127.f;
       }
       else if (0x14 <= event.d1 && event.d1 <= 0x17)
       {
         if (0x14 == event.d1)
         {
           uint8_t val = ((uint32_t)event.d2 * LFO<coef_t>::WaveForm::Count) >> 7;
-          Optopoulpe.oscillator_0.tfunc = LFO<coef_t>::castWaveform(
+          Optopoulpe.edited_track().oscillator.tfunc = LFO<coef_t>::castWaveform(
             static_cast<LFO<coef_t>::WaveForm>(val));
         }
         else if (0x15 == event.d1)
         {
-          Optopoulpe.oscillator_0.param1 = event.d2 / 127.f;
+          Optopoulpe.edited_track().oscillator.param1 = event.d2 / 127.f;
         }
         else if (0x16 == event.d1)
         {
-          Optopoulpe.oscillator_0.param2 = event.d2 / 127.f;
+          Optopoulpe.edited_track().oscillator.param2 = event.d2 / 127.f;
         }
         else if (0x17 == event.d1)
         {
-          Optopoulpe.oscillator_0.param2 = event.d2 / 127.f;   
+          
+          Optopoulpe.edited_track().oscillator.phase = event.d2 / 127.f;
+          
+          if (0 <= event.channel && event.channel <= Optopoulpe.TrackCount)
+          {
+            Optopoulpe.current_track = event.channel;
+          }
         }
       }
     }
     else if (sfx::midi::NoteOn == event.status)
     {
-      if (0x63 == event.d1)
+      if (0x32 == event.d1)
+      {
+        if (0 <= event.channel && event.channel < Optopoulpe.TrackCount)
+        {
+          Optopoulpe.tracks[event.channel].is_active = true;
+        }
+      }
+      else if (0x63 == event.d1)
       {
         Optopoulpe.timebase.hit(micros());
       }
@@ -320,6 +376,16 @@ void loop() {
       else if (0x65 == event.d1)
       {
         Optopoulpe.timebase.unsubdivide();
+      }
+    }
+    else if (sfx::midi::NoteOff == event.status)
+    {
+      if (0x32 == event.d1)
+      {
+        if (0 <= event.channel && event.channel < Optopoulpe.TrackCount)
+        {
+          Optopoulpe.tracks[event.channel].is_active = false;
+        }
       }
     }
   }

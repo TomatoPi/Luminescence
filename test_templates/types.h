@@ -14,9 +14,9 @@ struct Timebase
   unsigned long last_hit = 0;
 
   template <typename T>
-  constexpr T eval(T max = T(0), T min = T(0))
+  constexpr T eval(coef_t off, T max, T min)
   {
-    return T((max - min) * phase);
+    return T((max - min) * fmod(phase + off, 1.f));
   }
 
   constexpr unsigned long vlength(int subdivide) const

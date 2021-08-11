@@ -32,3 +32,13 @@ struct Array
   const T& operator[] (unsigned int i) const { return array[i]; }
   T& operator[] (unsigned int i) { return array[i]; }
 };
+
+template <typename T, unsigned int _Size>
+struct StaticArray
+{
+  static constexpr const unsigned int Size = _Size;
+  T array[Size];
+
+  const T& operator[] (unsigned int i) const { return array[i]; }
+  T& operator[] (unsigned int i) { return array[i]; }
+};
