@@ -62,7 +62,7 @@ namespace opto
     transfert_f tfunc = w_sin;
     T* controlled_value = nullptr;
 
-    coef_t eval(coef_t t) const {
+    T eval(T t) const {
       return (tfunc(t, 1., param1, param2) + 1.) / 2;
     }
 

@@ -86,7 +86,7 @@ namespace opto
   template <typename T>
   static inline T w_tri(T in, T s, T p1, T p2)
   {
-    return (T)(s * (2.0 * sfx::abs(2.0 * in - 1.0) - 1.0));
+    return (T)(s * (2.0 * abs(2.0 * in - 1.0) - 1.0));
   }
 
   /**
