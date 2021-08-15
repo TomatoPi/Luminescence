@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <unordered_map>
 
 struct MidiMsg
@@ -13,6 +14,15 @@ struct MidiMsg
     c(raw[0] & 0x0F),
     d1(raw[1]), d2(raw[2])
     {}
+
+  constexpr MidiMsg(const std::initializer_list<int>& raw)
+  {
+    uint8_t tmp[3];
+    uint8_t i = 0;
+    for (auto& x : raw)
+      tmp[i++] = x;
+    *this = MidiMsg(tmp);
+  }
 
   uint8_t s = 0;
   uint8_t c = 0;
@@ -47,10 +57,11 @@ struct MidiMsgEquals
     return MidiMsgHash()(a) == MidiMsgHash()(b);
   }
 };
+using MidiStack = std::vector<MidiMsg>;
 
-using MidiCallback = std::function<std::vector<MidiMsg>(const MidiMsg&)>;
+using MidiCallback = std::function<void(const MidiMsg&)>;
 
-using MidiHashMap = std::unordered_map<MidiMsg, MidiCallback, MidiMsgHash, MidiMsgEquals>;
+using MidiHashMap = std::unordered_multimap<MidiMsg, MidiCallback, MidiMsgHash, MidiMsgEquals>;
 
 template <typename F>
 MidiCallback make_callback(const F& f)

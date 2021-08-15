@@ -1,4 +1,4 @@
-#include "apc40.h"
+#include "apc40/apc40.h"
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
@@ -68,16 +68,11 @@ jack_port_t* midi_in;
 jack_port_t* midi_out;
 
 std::queue<std::vector<uint8_t>> serial_queue;
-apc::Context APC40;
-
-struct Status
-{
-
-};
+apc::APC40 APC40;
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
-  Status& status = *static_cast<Status*>(args);
+  (void) args;
 
   jack_nframes_t events_count;
   jack_midi_event_t event;
@@ -88,14 +83,6 @@ int jack_callback(jack_nframes_t nframes, void* args)
   void* in_buffer = jack_port_get_buffer(midi_in, nframes);
   events_count = jack_midi_get_event_count(in_buffer);
 
-  while (!APC40.async_queue.empty())
-  {
-    auto tmp = APC40.async_queue.front().serialize();
-    void* raw = jack_midi_event_reserve(out_buffer, event.time, tmp.size());
-    memcpy(raw, tmp.data(), tmp.size());
-    APC40.async_queue.pop();
-  }
-
   for (jack_nframes_t i = 0 ; i < events_count ; ++i)
   {
     if (0 != jack_midi_event_get(&event, in_buffer, i))
@@ -104,18 +91,19 @@ int jack_callback(jack_nframes_t nframes, void* args)
     if (3 != event.size)
       continue;
 
-    MidiMsg msg(event.buffer);
-    if (auto itr = APC40.midi_table.find(msg) ; itr != APC40.midi_table.end())
+    for (size_t i = 0 ; i < 3 ; ++i)
     {
-      auto& [_, callback] = *itr;
-      std::vector<MidiMsg> responses = callback(msg);
+      fprintf(stderr, "0x%02x ", event.buffer[i]);
+    }
+    fprintf(stderr, "\n");
 
-      for (auto& msg : responses)
-      {
-        auto tmp = msg.serialize();
-        void* raw = jack_midi_event_reserve(out_buffer, event.time, tmp.size());
-        memcpy(raw, tmp.data(), tmp.size());
-      }
+    auto& responses = APC40.handle_midi_event(event.buffer);
+
+    for (auto& msg : responses)
+    {
+      auto tmp = msg.serialize();
+      void* raw = jack_midi_event_reserve(out_buffer, event.time, tmp.size());
+      memcpy(raw, tmp.data(), tmp.size());
     }
   }
 
@@ -141,8 +129,7 @@ int main(int argc, const char* argv[])
   if (nullptr == midi_in)
     return __LINE__;
 
-  Status pgm_status;
-  if (0 != jack_set_process_callback(client, jack_callback, &pgm_status))
+  if (0 != jack_set_process_callback(client, jack_callback, nullptr))
     return __LINE__;
 
   if (0 != jack_activate(client))
@@ -166,8 +153,6 @@ int main(int argc, const char* argv[])
     return __LINE__;
 
   jack_free(ports_names);
-
-  APC40.MapMidiInputs();
 
   while (1)
   {
