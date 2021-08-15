@@ -9,7 +9,9 @@ GXX=g++
 CXXFLAGS=-Wall -std=c++20 -g
 LDXXFLAGS=-ljack
 
-all: jack_proxy
+all: 
+	make jack_proxy
+	cp driver/driver.h ../driver/driver.h
 
 jack_proxy: \
 	jack_proxy.cpp \

@@ -14,7 +14,6 @@ struct Pixel
   };
 };
 
-
 struct Optopoulpe
 {
   static constexpr const size_t PixelsCount = 30 * 21;

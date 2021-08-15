@@ -1,4 +1,5 @@
 #include "color_palette.h"
+#include "driver.h"
 
 #include <FastLED.h>
 
@@ -19,9 +20,11 @@ Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
 color_t leds[MaxLedsCount];
 color_t palette[PaletteSize];
 
+MakeSerializable(optopoulpe, FrameGeneratorParams);
+
 void setup()
 {
-  Serial.begin(921600);
+  Serial.begin(9600);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
 
@@ -47,31 +50,35 @@ void loop()
   uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
 
   static unsigned long last_packet_timestamp = 0;
-  static unsigned int Serial_led_index = 0;
-  static unsigned int Serial_index = 0;
-  static uint8_t Serial_buffer[3] = {0};
   
   while (Serial.available())
   {
-    Serial_buffer[Serial_index] = Serial.read();
-    Serial_index++;
+    optopoulpe.buffer[optopoulpe.serial_index] = Serial.read();
+    optopoulpe.serial_index++;
 
-    if (3 <= Serial_index)
+    if (optopoulpe.size <= optopoulpe.serial_index)
     {
-      leds[Serial_led_index] = CRGB(Serial_buffer[0], Serial_buffer[1], Serial_buffer[2]);
-      Serial_led_index = (Serial_led_index + 1) % MaxLedsCount;
-      Serial_index = 0;
+      memcpy(&optopoulpe.obj, optopoulpe.buffer, optopoulpe.size);
+      optopoulpe.serial_index = 0;
     }
     last_packet_timestamp = master_clock;
   }
   
   if (1000 < master_clock - last_packet_timestamp)
   {
-    Serial_index = 0;
+    optopoulpe.serial_index = 0;
     uint8_t r = value < 127 ? 255 : 0;
-    for (unsigned int i = 0 ; i < MaxLedsCount ; ++i)
+    for (index_t i = 0 ; i < MaxLedsCount ; ++i)
     {
       leds[i] = CRGB(r, 0, 0);
+    }
+  }
+  else
+  {
+    const uint8_t* c = optopoulpe.obj.plain_color.raw;
+    for (index_t i = 0 ; i < MaxLedsCount ; ++i)
+    {
+      leds[i] = CRGB(c[0], c[1], c[2]);
     }
   }
 
