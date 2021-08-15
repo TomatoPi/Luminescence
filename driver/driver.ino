@@ -21,7 +21,7 @@ color_t palette[PaletteSize];
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(921600);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
 
@@ -44,23 +44,37 @@ void loop()
   static unsigned long master_clock = 0;
   static unsigned long master_clock_period = 4000;
   master_clock = millis();
-//  uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
+  uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
 
-  unsigned long lastPacket = 0;
-
-  if (lastPacket < 1000)
+  static unsigned long last_packet_timestamp = 0;
+  static unsigned int Serial_led_index = 0;
+  static unsigned int Serial_index = 0;
+  static uint8_t Serial_buffer[3] = {0};
+  
+  while (Serial.available())
   {
-    for (unsigned int i = 0 ; i < MaxLedsCount ; ++i)
-      leds[i] = CRGB(0, 0+i, 127);
+    Serial_buffer[Serial_index] = Serial.read();
+    Serial_index++;
+
+    if (3 <= Serial_index)
+    {
+      leds[Serial_led_index] = CRGB(Serial_buffer[0], Serial_buffer[1], Serial_buffer[2]);
+      Serial_led_index = (Serial_led_index + 1) % MaxLedsCount;
+      Serial_index = 0;
+    }
+    last_packet_timestamp = master_clock;
   }
-  else
+  
+  if (1000 < master_clock - last_packet_timestamp)
   {
-    uint8_t r = 0 < 127 ? 255 : 0;
+    Serial_index = 0;
+    uint8_t r = value < 127 ? 255 : 0;
     for (unsigned int i = 0 ; i < MaxLedsCount ; ++i)
     {
       leds[i] = CRGB(r, 0, 0);
     }
   }
+
   FastLED.show();
   delay(0);
 

@@ -15,16 +15,31 @@ class Controller
 {
 public:
 
+  class Control;
+  using Routine = std::function<void(Control*)>;
+
   class Control
   {
   protected:
     Controller* controller = nullptr;
+    std::vector<Routine> routines;
 
   public:
     Control(Controller* ctrl = nullptr) : controller(ctrl) {}
     virtual ~Control() = default;
 
     virtual void send_refresh() = 0;
+
+    void exec_routines()
+    {
+      for (auto& routine : routines)
+        routine(this);
+    }
+
+    void add_routine(const Routine& rt)
+    {
+      routines.emplace_back(rt);
+    }
   };
 
 private:
@@ -32,9 +47,13 @@ private:
   using Controls = std::vector<std::unique_ptr<Control>>;
   using MidiStack = std::vector<MidiMsg>;
 
+  using MappingsTable = std::unordered_multimap<MidiMsg, std::pair<Control*, MidiCallback>, MidiMsgHash, MidiMsgEquals>;
+
   Controls controls;
-  MidiHashMap midi_map;
+  MappingsTable midi_map;
   MidiStack rt_queue;
+
+  std::unordered_set<Control*> dirty_controls;
 
 public:
 
@@ -46,9 +65,9 @@ public:
   {
     return controls.emplace_back(std::make_unique<T>(this, std::forward<Args>(args)...)).get();
   }
-  void register_mapping(const MidiMsg& signature, const MidiCallback& callback)
+  void register_mapping(Control* ctrl, const MidiMsg& signature, const MidiCallback& callback)
   {
-    midi_map.emplace(signature, callback);
+    midi_map.emplace(signature, std::make_pair(ctrl, callback));
   }
 
   template <typename ...Args>
@@ -74,8 +93,10 @@ public:
       auto itr = midi_map.find(event);
       itr != midi_map.end())
     {
-      auto& [_, callback] = *itr;
+      auto& [_, pair] = *itr;
+      auto& [ctrl, callback] = pair;
       callback(event);
+      dirty_controls.emplace(ctrl);
     }
     return rt_queue;
   }
@@ -86,5 +107,12 @@ public:
     for (const auto& control : controls)
       control->send_refresh();
     return rt_queue;
+  }
+
+  void update_dirty_controls()
+  {
+    for (auto& ctrl : dirty_controls)
+      ctrl->exec_routines();
+    dirty_controls.clear();
   }
 };

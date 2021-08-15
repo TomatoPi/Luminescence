@@ -48,10 +48,12 @@ namespace apc
       signature_off({0x80 | col, 0x35 + row, 0x7f})
     {
       controller->register_mapping(
+        this,
         signature_on,
         make_callback(
           [this](){ handleOn(); }));
       controller->register_mapping(
+        this,
         signature_off,
         make_callback(
           [this](){ handleOff(); }));
@@ -97,7 +99,7 @@ namespace apc
       Control(ctrl),
       signature({0xb0 | bank, (0 == block ? 0x30 : 0x10) + index, 0})
     {
-      controller->register_mapping(signature, std::bind_front(&Encoder::handle_message, this));
+      controller->register_mapping(this, signature, std::bind_front(&Encoder::handle_message, this));
       _encoders[bank][index % 4][(block * 2) + (index / 4)] = this;
     }
 
@@ -109,6 +111,8 @@ namespace apc
     {
       return _encoders[bank][col][row];
     }
+
+    uint8_t get_value() const { return value; }
   };
 
   class Panic :
@@ -128,7 +132,7 @@ namespace apc
 
     Panic(Controller* ctrl) : Control(ctrl)
     {
-      controller->register_mapping(signature, std::bind_front(&Panic::callback, this));
+      controller->register_mapping(this, signature, std::bind_front(&Panic::callback, this));
     }
   };
 

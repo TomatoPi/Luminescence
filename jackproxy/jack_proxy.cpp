@@ -1,5 +1,7 @@
 #include "apc40/apc40.h"
 
+#include "driver/frame.h"
+
 #include <jack/jack.h>
 #include <jack/midiport.h>
 
@@ -69,6 +71,7 @@ jack_port_t* midi_out;
 
 std::queue<std::vector<uint8_t>> serial_queue;
 apc::APC40 APC40;
+Optopoulpe optopoulpe;
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
@@ -112,7 +115,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  int arduino = serialport_init(argv[1], B9600);
+  int arduino = serialport_init(argv[1], B921600);
   if (arduino < 0)
     return __LINE__;
 
@@ -154,20 +157,35 @@ int main(int argc, const char* argv[])
 
   jack_free(ports_names);
 
+  apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
+    for (auto& c : optopoulpe.frame)
+      c.r = static_cast<apc::Encoder*>(ctrl)->get_value();
+  });
+  apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
+    for (auto& c : optopoulpe.frame)
+      c.g = static_cast<apc::Encoder*>(ctrl)->get_value();
+  });
+  apc::Encoder::Get(0, 2, 0)->add_routine([&](Controller::Control* ctrl){
+    for (auto& c : optopoulpe.frame)
+      c.b = static_cast<apc::Encoder*>(ctrl)->get_value();
+  });
+
   while (1)
   {
-    while (!serial_queue.empty())
-    {
-      const auto& event = serial_queue.front();
-      for (const auto& byte : event)
-      {
-        serialport_writebyte(arduino, byte);
-        fprintf(stderr, "0x%02x ", byte);
-      }
-      fprintf(stderr, "\n");
-      serial_queue.pop();
-    }
-    usleep(10);
+    APC40.update_dirty_controls();
+    serialport_writebyte(arduino, 15);
+    serialport_write(arduino, reinterpret_cast<const char*>(optopoulpe.frame[0].raw));
+    // while (!serial_queue.empty())
+    // {
+    //   const auto& event = serial_queue.front();
+    //   for (const auto& byte : event)
+    //   {
+    //     fprintf(stderr, "0x%02x ", byte);
+    //   }
+    //   fprintf(stderr, "\n");
+    //   serial_queue.pop();
+    // }
+    usleep(1000 / 25);
   }
   
   return 0;
