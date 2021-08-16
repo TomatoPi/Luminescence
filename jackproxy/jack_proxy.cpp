@@ -117,7 +117,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  int arduino = serialport_init(argv[1], B4800);
+  int arduino = serialport_init(argv[1], B9600);
   if (arduino < 0)
     return __LINE__;
 
@@ -175,22 +175,42 @@ int main(int argc, const char* argv[])
   {
     char buffer[512];
     int res = 0;
+    int timeout_cptr = 0;
+    bool received_start = false;
     do
     {
-      res = serialport_read_until(arduino, buffer, START_BYTE, 512, 0);
-      if (*buffer)
-        fprintf(stderr, "RCV : %d : %02x\n", res, *buffer);
+      res = serialport_read_until(arduino, buffer, START_BYTE, 512, 100);
+      if (res == -2)
+      {
+        ++timeout_cptr;
+        if (10 < timeout_cptr)
+          break;
+        continue;
+      }
+      if (*buffer == START_BYTE)
+      {
+        fprintf(stderr, "RCV : %d : START\n", res);
+        received_start = true;
+      }
+      else if (*buffer)
+        fprintf(stderr, "RCV : %d : %s\n", res, buffer);
       else
         break;
     }
     while (1);
 
     APC40.update_dirty_controls();
-    const uint8_t* raw = optopoulpe_serializer.serialize();
-    for (size_t i = 0 ; i < optopoulpe_serializer.size() ; ++i)
+    if (received_start)
     {
-      uint8_t byte = raw[i];
-      serialport_writebyte(arduino, byte);
+      received_start = false;
+      const uint8_t* raw = optopoulpe_serializer.serialize();
+      for (size_t i = 0 ; i < optopoulpe_serializer.size() ; ++i)
+      {
+        uint8_t byte = raw[i];
+        serialport_writebyte(arduino, byte);
+        fprintf(stderr, "0x%02x ", byte); 
+      }
+      fprintf(stderr, "\n");
     }
 
     // while (!serial_queue.empty())

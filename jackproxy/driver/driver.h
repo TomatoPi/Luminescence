@@ -8,6 +8,11 @@ Warning :
 #define START_BYTE 0x7f
 #define STOP_BYTE 0xf7
 
+struct SerialHeader
+{
+  const uint8_t bytes[4] = {0x0B, 0x0C, 0x0D, 0x0E};
+};
+
 template <typename SerialObj>
 struct SerialParser
 {
@@ -21,29 +26,20 @@ struct SerialParser
   enum ParsingResult{ Running = 0, Started = 1, Finished = 2 };
   ParsingResult parse(uint8_t byte)
   {
-    if (0 == obj._serial_index)
+    if (obj._serial_index < sizeof(SerialHeader))
     {
-      if (byte != START_BYTE)
+      if (byte != obj._serial_header.bytes[obj._serial_index])
         return error(-10);
 
       obj._serial_index++;
       return Started;
     }
 
-    obj._serial_buffer[obj._serial_index -1] = byte;
+    obj._serial_buffer[obj._serial_index - sizeof(SerialHeader)] = byte;
     obj._serial_index++;
 
-    if (obj.size +1 < obj._serial_index)
+    if (size() <= obj._serial_index)
     {
-      if (byte != STOP_BYTE)
-      {
-        if (START_BYTE == byte)
-        {
-          return Started;
-        }
-        return error(-20);
-      }
-
       memcpy(obj.obj.raw, obj._serial_buffer, obj.size);
       obj._serial_index = 0;
       return Finished;
@@ -56,12 +52,12 @@ struct SerialParser
 
   const uint8_t* serialize() const
   {
-    return &obj._start_byte;
+    return obj._serial_header.bytes;
   }
 
   const uint32_t size() const
   {
-    return obj.size + 2;
+    return obj.size + sizeof(SerialHeader);
   }
 
   int error(int code)
@@ -89,9 +85,8 @@ struct Type##_serial \
 { \
   static constexpr uint32_t size = sizeof(Type); \
   const uint8_t _padding[3] = {0, 0, 0}; \
-  const uint8_t _start_byte = START_BYTE; \
+  const SerialHeader _serial_header; \
   Type obj; \
-  const uint8_t _stop_byte = STOP_BYTE; \
   uint8_t _serial_buffer[sizeof(Type)] = {0}; \
   uint32_t _serial_index = 0; \
 }; \

@@ -1,7 +1,6 @@
 #include "color_palette.h"
 #include "driver.h"
 
-#define FASTLED_ALLOW_INTERRUPTS 0
 #include <FastLED.h>
 
 using color_t = CRGB;
@@ -13,7 +12,7 @@ using Palette = color_pallette_t<color_t, index_t, coef_t>;
 
 #include "palettes.h"
 
-static constexpr index_t MaxLedsCount = 30 * 5;//30 * 39;
+static constexpr index_t MaxLedsCount = 1;//30 * 39;
 static constexpr index_t PaletteSize = 512;
 
 coef_t master_clock = coef_t(0);
@@ -24,10 +23,11 @@ MakeSerializable(optopoulpe, FrameGeneratorParams);
 
 void setup()
 {
-  Serial.begin(4800);
+  Serial.begin(9600);
   delay(1000);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
+  FastLED.setMaxRefreshRate(25, true);
 
   memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
   FastLED.show();
@@ -35,7 +35,7 @@ void setup()
   Range tmp = Range::map_on_pixel_index(0, PaletteSize, PaletteSize, 0);
 
   Serial.println("Coucou");
-  Serial.println(optopoulpe.size);
+  Serial.println(optopoulpe_serializer.size());
 }
 
 void loop()
@@ -56,18 +56,24 @@ void loop()
   static unsigned long message_begin_timestamp = 0;
   static bool drop = false;
 
+  while (0 < Serial.available()) { if (-1 == Serial.read()) break; }
   Serial.write(START_BYTE);
   Serial.flush();
 
   optopoulpe_serializer.error(0);
 
-  unsigned long timestamp = master_clock;
   bool frame_received = false;
-  while (!frame_received && timestamp <= master_clock + 1000)
+  unsigned int timeout_cptr = 0;
+  while (!frame_received)
   {
-    timestamp = millis();
-    if (!Serial.available())
+    if (Serial.available() <= 0)
     {
+      ++timeout_cptr;
+      if (10 < timeout_cptr)
+      {
+        Serial.write(START_BYTE);
+        Serial.flush();
+      }
       FastLED.delay(10);
       continue;
     }
@@ -77,40 +83,47 @@ void loop()
     int byte = Serial.read();
     
     if (byte < 0)
-      error = optopoulpe_serializer.error(-100);
+      continue;
     error = optopoulpe_serializer.parse(byte);
 
-//    Serial.print(byte, HEX);
-//    Serial.print(" : idx : ");
-//    Serial.print((int)optopoulpe._serial_index);
-//    Serial.print(" : code : ");
-//    Serial.println((int)error);
+    Serial.print(millis());
+    Serial.print(" : ");
+    Serial.print(byte, HEX);
+    Serial.print(" : idx : ");
+    Serial.print((int)optopoulpe._serial_index);
+    Serial.print(" : code : ");
+    Serial.print((int)error);
+    Serial.write(START_BYTE);
 
     switch (error)
     {
-      case 0: break;
+      case 0:
+        break;
       case 1:
         message_begin_timestamp = master_clock;
         drop = false;
         break;
       case 2:
       {
-//        Serial.println(": full blob ok");
-//        const uint8_t* c = optopoulpe.obj.plain_color.raw;
-//        Serial.print("RGB : ");
-//        Serial.print(c[0], HEX); Serial.print(" ");
-//        Serial.print(c[1], HEX); Serial.print(" ");
-//        Serial.println(c[2], HEX);
+        Serial.print(": full blob ok");
+        const uint8_t* c = optopoulpe.obj.plain_color.raw;
+        Serial.print("RGB : ");
+        Serial.print(c[0], HEX); Serial.print(" ");
+        Serial.print(c[1], HEX); Serial.print(" ");
+        Serial.print(c[2], HEX);
+        Serial.write(START_BYTE);
         frame_received = true;
         break;
       }
       default:
-//        Serial.print("error : ");
-//        Serial.println((int)error);
-          optopoulpe_serializer.error(0);
-          Serial.write(START_BYTE);
-          Serial.flush();
-          FastLED.delay(10);
+        Serial.print("error : ");
+        Serial.print((int)error);
+        Serial.write(START_BYTE);
+        optopoulpe_serializer.error(0);
+        while (0 < Serial.available()) { Serial.read(); } // trash upcoming datas
+        Serial.write(START_BYTE);
+        Serial.flush();
+        FastLED.delay(10);
         break;
     }
   }
@@ -140,7 +153,7 @@ void loop()
   }
 
   FastLED.show();
-  FastLED.delay(1000 / 25);
+  FastLED.delay(100);// / 25);
 
   unsigned long endtime = millis();
   
@@ -157,5 +170,4 @@ void loop()
     fps_accumulator = 0;
     frame_cptr = 0;
   }
-  while (Serial.available()) { Serial.read(); }
 }
