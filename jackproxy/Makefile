@@ -7,7 +7,7 @@ LDFLAGS=
 
 GXX=g++
 CXXFLAGS=-Wall -std=c++20 -g
-LDXXFLAGS=-ljack
+LDXXFLAGS=-ljack -lpthread
 
 all: 
 	make jack_proxy

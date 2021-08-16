@@ -121,6 +121,8 @@ int main(int argc, const char* argv[])
   if (arduino < 0)
     return __LINE__;
 
+  long framerate = atol(argv[2]);
+
   jack_status_t jack_status;
   client = jack_client_open(pgm_name, JackNullOption, &jack_status);
   if (nullptr == client)
@@ -171,14 +173,31 @@ int main(int argc, const char* argv[])
 
   while (1)
   {
-    APC40.update_dirty_controls();
-    for (size_t i = 0 ; i < optopoulpe.size ; ++i)
+    static long cptr = 0;
+
+    if (10 <= (++cptr))
     {
-      uint8_t byte = optopoulpe.obj.raw[i];
-      serialport_writebyte(arduino, byte);
-      fprintf(stderr, "%02x ", byte);
+      cptr = 0;
+      APC40.update_dirty_controls();
+      const uint8_t* raw = optopoulpe_serializer.serialize();
+      for (size_t i = 0 ; i < optopoulpe_serializer.size() ; ++i)
+      {
+        uint8_t byte = raw[i];
+        serialport_writebyte(arduino, byte);
+        fprintf(stderr, "%02x ", byte);
+      }
+      fprintf(stderr, "\n");
     }
-    fprintf(stderr, "\n");
+
+    char buffer[512];
+    int res = 0;
+    do
+    {
+      res = serialport_read_until(arduino, buffer, '\n', 512, 1000 / framerate);
+      if (*buffer) fprintf(stderr, "RCV : %d : %s", res, buffer);
+    }
+    while (0 == res && *buffer);
+
     // while (!serial_queue.empty())
     // {
     //   const auto& event = serial_queue.front();
@@ -189,7 +208,7 @@ int main(int argc, const char* argv[])
     //   fprintf(stderr, "\n");
     //   serial_queue.pop();
     // }
-    usleep(1000000 / 25);
+    usleep(100000 / framerate);
   }
   
   return 0;

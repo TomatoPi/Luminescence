@@ -12,13 +12,12 @@ using Palette = color_pallette_t<color_t, index_t, coef_t>;
 
 #include "palettes.h"
 
-static constexpr index_t MaxLedsCount = 30 * 21;
+static constexpr index_t MaxLedsCount = 30 * 39;
 static constexpr index_t PaletteSize = 512;
 
 coef_t master_clock = coef_t(0);
 Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
 color_t leds[MaxLedsCount];
-color_t palette[PaletteSize];
 
 MakeSerializable(optopoulpe, FrameGeneratorParams);
 
@@ -32,7 +31,9 @@ void setup()
   FastLED.show();
 
   Range tmp = Range::map_on_pixel_index(0, PaletteSize, PaletteSize, 0);
-  palette_rainbow.eval_range(palette, tmp);
+
+  Serial.println("Coucou");
+  Serial.println(optopoulpe.size);
 }
 
 void loop()
@@ -50,23 +51,35 @@ void loop()
   uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
 
   static unsigned long last_packet_timestamp = 0;
+  static unsigned long message_begin_timestamp = 0;
   
   while (Serial.available())
   {
-    optopoulpe.buffer[optopoulpe.serial_index] = Serial.read();
-    optopoulpe.serial_index++;
+    int error = 0;
+    int byte = Serial.read();
+    Serial.print(byte);
+    Serial.print(" ");
+    
+    if (byte < 0)
+      error = optopoulpe_serializer.error(0);
+    error = optopoulpe_serializer.parse(byte);
 
-    if (optopoulpe.size <= optopoulpe.serial_index)
+    if (0 < error && 0 == optopoulpe._serial_index)
     {
-      memcpy(&optopoulpe.obj, optopoulpe.buffer, optopoulpe.size);
-      optopoulpe.serial_index = 0;
+      Serial.println(": full blob ok");
     }
+
+    if (error)
+    {
+      Serial.print("error : ");
+      Serial.println(error);
+    }
+    
     last_packet_timestamp = master_clock;
   }
   
   if (1000 < master_clock - last_packet_timestamp)
   {
-    optopoulpe.serial_index = 0;
     uint8_t r = value < 127 ? 255 : 0;
     for (index_t i = 0 ; i < MaxLedsCount ; ++i)
     {
@@ -83,7 +96,8 @@ void loop()
   }
 
   FastLED.show();
-  delay(0);
+  Serial.flush();
+  delay(1000 / 25);
 
   unsigned long endtime = millis();
   
@@ -95,8 +109,8 @@ void loop()
   if (2000 < fps_accumulator)
   {
     float fps = float(frame_cptr) * 1000.f / fps_accumulator;
-    Serial.print("Avg FPS : ");
-    Serial.println(fps);
+//    Serial.print("Avg FPS : ");
+//    Serial.println(fps);
     fps_accumulator = 0;
     frame_cptr = 0;
   }
