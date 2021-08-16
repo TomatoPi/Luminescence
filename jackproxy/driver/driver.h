@@ -5,57 +5,52 @@ Warning :
   Code written in this file must be platform independant.
 */
 
-#define START_BYTE 0xff
-#define STOP_BYTE 0xff
+#define START_BYTE 0x7f
+#define STOP_BYTE 0xf7
 
 template <typename SerialObj>
 struct SerialParser
 {
   SerialObj& obj = nullptr;
-  enum Status {
-    Ok, ErrWaitStop, ErrWaitStart
-  } status;
-  SerialParser(SerialObj& obj) : obj(obj), status(ErrWaitStart)
+
+  SerialParser(SerialObj& obj) : obj(obj)
   {
     memset(&obj.obj, 0, obj.size);
   }
 
-  int parse(uint8_t byte)
+  enum ParsingResult{ Running = 0, Started = 1, Finished = 2 };
+  ParsingResult parse(uint8_t byte)
   {
-    if (ErrWaitStop == status)
-    {
-      if (byte == STOP_BYTE)
-      {
-        status = ErrWaitStart;
-        return 0;
-      }
-      return error(ErrWaitStop) - 10;
-    }
-    else if (ErrWaitStart == status)
-    {
-      if (byte != START_BYTE)
-        return error(ErrWaitStart) - 20;
-    }
-
     if (0 == obj._serial_index)
     {
       if (byte != START_BYTE)
-        return error(ErrWaitStart) - 30;
-      return 0;
+        return error(-10);
+
+      obj._serial_index++;
+      return Started;
     }
-    else if (obj.size < obj._serial_index)
+
+    obj._serial_buffer[obj._serial_index -1] = byte;
+    obj._serial_index++;
+
+    if (obj.size +1 < obj._serial_index)
     {
       if (byte != STOP_BYTE)
-        return error(ErrWaitStop);
-      memcpy(&obj.obj, obj._serial_buffer[0], obj.size);
+      {
+        if (START_BYTE == byte)
+        {
+          return Started;
+        }
+        return error(-20);
+      }
+
+      memcpy(obj.obj.raw, obj._serial_buffer, obj.size);
       obj._serial_index = 0;
-      return 1;
+      return Finished;
     }
     else
     {
-      obj._serial_buffer[obj._serial_index] = byte;
-      obj._serial_index++;
-      return 0;
+      return Running;
     }
   }
 
@@ -69,11 +64,10 @@ struct SerialParser
     return obj.size + 2;
   }
 
-  int error(Status err)
+  int error(int code)
   {
     obj._serial_index = 0;
-    status = err;
-    return -err;
+    return code;
   }
 };
 
@@ -114,4 +108,3 @@ Serializable(Color,
 Serializable(FrameGeneratorParams,
   Color plain_color;
 );
-
