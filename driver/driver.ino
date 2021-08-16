@@ -12,7 +12,7 @@ using Palette = color_pallette_t<color_t, index_t, coef_t>;
 
 #include "palettes.h"
 
-static constexpr index_t MaxLedsCount = 1;//30 * 39;
+static constexpr index_t MaxLedsCount = 30 * 39;
 static constexpr index_t PaletteSize = 512;
 
 coef_t master_clock = coef_t(0);
@@ -24,7 +24,6 @@ MakeSerializable(optopoulpe, FrameGeneratorParams);
 void setup()
 {
   Serial.begin(9600);
-  delay(1000);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(25, true);
@@ -36,6 +35,7 @@ void setup()
 
   Serial.println("Coucou");
   Serial.println(optopoulpe_serializer.size());
+  FastLED.delay(1000);
 }
 
 void loop()
@@ -74,7 +74,7 @@ void loop()
         Serial.write(START_BYTE);
         Serial.flush();
       }
-      FastLED.delay(10);
+      FastLED.delay(1);
       continue;
     }
     last_packet_timestamp = master_clock;
@@ -153,7 +153,7 @@ void loop()
   }
 
   FastLED.show();
-  FastLED.delay(100);// / 25);
+  FastLED.delay((MaxLedsCount * 30) / 1000);
 
   unsigned long endtime = millis();
   
