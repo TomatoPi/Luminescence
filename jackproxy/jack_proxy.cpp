@@ -179,7 +179,7 @@ int main(int argc, const char* argv[])
     bool received_start = false;
     do
     {
-      res = serialport_read_until(arduino, buffer, START_BYTE, 512, 100);
+      res = serialport_read_until(arduino, buffer, START_BYTE, 512, framerate);
       if (res == -2)
       {
         ++timeout_cptr;
