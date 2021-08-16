@@ -59,22 +59,25 @@ void loop()
   while (0 < Serial.available()) { if (-1 == Serial.read()) break; }
   Serial.write(START_BYTE);
   Serial.flush();
+  FastLED.delay(10);
 
   optopoulpe_serializer.error(0);
 
   bool frame_received = false;
-  unsigned int timeout_cptr = 0;
+  unsigned long timeout_timestamp = master_clock;
   while (!frame_received)
   {
     if (Serial.available() <= 0)
     {
-      ++timeout_cptr;
-      if (10 < timeout_cptr)
+      if (10 < millis() - timeout_timestamp)
       {
         Serial.write(START_BYTE);
         Serial.flush();
+        FastLED.delay(10);
+        timeout_timestamp = millis();
+        optopoulpe_serializer.error(0);
       }
-      FastLED.delay(1);
+//      FastLED.delay(1);
       continue;
     }
     last_packet_timestamp = master_clock;
@@ -105,25 +108,29 @@ void loop()
         break;
       case 2:
       {
+        Serial.print(millis());
         Serial.print(": full blob ok");
-        const uint8_t* c = optopoulpe.obj.plain_color.raw;
-        Serial.print("RGB : ");
-        Serial.print(c[0], HEX); Serial.print(" ");
-        Serial.print(c[1], HEX); Serial.print(" ");
-        Serial.print(c[2], HEX);
         Serial.write(START_BYTE);
+
+//        const uint8_t* c = optopoulpe.obj.plain_color.raw;
+//        Serial.print("RGB : ");
+//        Serial.print(c[0], HEX); Serial.print(" ");
+//        Serial.print(c[1], HEX); Serial.print(" ");
+//        Serial.print(c[2], HEX);
+//        Serial.write(START_BYTE);
         frame_received = true;
         break;
       }
       default:
-        Serial.print("error : ");
-        Serial.print((int)error);
-        Serial.write(START_BYTE);
+//        Serial.print("error : ");
+//        Serial.print((int)error);
+//        Serial.write(START_BYTE);
         optopoulpe_serializer.error(0);
         while (0 < Serial.available()) { Serial.read(); } // trash upcoming datas
         Serial.write(START_BYTE);
         Serial.flush();
         FastLED.delay(10);
+        timeout_timestamp = millis();
         break;
     }
   }
@@ -153,7 +160,7 @@ void loop()
   }
 
   FastLED.show();
-  FastLED.delay((MaxLedsCount * 30) / 1000);
+  FastLED.delay((MaxLedsCount * 30) / (1000 * 2));
 
   unsigned long endtime = millis();
   
@@ -166,7 +173,8 @@ void loop()
   {
     float fps = float(frame_cptr) * 1000.f / fps_accumulator;
 //    Serial.print("Avg FPS : ");
-//    Serial.println(fps);
+//    Serial.print(fps);
+//    Serial.write(START_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;
   }
