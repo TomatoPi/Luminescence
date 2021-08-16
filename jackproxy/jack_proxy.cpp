@@ -117,7 +117,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  int arduino = serialport_init(argv[1], B9600);
+  int arduino = serialport_init(argv[1], B115200);
   if (arduino < 0)
     return __LINE__;
 
@@ -189,11 +189,13 @@ int main(int argc, const char* argv[])
       }
       if (*buffer == START_BYTE)
       {
-        fprintf(stderr, "RCV : %d : START\n", res);
+        // fprintf(stderr, "RCV : %d : START\n", res);
         received_start = true;
       }
       else if (*buffer)
+      {
         fprintf(stderr, "RCV : %d : %s\n", res, buffer);
+      }
       else
         break;
     }
@@ -208,9 +210,9 @@ int main(int argc, const char* argv[])
       {
         uint8_t byte = raw[i];
         serialport_writebyte(arduino, byte);
-        fprintf(stderr, "0x%02x ", byte); 
+        // fprintf(stderr, "0x%02x ", byte); 
       }
-      fprintf(stderr, "\n");
+      // fprintf(stderr, "\n");
     }
 
     // while (!serial_queue.empty())

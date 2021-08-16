@@ -102,4 +102,5 @@ Serializable(Color,
 
 Serializable(FrameGeneratorParams,
   Color plain_color;
+  uint8_t pouet[8];
 );

@@ -3,7 +3,8 @@
 
 #include <FastLED.h>
 
-#define SERIAL_SLEEP_TIMEOUT 0
+#define SERIAL_MESSAGE_TIMEOUT 30
+#define SERIAL_SLEEP_TIMEOUT 5
 #define FRAME_REFRESH_TIMEOUT 0
 
 using color_t = CRGB;
@@ -15,7 +16,7 @@ using Palette = color_pallette_t<color_t, index_t, coef_t>;
 
 #include "palettes.h"
 
-static constexpr index_t MaxLedsCount = 30 * 39;
+static constexpr index_t MaxLedsCount = 30 * 20;
 static constexpr index_t PaletteSize = 512;
 
 coef_t master_clock = coef_t(0);
@@ -26,10 +27,10 @@ MakeSerializable(optopoulpe, FrameGeneratorParams);
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
-  FastLED.setMaxRefreshRate(25, true);
+  FastLED.setMaxRefreshRate(50);
 
   memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
   FastLED.show();
@@ -38,6 +39,7 @@ void setup()
 
   Serial.println("Coucou");
   Serial.println(optopoulpe_serializer.size());
+  Serial.write(START_BYTE);
   FastLED.delay(1000);
 }
 
@@ -51,7 +53,7 @@ void loop()
 // Cheaper prototype. Use integer arithmetics
 
   static unsigned long master_clock = 0;
-  static unsigned long master_clock_period = 4000;
+  static unsigned long master_clock_period = 2000;
   master_clock = millis();
   uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
 
@@ -67,13 +69,13 @@ void loop()
   const uint8_t* c = optopoulpe.obj.plain_color.raw;
   for (index_t i = 0 ; i < MaxLedsCount ; ++i)
   {
-    leds[i] = CRGB(c[0], c[1], c[2]);
+    leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
   }
   unsigned long compute_end = millis();
 
   unsigned long draw_begin = millis();
   FastLED.show();
-  FastLED.delay(FRAME_REFRESH_TIMEOUT);
+  //FastLED.delay(FRAME_REFRESH_TIMEOUT);
   unsigned long draw_end = millis();
 
   unsigned long endtime = millis();
@@ -83,7 +85,7 @@ void loop()
   fps_accumulator += endtime - master_clock;
   frame_cptr++;
 
-  if (true || 2000 < fps_accumulator)
+  if (2000 < fps_accumulator)
   {
     float fps = float(frame_cptr) * 1000.f / fps_accumulator;
     Serial.print("Avg FPS : ");
@@ -102,25 +104,25 @@ void loop()
 
 void update_frame() {
 
-  while (-1 != Serial.read());
+  //while (-1 != Serial.read());
   
   Serial.write(START_BYTE);
   Serial.flush();
-  FastLED.delay(SERIAL_SLEEP_TIMEOUT);
+  delay(SERIAL_SLEEP_TIMEOUT);
 
   optopoulpe_serializer.error(0);
 
   bool frame_received = false;
-  unsigned long timeout_timestamp = master_clock;
+  unsigned long timeout_timestamp = millis();
   while (!frame_received)
   {
     if (Serial.available() <= 0)
     {
-      if (10 < millis() - timeout_timestamp)
+      if (SERIAL_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
       {
         Serial.write(START_BYTE);
         Serial.flush();
-        FastLED.delay(SERIAL_SLEEP_TIMEOUT);
+        delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();
         optopoulpe_serializer.error(0);
       }
@@ -174,7 +176,7 @@ void update_frame() {
         //while (-1 != Serial.read());
         Serial.write(START_BYTE);
         Serial.flush();
-        FastLED.delay(SERIAL_SLEEP_TIMEOUT);
+        delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();
         break;
     }

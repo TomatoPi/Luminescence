@@ -1,28 +1,25 @@
-#include <DMXSerial.h>
-
-#define DMX_SELECT_PIN 2
 
 void setup()
 {
-  DMXSerial.init(DMXController);
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(DMX_SELECT_PIN, OUTPUT);
-  digitalWrite(DMX_SELECT_PIN, HIGH);
+  Serial.begin(115200);
+  Serial1.begin(115200);
+  Serial2.begin(115200);
 }
 
 void loop()
 {
-  static uint8_t r = 0;
-  static uint8_t g = 64;
-  static uint8_t b = 128;
-
-  r++, g++, b++;
-
-  DMXSerial.write(0, r);
-  DMXSerial.write(0, g);
-  DMXSerial.write(0, b);
-
-  digitalWrite(LED_BUILTIN, (r % 20) < 10);
-
-  delay(20);
+  while (0 < Serial.available())
+  {
+    uint8_t x = Serial.read();
+    Serial1.write(x);
+    Serial2.write(x);
+  }
+  while (0 < Serial1.available())
+  {
+    Serial.write(Serial1.read());
+  }
+  while (0 < Serial2.available())
+  {
+    Serial.write(Serial2.read());
+  }
 }
