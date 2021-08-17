@@ -70,7 +70,7 @@ jack_port_t* midi_in;
 jack_port_t* midi_out;
 
 std::queue<std::vector<uint8_t>> serial_queue;
-apc::APC40 APC40;
+apc::APC40& APC40 = apc::APC40::Get();
 
 objects::RGB optopoulpe;
 
@@ -101,7 +101,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
     }
     fprintf(stderr, "\n");
 
-    auto& responses = APC40.handle_midi_event(event.buffer);
+    auto& responses = APC40.handle_midi_event((const uint8_t*)event.buffer);
 
     for (auto& msg : responses)
     {
@@ -178,6 +178,8 @@ int main(int argc, const char* argv[])
   });
 
   Serializer serializer;
+
+  // APC40.dump();
 
   while (1)
   {

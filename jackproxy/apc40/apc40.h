@@ -21,7 +21,7 @@ namespace apc
     public Controller::Control
   {
   public:
-    using Instances = std::array<std::array<Pad*,PadsRowsCount>,PadsColumnsCount>;
+    using Instances = std::array<std::array<Pad*,PadsRowsCount+1>,PadsColumnsCount+1>;
   private:
     static Instances _pads;
 
@@ -46,11 +46,13 @@ namespace apc
       controller->push_event(status ? signature_on : signature_off);
     }
 
-    Pad(Controller* ctrl, uint8_t col, uint8_t row) :
+    Pad(Controller* ctrl, uint8_t col, uint8_t row, uint8_t master, uint8_t bottom) :
       Controller::Control(ctrl),
       signature_on({0x90 | col, 0x35 + row, 0x7f}),
       signature_off({0x80 | col, 0x35 + row, 0x7f})
     {
+      signature_on.c = signature_off.c = master ? 0 : col;
+      signature_on.d1 = signature_off.d1 = (master ? 0x51 : 0x34) + (bottom ? 0 : row + 1);
       controller->register_mapping(
         this,
         signature_on,
@@ -62,6 +64,7 @@ namespace apc
         make_callback(
           [this](){ handleOff(); }));
       _pads[col][row] = this;
+      fprintf(stderr, "%d %d %02x %02x %02x %02x\n", col, row, signature_on.s, signature_on.c, signature_on.d1, signature_on.d2);
     }
 
     static Instances& Get()
@@ -108,7 +111,7 @@ namespace apc
 
     Pot(Controller* ctrl) :
       Control(ctrl),
-      signature({0xb0, CC, 0})
+      signature({0xb0, CC, 0, 0})
     {
     }
 
@@ -129,6 +132,7 @@ namespace apc
     Encoder(Controller* ctrl, uint8_t bank, uint8_t block, uint8_t index) :
       Base(ctrl)
     {
+      signature.s = 0xb0;
       signature.c = bank;
       signature.d1 = (0 == block ? 0x30 : 0x10) + index;
       _encoders[bank][index % 4][(block * 2) + (index / 4)] = this;
@@ -153,9 +157,6 @@ namespace apc
   private:
     static MainFader* _instance;
 
-    MidiMsg signature;
-    uint8_t value = 0;
-
   public:
 
     void send_refresh() override {}
@@ -164,6 +165,9 @@ namespace apc
       Base(ctrl)
     {
       assert(_instance == nullptr);
+      signature.s = 0xb0;
+      signature.c = 0;
+      signature.d1 = 0x0e;
       _instance = this;
       register_mappings();
     }
@@ -183,9 +187,6 @@ namespace apc
   private:
     static Instances _instances;
 
-    MidiMsg signature;
-    uint8_t value = 0;
-
   public:
 
     void send_refresh() override {}
@@ -193,7 +194,10 @@ namespace apc
     Fader(Controller* ctrl, uint8_t index) :
       Base(ctrl)
     {
+      signature.s = 0xb0;
       signature.c = index;
+      signature.d1 = 0x07;
+      fprintf(stderr, "%d %02x %08lx\n", index, signature.c, MidiMsgHash()(signature));
       _instances[index] = this;
       register_mappings();
     }
@@ -231,18 +235,23 @@ namespace apc
 
   class APC40 : public Controller
   {
-  public:
+  private:
     APC40()
     {
       addControl<MainFader>();
       addControl<Panic>();
+
       for (uint8_t fader = 0 ; fader < FadersCount ; ++fader)
         addControl<Fader>(fader);
-      for (uint8_t col = 0 ; col < PadsColumnsCount ; ++col)
-        for (uint8_t row = 0 ; row < PadsRowsCount ; ++row)
+
+      for (uint8_t col = 0 ; col <= PadsColumnsCount ; ++col)
+      {
+        for (uint8_t row = 0 ; row <= PadsRowsCount ; ++row)
         {
-          addControl<Pad>(col, row);
+          addControl<Pad>(col, row, col == PadsColumnsCount, row == PadsRowsCount);
         }
+      }
+
       for (uint8_t bank = 0 ; bank < BanksCount ; ++bank)
       {
         for (uint8_t block = 0 ; block < 2 ; ++block)
@@ -252,5 +261,7 @@ namespace apc
           }
       }
     }
+  public:
+    static APC40& Get() { static APC40 apc; return apc; }
   };
 }

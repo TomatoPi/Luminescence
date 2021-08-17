@@ -5,6 +5,7 @@
 #include <functional>
 #include <initializer_list>
 #include <unordered_map>
+#include <cstdio>
 
 struct MidiMsg
 {
@@ -43,9 +44,9 @@ struct MidiMsgHash
 {
   constexpr uint64_t operator() (const MidiMsg& msg) const
   {
-    return static_cast<uint32_t>(msg.s) << 24
-        | static_cast<uint32_t>(msg.c) << 16
-        | static_cast<uint32_t>(msg.d1) << 8;
+    return static_cast<uint64_t>(msg.s) << 24
+        | static_cast<uint64_t>(msg.c) << 16
+        | static_cast<uint64_t>(msg.d1) << 8;
         // | static_cast<uint32_t>(msg.d2) << 0;
   }
 };

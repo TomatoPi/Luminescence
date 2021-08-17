@@ -89,14 +89,22 @@ public:
   MidiStack& handle_midi_event(Args&& ...args)
   {
     MidiMsg event(std::forward<Args>(args)...);
+
+    for (size_t i = 0 ; i < 4 ; ++i)
+    {
+      fprintf(stderr, "0x%02x ", ((uint8_t*)&event)[i]);
+    }
+    fprintf(stderr, " %08lx\n", MidiMsgHash()(event));
+
     rt_queue.clear();
     auto [begin, end] = midi_map.equal_range(event);
     for (auto itr = begin ; itr != end ; ++itr)
     {
-      auto& [_, pair] = *itr;
+      auto& [key, pair] = *itr;
       auto& [ctrl, callback] = pair;
       callback(event);
       dirty_controls.emplace(ctrl);
+      fprintf(stderr, "catched\n");
     }
     return rt_queue;
   }
@@ -114,5 +122,16 @@ public:
     for (auto& ctrl : dirty_controls)
       ctrl->exec_routines();
     dirty_controls.clear();
+  }
+
+  void dump()
+  {
+    fprintf(stderr, "MidiMap\n");
+    for (auto& itr : midi_map)
+    {
+      auto& [key, pair] = itr;
+      auto& [ctrl, _] = pair;
+      fprintf(stderr, "%02x %02x %02x %02x : %p\n", key.s, key.c, key.d1, key.d2, ctrl);
+    }
   }
 };
