@@ -1,7 +1,24 @@
 #include "color_palette.h"
-#include "driver.h"
+
+#include "common.h"
 
 #include <FastLED.h>
+
+/*
+Motifs :
+
+  Réglage influence temps :
+    U [0, 1] : 0 inversé, 1 normal, 0.5 arret
+    t <- mod1((2U - 1) * t)
+
+  Modulation de l'onde :
+    R : 
+
+  Ondes linéaires :
+    Modulation sur amplitude :
+
+    Amplitude(t) = (1 - Range)()
+*/
 
 #define SERIAL_MESSAGE_TIMEOUT 30
 #define SERIAL_SLEEP_TIMEOUT 5
@@ -23,7 +40,8 @@ coef_t master_clock = coef_t(0);
 Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
 color_t leds[MaxLedsCount];
 
-MakeSerializable(optopoulpe, FrameGeneratorParams);
+objects::RGB optopoulpe;
+SerialParser parser;
 
 void setup()
 {
@@ -32,14 +50,16 @@ void setup()
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
+  memset(leds, 30, sizeof(CRGB) * MaxLedsCount);
+  FastLED.show();
+  FastLED.delay(100);
   memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
   FastLED.show();
 
   Range tmp = Range::map_on_pixel_index(0, PaletteSize, PaletteSize, 0);
 
   Serial.println("Coucou");
-  Serial.println(optopoulpe_serializer.size());
-  Serial.write(START_BYTE);
+  Serial.write(STOP_BYTE);
   FastLED.delay(1000);
 }
 
@@ -66,7 +86,7 @@ void loop()
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
-  const uint8_t* c = optopoulpe.obj.plain_color.raw;
+  const uint8_t* c = (const uint8_t*)&optopoulpe;
   for (index_t i = 0 ; i < MaxLedsCount ; ++i)
   {
     leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
@@ -96,7 +116,7 @@ void loop()
     Serial.print(compute_end - compute_begin);
     Serial.print(" : Draw : ");
     Serial.print(draw_end - draw_begin);
-    Serial.write(START_BYTE);
+    Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;
   }
@@ -106,11 +126,11 @@ void update_frame() {
 
   //while (-1 != Serial.read());
   
-  Serial.write(START_BYTE);
+  Serial.write(STOP_BYTE);
   Serial.flush();
   delay(SERIAL_SLEEP_TIMEOUT);
 
-  optopoulpe_serializer.error(0);
+  parser.error(0);
 
   bool frame_received = false;
   unsigned long timeout_timestamp = millis();
@@ -120,61 +140,62 @@ void update_frame() {
     {
       if (SERIAL_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
       {
-        Serial.write(START_BYTE);
+        Serial.write(STOP_BYTE);
         Serial.flush();
         delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();
-        optopoulpe_serializer.error(0);
+        parser.error(0);
       }
 //      FastLED.delay(1);
       continue;
     }
     
-    int error = 0;
     int byte = Serial.read();
     
     if (byte < 0)
       continue;
-    error = optopoulpe_serializer.parse(byte);
+    ParsingResult result = parser.parse(byte);
 
-//    Serial.print(millis());
-//    Serial.print(" : ");
 //    Serial.print(byte, HEX);
 //    Serial.print(" : idx : ");
-//    Serial.print((int)optopoulpe._serial_index);
+//    Serial.print((int)parser.serial_index);
 //    Serial.print(" : code : ");
-//    Serial.print((int)error);
-//    Serial.write(START_BYTE);
+//    Serial.print((int)result.status);
+//    Serial.write(STOP_BYTE);
+//    delay(SERIAL_SLEEP_TIMEOUT);
 
-    switch (error)
+    switch (result.status)
     {
-      case 0:
+      case ParsingResult::Status::Running:
         break;
-      case 1:
+      case ParsingResult::Status::Started:
         // drop = false;
         break;
-      case 2:
+      case ParsingResult::Status::Finished:
       {
 //        Serial.print(millis());
 //        Serial.print(": full blob ok");
-//        Serial.write(START_BYTE);
+//        Serial.write(STOP_BYTE);
 
-//        const uint8_t* c = optopoulpe.obj.plain_color.raw;
+//        const uint8_t* c = parser.serial_buffer_in.rawobj;
 //        Serial.print("RGB : ");
 //        Serial.print(c[0], HEX); Serial.print(" ");
 //        Serial.print(c[1], HEX); Serial.print(" ");
 //        Serial.print(c[2], HEX);
-//        Serial.write(START_BYTE);
+//        Serial.write(STOP_BYTE);
+        optopoulpe = result.read<objects::RGB>();
         frame_received = true;
         break;
       }
+      case ParsingResult::Status::EndOfStream:
+        break;
       default:
 //        Serial.print("error : ");
 //        Serial.print((int)error);
-//        Serial.write(START_BYTE);
-        optopoulpe_serializer.error(0);
+//        Serial.write(STOP_BYTE);
+        parser.error(0);
         //while (-1 != Serial.read());
-        Serial.write(START_BYTE);
+        Serial.write(STOP_BYTE);
         Serial.flush();
         delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();

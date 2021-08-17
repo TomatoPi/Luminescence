@@ -1,7 +1,6 @@
 #include "apc40/apc40.h"
 
-#include "driver/frame.h"
-#include "driver/driver.h"
+#include "../driver/common.h"
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
@@ -73,7 +72,7 @@ jack_port_t* midi_out;
 std::queue<std::vector<uint8_t>> serial_queue;
 apc::APC40 APC40;
 
-MakeSerializable(optopoulpe, FrameGeneratorParams);
+objects::RGB optopoulpe;
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
@@ -162,14 +161,16 @@ int main(int argc, const char* argv[])
   jack_free(ports_names);
 
   apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.obj.plain_color.red = static_cast<apc::Encoder*>(ctrl)->get_value();
+      optopoulpe.r = static_cast<apc::Encoder*>(ctrl)->get_value();
   });
   apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.obj.plain_color.green = static_cast<apc::Encoder*>(ctrl)->get_value();
+      optopoulpe.g = static_cast<apc::Encoder*>(ctrl)->get_value();
   });
   apc::Encoder::Get(0, 2, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.obj.plain_color.blue = static_cast<apc::Encoder*>(ctrl)->get_value();
+      optopoulpe.b = static_cast<apc::Encoder*>(ctrl)->get_value();
   });
+
+  Serializer serializer;
 
   while (1)
   {
@@ -179,7 +180,7 @@ int main(int argc, const char* argv[])
     bool received_start = false;
     do
     {
-      res = serialport_read_until(arduino, buffer, START_BYTE, 512, framerate);
+      res = serialport_read_until(arduino, buffer, STOP_BYTE, 512, framerate);
       if (res == -2)
       {
         ++timeout_cptr;
@@ -187,12 +188,12 @@ int main(int argc, const char* argv[])
           break;
         continue;
       }
-      if (*buffer == START_BYTE)
+      if (static_cast<uint8_t>(*buffer) == static_cast<uint8_t>(STOP_BYTE))
       {
         // fprintf(stderr, "RCV : %d : START\n", res);
         received_start = true;
       }
-      else if (*buffer)
+      else if (*buffer && res != -1)
       {
         fprintf(stderr, "RCV : %d : %s\n", res, buffer);
       }
@@ -205,8 +206,8 @@ int main(int argc, const char* argv[])
     if (received_start)
     {
       received_start = false;
-      const uint8_t* raw = optopoulpe_serializer.serialize();
-      for (size_t i = 0 ; i < optopoulpe_serializer.size() ; ++i)
+      const uint8_t* raw = serializer.serialize(optopoulpe);
+      for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
       {
         uint8_t byte = raw[i];
         serialport_writebyte(arduino, byte);

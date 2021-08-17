@@ -11,7 +11,6 @@ LDXXFLAGS=-ljack -lpthread
 
 all: 
 	make jack_proxy
-	cp driver/driver.h ../driver/driver.h
 
 jack_proxy: \
 	jack_proxy.cpp \
