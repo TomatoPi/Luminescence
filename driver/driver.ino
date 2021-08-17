@@ -79,10 +79,10 @@ void loop()
 
   static unsigned long last_packet_timestamp = 0;
   static unsigned long message_begin_timestamp = 0;
-  static bool drop = false;
+  static unsigned long drop_count = 0;
 
   unsigned long update_begin = millis();
-  update_frame();
+  drop_count += update_frame();
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
@@ -91,6 +91,7 @@ void loop()
   {
     leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
   }
+  nscale8_video(leds, MaxLedsCount, optopoulpe.x);
   unsigned long compute_end = millis();
 
   unsigned long draw_begin = millis();
@@ -116,13 +117,15 @@ void loop()
     Serial.print(compute_end - compute_begin);
     Serial.print(" : Draw : ");
     Serial.print(draw_end - draw_begin);
+    Serial.print(" : Drops : ");
+    Serial.print(drop_count);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;
   }
 }
 
-void update_frame() {
+int update_frame() {
 
   //while (-1 != Serial.read());
   
@@ -131,7 +134,8 @@ void update_frame() {
   delay(SERIAL_SLEEP_TIMEOUT);
 
   parser.error(0);
-
+  
+  int drop_count = 0;
   bool frame_received = false;
   unsigned long timeout_timestamp = millis();
   while (!frame_received)
@@ -145,6 +149,7 @@ void update_frame() {
         delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();
         parser.error(0);
+        drop_count++;
       }
 //      FastLED.delay(1);
       continue;
@@ -181,7 +186,8 @@ void update_frame() {
 //        Serial.print("RGB : ");
 //        Serial.print(c[0], HEX); Serial.print(" ");
 //        Serial.print(c[1], HEX); Serial.print(" ");
-//        Serial.print(c[2], HEX);
+//        Serial.print(c[2], HEX); Serial.print(" ");
+//        Serial.print(c[3], HEX);
 //        Serial.write(STOP_BYTE);
         optopoulpe = result.read<objects::RGB>();
         frame_received = true;
@@ -199,7 +205,9 @@ void update_frame() {
         Serial.flush();
         delay(SERIAL_SLEEP_TIMEOUT);
         timeout_timestamp = millis();
+        drop_count++;
         break;
     }
   }
+  return drop_count;
 }

@@ -39,6 +39,7 @@ public:
     void add_routine(const Routine& rt)
     {
       routines.emplace_back(rt);
+      fprintf(stderr, "New routine for %p\n", this);
     }
   };
 
@@ -89,9 +90,8 @@ public:
   {
     MidiMsg event(std::forward<Args>(args)...);
     rt_queue.clear();
-    if (
-      auto itr = midi_map.find(event);
-      itr != midi_map.end())
+    auto [begin, end] = midi_map.equal_range(event);
+    for (auto itr = begin ; itr != end ; ++itr)
     {
       auto& [_, pair] = *itr;
       auto& [ctrl, callback] = pair;

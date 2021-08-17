@@ -170,6 +170,13 @@ int main(int argc, const char* argv[])
       optopoulpe.b = static_cast<apc::Encoder*>(ctrl)->get_value();
   });
 
+  apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
+      optopoulpe.x = static_cast<apc::MainFader*>(ctrl)->get_value();
+  });
+
+  apc::Fader::Get(0)->add_routine([&](Controller::Control* ctrl){
+  });
+
   Serializer serializer;
 
   while (1)
