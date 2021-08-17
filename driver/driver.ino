@@ -73,9 +73,12 @@ void loop()
 // Cheaper prototype. Use integer arithmetics
 
   static unsigned long master_clock = 0;
-  static unsigned long master_clock_period = 2000;
+  static unsigned long master_clock_period = 0;
+  
+  master_clock_period = 1 + (60lu * 1000lu) / ((optopoulpe.bpm + 1));
   master_clock = millis();
   uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
+  value += optopoulpe.sync_correction;
 
   static unsigned long last_packet_timestamp = 0;
   static unsigned long message_begin_timestamp = 0;
@@ -119,6 +122,8 @@ void loop()
     Serial.print(draw_end - draw_begin);
     Serial.print(" : Drops : ");
     Serial.print(drop_count);
+    Serial.print(" : Period : ");
+    Serial.println(master_clock_period);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;

@@ -69,6 +69,15 @@ jack_client_t* client;
 jack_port_t* midi_in;
 jack_port_t* midi_out;
 
+struct {
+  jack_time_t length = 0;
+  jack_time_t last_hit = 0;
+
+  uint16_t bpm() const {
+    return (60lu * 1000lu * 1000lu) / (length+1);
+  }
+} timebase;
+
 std::queue<std::vector<uint8_t>> serial_queue;
 apc::APC40& APC40 = apc::APC40::Get();
 
@@ -175,6 +184,31 @@ int main(int argc, const char* argv[])
   });
 
   apc::Fader::Get(0)->add_routine([&](Controller::Control* ctrl){
+  });
+
+  apc::TapTempo::Get()->add_routine([&](Controller::Control*){
+    jack_time_t t = jack_get_time();
+    timebase.length = t - timebase.last_hit;
+    timebase.last_hit = t;
+    optopoulpe.bpm = timebase.bpm();
+  });
+
+  apc::IncTempo::Get()->add_routine([&](Controller::Control* ctrl){
+    timebase.length = timebase.length << 1;
+    optopoulpe.bpm = timebase.bpm();
+  });
+  apc::DecTempo::Get()->add_routine([&](Controller::Control* ctrl){
+    timebase.length = timebase.length >> 1;
+    optopoulpe.bpm = timebase.bpm();
+  });
+
+  apc::SyncPot::Get()->add_routine([&](Controller::Control* ctrl){
+    uint8_t val = static_cast<apc::SyncPot*>(ctrl)->get_value();
+    if (val < 64)
+      timebase.length *= 0.99;
+    else
+      timebase.length *= 1.01;
+    optopoulpe.bpm = timebase.bpm();
   });
 
   Serializer serializer;

@@ -6,4 +6,5 @@ namespace apc
   Encoder::Instances Encoder::_encoders = Encoder::Instances();
   MainFader* MainFader::_instance = nullptr;
   Fader::Instances Fader::_instances = Fader::Instances();
+  SyncPot* SyncPot::_instance = nullptr;
 }

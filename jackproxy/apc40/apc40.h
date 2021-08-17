@@ -197,9 +197,8 @@ namespace apc
       signature.s = 0xb0;
       signature.c = index;
       signature.d1 = 0x07;
-      fprintf(stderr, "%d %02x %08lx\n", index, signature.c, MidiMsgHash()(signature));
-      _instances[index] = this;
       register_mappings();
+      _instances[index] = this;
     }
 
     static Instances& Get()
@@ -212,24 +211,86 @@ namespace apc
     }
   };
 
-  class Panic :
+  template <uint8_t CC>
+  class Trigger :
     public Controller::Control
   {
-  private:
-    MidiMsg signature = {0x90, 0x62, 0x7f};
+  protected:
+    static Trigger* _instance;
+    MidiMsg signature = {0x90, CC, 0x7f};
 
-    void callback(const MidiMsg&) 
+    void handle_event(const MidiMsg& event) 
     {
-      controller->refresh_all_controllers();
+      callback(event);
     }
+
+    virtual void callback(const MidiMsg&) {}
   
   public:
 
     void send_refresh() override {}
 
-    Panic(Controller* ctrl) : Control(ctrl)
+    Trigger(Controller* ctrl) : Control(ctrl)
     {
-      controller->register_mapping(this, signature, std::bind_front(&Panic::callback, this));
+      controller->register_mapping(this, signature, std::bind_front(&Trigger<CC>::handle_event, this));
+      _instance = this;
+    }
+
+    static Trigger* Get() { return _instance; }
+  };
+
+  template <uint8_t CC> Trigger<CC>* Trigger<CC>::_instance = nullptr;
+
+  class Panic : public Trigger<0x62>
+  {
+  private:
+    virtual void callback(const MidiMsg&)
+    {
+      controller->refresh_all_controllers();
+    }
+  public:
+    Panic(Controller* ctrl) : Trigger(ctrl) {}
+  };
+
+  class TapTempo : public Trigger<0x63>
+  {
+  public:
+    TapTempo(Controller* ctrl) : Trigger(ctrl) {}
+  };
+  class IncTempo : public Trigger<0x64>
+  {
+  public:
+    IncTempo(Controller* ctrl) : Trigger(ctrl) {}
+  };
+  class DecTempo : public Trigger<0x65>
+  {
+  public:
+    DecTempo(Controller* ctrl) : Trigger(ctrl) {}
+  };
+
+
+  class SyncPot :
+    public Pot<0x2f>
+  {
+  public:
+    using Base = Pot<0x2f>;
+  private:
+    static SyncPot* _instance;
+
+  public:
+
+    void send_refresh() override {}
+
+    SyncPot(Controller* ctrl) :
+      Base(ctrl)
+    {
+      register_mappings();
+      _instance = this;
+    }
+
+    static SyncPot* Get()
+    {
+      return _instance;
     }
   };
 
@@ -240,6 +301,11 @@ namespace apc
     {
       addControl<MainFader>();
       addControl<Panic>();
+
+      addControl<TapTempo>();
+      addControl<IncTempo>();
+      addControl<DecTempo>();
+      addControl<SyncPot>();
 
       for (uint8_t fader = 0 ; fader < FadersCount ; ++fader)
         addControl<Fader>(fader);
