@@ -120,7 +120,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-    leds[i] = palette_rainbow.eval(value);
+    leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
