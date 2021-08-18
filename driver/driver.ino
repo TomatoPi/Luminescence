@@ -38,7 +38,7 @@ using Range = range_t<index_t, coef_t>;
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
 
-static constexpr index_t MaxLedsCount = 16; //30 * 20;
+static constexpr index_t MaxLedsCount = 30 * 20;
 static constexpr index_t PaletteSize = 512; // TODO are we gonna use this ?
 
 coef_t master_clock = coef_t(0);
@@ -137,7 +137,7 @@ void loop()
   static unsigned long drop_count = 0;
 
   unsigned long update_begin = millis();
-  // drop_count += update_frame();
+  drop_count += update_frame();
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
@@ -148,7 +148,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-    leds[i] = CRGB(255, 0, 50);//palette_rainbow.eval(value);
+    leds[i] = Palettes::rainbow.eval(value);
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
