@@ -39,10 +39,7 @@ using Range = range_t<index_t, coef_t>;
 constexpr const uint8_t SerialPacket::Header[3];
 
 static constexpr index_t MaxLedsCount = 30 * 20;
-static constexpr index_t PaletteSize = 512; // TODO are we gonna use this ?
 
-coef_t master_clock = coef_t(0);
-Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
 color_t leds[MaxLedsCount];
 
 objects::Master master;
@@ -70,8 +67,6 @@ void setup()
   memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
   FastLED.show();
 
-  Range tmp = Range::map_on_pixel_index(0, PaletteSize, PaletteSize, 0);
-
   Serial.println("Coucou");
   Serial.write(STOP_BYTE);
   FastLED.delay(1000);
@@ -89,23 +84,14 @@ void loop()
   static uint32_t master_clock = 0;
   static unsigned long master_clock_period = 0;
   static unsigned long master_last_timestamp = 0;
+  static unsigned long drop_count = 0;
   
   master_clock_period = 1 + (60lu * 1000lu) / ((master.bpm + 1));
   uint32_t dt = 0xFFFFFFFFu / (master_clock_period);
-  
   master_clock += (millis() - master_last_timestamp) * dt;
   master_last_timestamp = millis();
 
-//  Serial.println();
-//  Serial.println(master_clock);
-//  Serial.println(dt);
-//  Serial.write(STOP_BYTE);
-
   uint8_t time = (master_clock >> 24) + master.sync_correction;
-
-  static unsigned long last_packet_timestamp = 0;
-  static unsigned long message_begin_timestamp = 0;
-  static unsigned long drop_count = 0;
 
   unsigned long update_begin = millis();
   drop_count += update_frame();
@@ -119,11 +105,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-<<<<<<< HEAD
-    leds[i] = CRGB(255, 0, 50);//palette_rainbow.eval(value);
-=======
     leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
->>>>>>> ab9cc8cfe186e0bfc894984d0846c14e09e95df3
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
@@ -163,8 +145,6 @@ void loop()
 }
 
 int update_frame() {
-
-  //while (-1 != Serial.read());
   
   Serial.write(STOP_BYTE);
   Serial.flush();

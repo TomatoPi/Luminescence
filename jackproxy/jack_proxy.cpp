@@ -129,11 +129,11 @@ int jack_callback(jack_nframes_t nframes, void* args)
     if (3 != event.size)
       continue;
 
-    for (size_t i = 0 ; i < 3 ; ++i)
-    {
-      fprintf(stderr, "0x%02x ", event.buffer[i]);
-    }
-    fprintf(stderr, "\n");
+    // for (size_t i = 0 ; i < 3 ; ++i)
+    // {
+    //   fprintf(stderr, "0x%02x ", event.buffer[i]);
+    // }
+    // fprintf(stderr, "\n");
 
     auto& responses = APC40.handle_midi_event((const uint8_t*)event.buffer);
 
