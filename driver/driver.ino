@@ -100,11 +100,46 @@ void loop()
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
-  const CRGB c = CRGB(127, 0, 200);
-  for (index_t i = 0 ; i < MaxLedsCount ; ++i)
+
   {
-    leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
+    using namespace objects;
+    const Modulation& mod = compos[0].modulation;
+    switch (mod.kind)
+    {
+      case flags::ModulationKind::None:
+      {
+        const CRGB c = CRGB(127, 0, 200);
+        for (index_t i = 0 ; i < MaxLedsCount ; ++i)
+        {
+          leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
+        }
+        break;
+      }
+      case flags::ModulationKind::Sin:
+      {
+        if (mod.istimemod)
+        {
+          const CRGB c = CRGB(map8(sin8(value), mod.min, mod.max), 0, 200);
+          for (index_t i = 0 ; i < MaxLedsCount ; ++i)
+          {
+            leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
+          }
+        }
+        else
+        {
+          const CRGB c = CRGB(127, 0, 200);
+          uint32_t didx = 0xFFFFFFFFu / MaxLedsCount;
+          for (index_t i = 0 ; i < MaxLedsCount ; ++i)
+          {
+            uint8_t value = (i * didx) >> 24;
+            leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
+          }
+        }
+        break;
+      }
+    }
   }
+
   nscale8_video(leds, MaxLedsCount, master.brightness);
   unsigned long compute_end = millis();
 

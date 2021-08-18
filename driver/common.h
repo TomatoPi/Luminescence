@@ -141,14 +141,16 @@ namespace objects
     static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Modulation;
     //
     uint8_t kind : 2;   // ModulationKind
-    uint8_t param1 : 7; // saturation | fixed_point | variance
-    uint8_t param2 : 7; // -- | 0 square, 127 triangle | --
+    uint8_t param1 : 7; // saturation | fixed_point | fixed_point
+    uint8_t param2 : 7; // -- | 0 square, 127 triangle | variance
     // 2
     uint8_t istimemod : 1; // 1 if modulation is timed, 0 if spatial (on pixel index)
     uint8_t subdivide : 3; // [0-7] multiply clock by 2 ^ (subdivide - 4)
     uint8_t phase_distort_o : 6; // [0 - 64] See https://www.desmos.com/calculator/n0k6rxr5sw
     uint8_t phase_distort_d : 6; // [0 - 64] to experiment phase distortion
     // 4
+    uint8_t min : 8;
+    uint8_t max : 8;
   };
 
   struct Master {
@@ -171,7 +173,7 @@ namespace objects
     uint8_t index : 4;                // [0 - 8] 8 is master
     uint8_t unused : 4;
     // 1
-    Modulation brigtness;
+    Modulation modulation;
     // 5
   };
 }

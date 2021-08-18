@@ -1,18 +1,14 @@
 #include "apc40/apc40.h"
 
+#include "arduino.h"
+
 #include "../driver/common.h"
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
-
-#include <queue>
-#include <stdio.h>
-#include <unistd.h>
 #include <cstring>
-#include <cmath>
 
-#include "arduino-serial-lib.h"
-#include <termios.h>
+#include <cmath>
 
 /*
   Pads : NoteOn 0x90, NoteOff 0x80
@@ -79,11 +75,12 @@ struct {
   }
 } timebase;
 
-std::unordered_map<void*, SerialPacket> dirty_stack;
 apc::APC40& APC40 = apc::APC40::Get();
+Arduino* arduino;
 
 objects::Master master;
 std::array<objects::Compo, apc::PadsColumnsCount> compos;
+
 
 void init_objects()
 {
@@ -105,8 +102,9 @@ void init_objects()
 }
 
 template <typename T>
-void arduino_push(const T& obj, uint8_t flags = 0) {
-  dirty_stack.insert_or_assign((void*)&obj, Serializer::serialize(obj, flags));
+void push(const T& obj, uint8_t flags = 0)
+{
+  arduino->push(obj, flags);
 }
 
 int jack_callback(jack_nframes_t nframes, void* args)
@@ -151,9 +149,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  int arduino = serialport_init(argv[1], B115200);
-  if (arduino < 0)
-    return __LINE__;
+  arduino = new Arduino(argv[1]);
 
   long framerate = atol(argv[2]);
 
@@ -196,9 +192,9 @@ int main(int argc, const char* argv[])
   jack_free(ports_names);
 
   apc::Panic::Get()->add_routine([&](Controller::Control*){
-    arduino_push(master);
+    push(master);
     for (const auto& compo : compos)
-      arduino_push(compo);
+      push(compo);
   });
 
   apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
@@ -226,16 +222,16 @@ int main(int argc, const char* argv[])
     timebase.length = t - timebase.last_hit;
     timebase.last_hit = t;
     master.bpm = timebase.bpm();
-    arduino_push(master);
+    push(master);
   });
 
   apc::IncTempo::Get()->add_routine([&](Controller::Control* ctrl){
     master.sync_correction = (master.sync_correction + 10) % 255;
-    arduino_push(master);
+    push(master);
   });
   apc::DecTempo::Get()->add_routine([&](Controller::Control* ctrl){
     master.sync_correction = (master.sync_correction - 10) % 255;
-    arduino_push(master);
+    push(master);
   });
 
   apc::SyncPot::Get()->add_routine([&](Controller::Control* ctrl){
@@ -245,7 +241,7 @@ int main(int argc, const char* argv[])
     else
       timebase.length *= 1.04;
     master.bpm = timebase.bpm();
-    arduino_push(master);
+    push(master);
   });
 
   init_objects();
@@ -256,76 +252,8 @@ int main(int argc, const char* argv[])
 
   while (1)
   {
-    char buffer[512];
-    int res = 0;
-    int timeout_cptr = 0;
-    bool received_start = false;
-    do
-    {
-      memset(buffer, 0, 512);
-      res = serialport_read_until(arduino, buffer, STOP_BYTE, 512, framerate);
-      uint8_t* raw = (uint8_t*)buffer;
-      if (res == -2)
-      {
-        ++timeout_cptr;
-        if (10 < timeout_cptr)
-          break;
-        continue;
-      }
-      if (raw[0] == 0 && raw[1] == static_cast<uint8_t>(STOP_BYTE))
-      {
-        // fprintf(stderr, "RCV : %d : ACK\n", res);
-        dirty_stack.erase(last_sent_packet);
-        received_start = true;
-      }
-      if (raw[0] == static_cast<uint8_t>(STOP_BYTE))
-      {
-        // fprintf(stderr, "RCV : %d : START\n", res);
-        received_start = true;
-      }
-      else if (*buffer && res != -1)
-      {
-        fprintf(stderr, "RCV : %d : %s\n", res, buffer);
-      }
-      else
-        break;
-    }
-    while (1);
-
     APC40.update_dirty_controls();
-    if (received_start)
-    {
-      received_start = false;
-      if (dirty_stack.empty())
-      {
-        serialport_writebyte(arduino, STOP_BYTE);
-      }
-      else
-      {
-        last_sent_packet = dirty_stack.begin();
-        const auto& [_, packet] = *last_sent_packet;
-        const uint8_t* raw = Serializer::bytestream(packet);
-        for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
-        {
-          uint8_t byte = raw[i];
-          serialport_writebyte(arduino, byte);
-          // fprintf(stderr, "0x%02x ", byte); 
-        }
-        // fprintf(stderr, "\n");
-      }
-    }
 
-    // while (!serial_queue.empty())
-    // {
-    //   const auto& event = serial_queue.front();
-    //   for (const auto& byte : event)
-    //   {
-    //     fprintf(stderr, "0x%02x ", byte);
-    //   }
-    //   fprintf(stderr, "\n");
-    //   serial_queue.pop();
-    // }
-    // usleep(100000 / framerate);
   }
   
   return 0;
