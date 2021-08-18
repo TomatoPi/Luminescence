@@ -1,5 +1,6 @@
 #include "color_palette.h"
 #include "palettes.h"
+#include "clock.h"
 
 #include "range.h"
 
@@ -37,10 +38,15 @@ using Range = range_t<index_t, coef_t>;
 
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
+uint8_t Clock::_clockIndex = 0;
+Clock* Clock::_clocks[Clock::MaxClocksCount];
 
 static constexpr index_t MaxLedsCount = 30 * 20;
 
 color_t leds[MaxLedsCount];
+
+Clock master_clock;
+Clock strobe_clock;
 
 objects::Master master;
 objects::Compo compos[8];
@@ -81,17 +87,14 @@ void loop()
 
 // Cheaper prototype. Use integer arithmetics
 
-  static uint32_t master_clock = 0;
-  static unsigned long master_clock_period = 0;
-  static unsigned long master_last_timestamp = 0;
   static unsigned long drop_count = 0;
   
-  master_clock_period = 1 + (60lu * 1000lu) / ((master.bpm + 1));
-  uint32_t dt = 0xFFFFFFFFu / (master_clock_period);
-  master_clock += (millis() - master_last_timestamp) * dt;
-  master_last_timestamp = millis();
+  master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
+  strobe_clock.setPeriod(master_clock.period >> master.strobe);
 
-  uint8_t time = (master_clock >> 24) + master.sync_correction;
+  Clock::Tick(millis());
+
+  uint8_t time = master_clock.get8() + master.sync_correction;
 
   unsigned long update_begin = millis();
   drop_count += update_frame();
@@ -108,6 +111,11 @@ void loop()
     leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
   }
 
+  if (master.strobe)
+  {
+
+  }
+
   nscale8_video(leds, MaxLedsCount, master.brightness);
   unsigned long compute_end = millis();
 
@@ -120,7 +128,7 @@ void loop()
   
   static unsigned long fps_accumulator= 0;
   static unsigned long frame_cptr = 0;
-  fps_accumulator += endtime - master_last_timestamp;
+  fps_accumulator += endtime - master_clock.last_timestamp;
   frame_cptr++;
 
   if (2000 < fps_accumulator)
@@ -136,8 +144,10 @@ void loop()
     Serial.print(draw_end - draw_begin);
     Serial.print(" : Drops : ");
     Serial.print(drop_count);
+    Serial.print(" : BPM : ");
+    Serial.print(master.bpm);
     Serial.print(" : Period : ");
-    Serial.println(master_clock_period);
+    Serial.println(master_clock.clock);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;
