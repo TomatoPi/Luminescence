@@ -24,6 +24,7 @@ private:
   std::mutex buffer_lock;
   Buffer buffer;
   bool kill = false;
+  uint8_t index = 0;
 
   Buffer::iterator last_packet_sent;
   unsigned long last_sent_id = 0;
@@ -65,7 +66,7 @@ private:
       }
       else if (*charbuffer)
       {
-        // fprintf(stderr, "RCV : %d : %s\n", res, charbuffer);
+        fprintf(stderr, "[%d] RCV : %d : %s", index, res, charbuffer);
       }
     }
   }
@@ -96,18 +97,19 @@ private:
   }
 
 public:
-  Arduino(const char* port)
+  Arduino(const char* port, uint8_t index)
   {
-    serial_thread = std::thread([&, this](){
+    this->index = index;
+    serial_thread = std::thread([this](const char* port){
       fd = serialport_init(port, B115200);
       if (fd < 0)
-        throw std::runtime_error("Can't Open Serial Port");
+        throw std::runtime_error("Can't Open Serial Port : ");
       while (!kill)
       {
         wait_for_arduino();
         try_send_packet();
       };
-    });
+    }, port);
   }
 
   template <typename T>

@@ -76,7 +76,7 @@ struct {
 } timebase;
 
 apc::APC40& APC40 = apc::APC40::Get();
-Arduino* arduino;
+std::array<std::pair<Arduino*, objects::Setup>, 2> arduinos;
 
 objects::Master master;
 std::array<objects::Compo, apc::PadsColumnsCount> compos;
@@ -104,7 +104,8 @@ void init_objects()
 template <typename T>
 void push(const T& obj, uint8_t flags = 0)
 {
-  arduino->push(obj, flags);
+  for (auto& [arduino, _] : arduinos)
+    arduino->push(obj, flags);
 }
 
 int jack_callback(jack_nframes_t nframes, void* args)
@@ -149,9 +150,14 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
-  arduino = new Arduino(argv[1]);
-
-  long framerate = atol(argv[2]);
+  uint8_t idx = 0;
+  for (auto& arduino : arduinos)
+  {
+    arduino = std::make_pair(new Arduino(argv[idx+1], idx), objects::Setup{
+      idx
+    });
+    ++idx;
+  }
 
   jack_status_t jack_status;
   client = jack_client_open(pgm_name, JackNullOption, &jack_status);
@@ -247,12 +253,15 @@ int main(int argc, const char* argv[])
     master.bpm = timebase.bpm();
     push(master);
   });
-
-  init_objects();
-
-  // APC40.dump();
-
-  std::unordered_map<void*, SerialPacket>::iterator last_sent_packet;
+  
+  {
+    init_objects();
+    for (auto& pair : arduinos)
+    {
+      auto& [arduino, setup] = pair;
+      arduino->push(setup);
+    }
+  }
 
   while (1)
   {
