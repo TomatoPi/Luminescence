@@ -55,9 +55,6 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
 {
   uint32_t didx = 0xFFFFFFFFu / max_i;
   return static_cast<uint8_t>((i * didx) >> 24);
-  
-  // float t = i / (float) max_i;
-  // return static_cast<uint8_t>(t * 255);
 }
 
 void setup()
@@ -122,7 +119,11 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
+<<<<<<< HEAD
     leds[i] = CRGB(255, 0, 50);//palette_rainbow.eval(value);
+=======
+    leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
+>>>>>>> ab9cc8cfe186e0bfc894984d0846c14e09e95df3
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
