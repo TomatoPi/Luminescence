@@ -38,7 +38,7 @@ using Range = range_t<index_t, coef_t>;
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
 
-static constexpr index_t MaxLedsCount = 30 * 20;
+static constexpr index_t MaxLedsCount = 16; //30 * 20;
 static constexpr index_t PaletteSize = 512; // TODO are we gonna use this ?
 
 coef_t master_clock = coef_t(0);
@@ -67,15 +67,29 @@ void init_objects()
       { 0 }
     };
   }
-  compos[0].modulation.kind = objects::flags::ModulationKind::SawTooth;
+  compos[0].modulation.kind = objects::flags::ModulationKind::Square;
   compos[0].modulation.istimemod = 0;
   compos[0].modulation.min = 0;
   compos[0].modulation.max = 255;
+  compos[0].modulation.subdivide = 4;
   
   compos[1].modulation.kind = objects::flags::ModulationKind::SawTooth;
   compos[1].modulation.istimemod = 1;
   compos[1].modulation.min = 0;
   compos[1].modulation.max = 255;
+  compos[1].modulation.subdivide = 2;
+
+  compos[2].modulation.kind = objects::flags::ModulationKind::Square;
+  compos[2].modulation.istimemod = 0;
+  compos[2].modulation.min = 0;
+  compos[2].modulation.max = 255;
+  compos[2].modulation.subdivide = 3;
+
+  compos[3].modulation.kind = objects::flags::ModulationKind::SawTooth;
+  compos[3].modulation.istimemod = 0;
+  compos[3].modulation.min = 0;
+  compos[3].modulation.max = 255;
+  compos[3].modulation.subdivide = 1;
 }
 
 /// Remaps i that is in the range [0, max_i-1] to the range [0, 255]
@@ -137,7 +151,7 @@ void loop()
   static unsigned long drop_count = 0;
 
   unsigned long update_begin = millis();
-  drop_count += update_frame();
+  // drop_count += update_frame();
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
@@ -148,7 +162,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-    leds[i] = Palettes::rainbow.eval(value);
+    leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
