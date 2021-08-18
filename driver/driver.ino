@@ -1,4 +1,7 @@
 #include "color_palette.h"
+#include "palettes.h"
+
+#include "range.h"
 
 #include "common.h"
 
@@ -31,12 +34,10 @@ using index_t = uint32_t;
 using coef_t = float;
 
 using Range = range_t<index_t, coef_t>;
-using Palette = color_pallette_t<color_t, index_t, coef_t>;
 
-#include "palettes.h"
 
 static constexpr index_t MaxLedsCount = 30 * 20;
-static constexpr index_t PaletteSize = 512;
+static constexpr index_t PaletteSize = 512; // TODO are we gonna use this ?
 
 coef_t master_clock = coef_t(0);
 Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
@@ -119,8 +120,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-    const CRGB c{127, 0, 200};
-    leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value));
+    leds[i] = palette_rainbow.eval(value);
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);

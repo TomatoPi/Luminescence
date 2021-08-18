@@ -1,42 +1,29 @@
 #pragma once
 
-#include "vec3.h"
-#include "range.h"
+#include <FastLED.h>
 
 // From https://iquilezles.org/www/articles/palettes/palettes.htm
 
-template <
-  typename color_t,
-  typename pixel_index_t,
-  typename coef_t>
-struct color_pallette_t 
+struct ColorPalette 
 {
-  using Range = range_t<pixel_index_t, coef_t>;
-  using Vec3 = vec3<coef_t>;
-
-  vec3<coef_t> eval(coef_t t) const
+  CRGB eval(uint8_t t) const
   {
-    return a + b * cos((c * t + d) * static_cast<coef_t>(6.28f));
+    return {
+      a_r + b_r * cos8(c_r * t + d_r),
+      a_g + b_g * cos8(c_g * t + d_g),
+      a_b + b_b * cos8(c_b * t + d_b)
+    };
   }
-
-  void eval_range(color_t* ribbon, const Range& range) const
-  {
-    pixel_index_t pixel = range.begin;
-    coef_t t = range.t;
-    for (
-      pixel_index_t i = 0 ;
-      i < range.length ;
-      ++i, ++pixel, t = fmod((t + range.dt), coef_t(1.f)))
-    {
-      auto tmp = eval(t);
-      ribbon[pixel] = color_t(255 * tmp.r, 255 * tmp.g, 255 * tmp.b);
-    }
-  }
-
-  operator vec3<coef_t>*() { return (vec3<coef_t>*)this; }
-
-  vec3<coef_t> a;
-  vec3<coef_t> b;
-  vec3<coef_t> c;
-  vec3<coef_t> d;
+  uint8_t a_r;
+  uint8_t a_g;
+  uint8_t a_b;
+  uint8_t b_r;
+  uint8_t b_g;
+  uint8_t b_b;
+  uint8_t c_r;
+  uint8_t c_g;
+  uint8_t c_b;
+  uint8_t d_r;
+  uint8_t d_g;
+  uint8_t d_b;
 };
