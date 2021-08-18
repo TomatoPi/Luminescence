@@ -8,6 +8,7 @@
 #include <thread>
 #include <cstring>
 #include <queue>
+#include <mutex>
 
 #include "arduino-serial-lib.h"
 #include <termios.h>
@@ -15,17 +16,18 @@
 class Arduino
 {
 public:
-  using Queue = std::queue<std::pair<void*, SerialPacket>>;
-  using Buffer = std::unordered_map<void*, SerialPacket>;
+  using Buffer = std::unordered_map<void*, std::pair<unsigned long, SerialPacket>>;
 
 private:
   int fd = 0;
   std::thread serial_thread;
+  std::mutex buffer_lock;
   Buffer buffer;
-  Queue queue;
   bool kill = false;
 
   Buffer::iterator last_packet_sent;
+  unsigned long last_sent_id = 0;
+  unsigned long next_packet_id = 0;
 
   void wait_for_arduino()
   {
@@ -44,7 +46,16 @@ private:
       else if (raw[0] == 0 && raw[1] == static_cast<uint8_t>(STOP_BYTE))
       {
         // fprintf(stderr, "RCV : %d : ACK\n", res);
-        buffer.erase(last_packet_sent);
+        std::scoped_lock<std::mutex> _(buffer_lock);
+        if (last_packet_sent->second.first == last_sent_id)
+        {
+          // fprintf(stderr, "Packet Sent OK : %lu %p\n", last_packet_sent->second.first, last_packet_sent->first);
+          buffer.erase(last_packet_sent);
+        }
+        else
+        {
+          // fprintf(stderr, "Packet Keeped : %lu : %lu %p\n", last_sent_id, last_packet_sent->second.first, last_packet_sent->first);
+        }
         return;
       }
       else if (raw[0] == static_cast<uint8_t>(STOP_BYTE))
@@ -54,7 +65,7 @@ private:
       }
       else if (*charbuffer)
       {
-        fprintf(stderr, "RCV : %d : %s\n", res, charbuffer);
+        // fprintf(stderr, "RCV : %d : %s\n", res, charbuffer);
       }
     }
   }
@@ -68,7 +79,11 @@ private:
     else
     {
       last_packet_sent = buffer.begin();
-      const auto& [_, packet] = *last_packet_sent;
+      const auto& [_, pair] = *last_packet_sent;
+      const auto& [id, packet] = pair;
+      last_sent_id = id;
+      // fprintf(stderr, "%lu Pending Packets\n", buffer.size());
+      // fprintf(stderr, "Send Packet : %lu %p\n", id, _);
       const uint8_t* raw = Serializer::bytestream(packet);
       for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
       {
@@ -89,12 +104,6 @@ public:
         throw std::runtime_error("Can't Open Serial Port");
       while (!kill)
       {
-        while (!queue.empty())
-        {
-          auto& [key, packet] = queue.front();
-          buffer.insert_or_assign(key, packet);
-          queue.pop();
-        }
         wait_for_arduino();
         try_send_packet();
       };
@@ -104,6 +113,11 @@ public:
   template <typename T>
   void push(const T& obj, uint8_t flags = 0)
   {
-    queue.emplace((void*)&obj, Serializer::serialize(obj, flags));
+    std::scoped_lock<std::mutex> _(buffer_lock);
+    auto itr = buffer.insert_or_assign((void*)&obj, 
+      std::make_pair(
+        next_packet_id++,
+        Serializer::serialize(obj, flags)));
+    // fprintf(stderr, "Added Packet : %lu %p\n", itr.first->second.first, itr.first->first);
   }
 };

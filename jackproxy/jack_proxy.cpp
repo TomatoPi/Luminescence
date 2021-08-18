@@ -199,12 +199,15 @@ int main(int argc, const char* argv[])
 
   apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
       master.strobe = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
+      push(master);
   });
   apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
       master.istimemod = static_cast<apc::Encoder*>(ctrl)->get_value() >> 7;
+      push(master);
   });
   apc::Encoder::Get(0, 2, 0)->add_routine([&](Controller::Control* ctrl){
       master.pulse_width = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
+      push(master);
   });
   apc::Encoder::Get(0, 5, 0)->add_routine([&](Controller::Control* ctrl){
       // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
@@ -212,6 +215,7 @@ int main(int argc, const char* argv[])
 
   apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
       master.brightness = static_cast<apc::MainFader*>(ctrl)->get_value();
+      push(master);
   });
 
   apc::Fader::Get(0)->add_routine([&](Controller::Control* ctrl){
@@ -253,7 +257,7 @@ int main(int argc, const char* argv[])
   while (1)
   {
     APC40.update_dirty_controls();
-
+    usleep(1000);
   }
   
   return 0;
