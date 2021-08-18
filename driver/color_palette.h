@@ -7,16 +7,16 @@
 struct ColorPalette 
 {
   CRGB eval(uint8_t t) const;
-  uint8_t a_r;
-  uint8_t a_g;
-  uint8_t a_b;
-  uint8_t b_r;
-  uint8_t b_g;
-  uint8_t b_b;
-  uint8_t c_r;
-  uint8_t c_g;
-  uint8_t c_b;
-  uint8_t d_r;
-  uint8_t d_g;
-  uint8_t d_b;
+  uint8_t min_value_r;
+  uint8_t min_value_g;
+  uint8_t min_value_b;
+  uint8_t max_value_r;
+  uint8_t max_value_g;
+  uint8_t max_value_b;
+  uint8_t pulsation_r;
+  uint8_t pulsation_g;
+  uint8_t pulsation_b;
+  uint8_t phase_r;
+  uint8_t phase_g;
+  uint8_t phase_b;
 };
