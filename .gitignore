@@ -1,3 +1,5 @@
 
 test_jules/.vscode/
 *.o
+
+.vscode/

@@ -21,7 +21,6 @@ struct SerialPacket
 
   void clear() { flags = 0; for (uint8_t i=0; i<ObjectSizeMax;++i) rawobj[i] = 0; }
 };
-constexpr const uint8_t SerialPacket::Header[3];
 
 static_assert(sizeof(SerialPacket) == SerialPacket::Size);
 
@@ -107,7 +106,7 @@ namespace Serializer
 
     return packet;
   }
-  const uint8_t* bytestream(const SerialPacket& packet)
+  inline const uint8_t* bytestream(const SerialPacket& packet)
   {
     return (uint8_t*)&packet;
   }
