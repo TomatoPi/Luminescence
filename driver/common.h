@@ -123,6 +123,7 @@ namespace objects
   {
     enum ObjectKind {
       Unknown     = 0,
+      Setup,
       Master,
       Composition,
       Modulation,
@@ -135,6 +136,13 @@ namespace objects
       Noise = 3,
     };
   }
+
+  struct Setup
+  {
+    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Setup;
+    //
+    uint8_t driver_index : 2;
+  };
 
   struct Modulation {
     static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Modulation;
