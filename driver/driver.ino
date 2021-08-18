@@ -72,13 +72,22 @@ void loop()
 
 // Cheaper prototype. Use integer arithmetics
 
-  static unsigned long master_clock = 0;
+  static uint32_t master_clock = 0;
   static unsigned long master_clock_period = 0;
+  static unsigned long master_last_timestamp = 0;
   
   master_clock_period = 1 + (60lu * 1000lu) / ((optopoulpe.bpm + 1));
-  master_clock = millis();
-  uint8_t value = ((master_clock % master_clock_period) * 255) / master_clock_period;
-  value += optopoulpe.sync_correction;
+  uint32_t dt = 0xFFFFFFFFu / (master_clock_period);
+  
+  master_clock += (millis() - master_last_timestamp) * dt;
+  master_last_timestamp = millis();
+
+//  Serial.println();
+//  Serial.println(master_clock);
+//  Serial.println(dt);
+//  Serial.write(STOP_BYTE);
+
+  uint8_t value = (master_clock >> 24) + optopoulpe.sync_correction;
 
   static unsigned long last_packet_timestamp = 0;
   static unsigned long message_begin_timestamp = 0;
@@ -106,7 +115,7 @@ void loop()
   
   static unsigned long fps_accumulator= 0;
   static unsigned long frame_cptr = 0;
-  fps_accumulator += endtime - master_clock;
+  fps_accumulator += endtime - master_last_timestamp;
   frame_cptr++;
 
   if (2000 < fps_accumulator)

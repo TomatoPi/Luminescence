@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <cstring>
+#include <cmath>
 
 #include "arduino-serial-lib.h"
 #include <termios.h>
@@ -194,20 +195,20 @@ int main(int argc, const char* argv[])
   });
 
   apc::IncTempo::Get()->add_routine([&](Controller::Control* ctrl){
-    timebase.length = timebase.length << 1;
+    optopoulpe.sync_correction = std::min((unsigned int)optopoulpe.sync_correction + 10, 255u);
     optopoulpe.bpm = timebase.bpm();
   });
   apc::DecTempo::Get()->add_routine([&](Controller::Control* ctrl){
-    timebase.length = timebase.length >> 1;
+    optopoulpe.sync_correction = std::max((unsigned int)optopoulpe.sync_correction + 10, 0u);
     optopoulpe.bpm = timebase.bpm();
   });
 
   apc::SyncPot::Get()->add_routine([&](Controller::Control* ctrl){
     uint8_t val = static_cast<apc::SyncPot*>(ctrl)->get_value();
     if (val < 64)
-      timebase.length *= 0.99;
+      timebase.length *= 0.95;
     else
-      timebase.length *= 1.01;
+      timebase.length *= 1.05;
     optopoulpe.bpm = timebase.bpm();
   });
 
