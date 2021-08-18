@@ -136,6 +136,7 @@ namespace objects
       Noise = 3,
       SawTooth = 4,
       Square = 5,
+      Triangle = 6,
     };
   }
 
