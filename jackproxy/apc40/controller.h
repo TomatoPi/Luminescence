@@ -7,6 +7,7 @@
 #include <array>
 #include <unordered_set>
 #include <vector>
+#include <mutex>
 #include <memory>
 
 #include <stdio.h>
@@ -55,6 +56,7 @@ private:
   MidiStack rt_queue;
 
   std::unordered_set<Control*> dirty_controls;
+  std::mutex lock;
 
 public:
 
@@ -98,13 +100,13 @@ public:
 
     rt_queue.clear();
     auto [begin, end] = midi_map.equal_range(event);
+    std::scoped_lock<std::mutex> _(lock);
     for (auto itr = begin ; itr != end ; ++itr)
     {
       auto& [key, pair] = *itr;
       auto& [ctrl, callback] = pair;
       callback(event);
       dirty_controls.emplace(ctrl);
-      fprintf(stderr, "catched\n");
     }
     return rt_queue;
   }
@@ -119,6 +121,7 @@ public:
 
   void update_dirty_controls()
   {
+    std::scoped_lock<std::mutex> _(lock);
     for (auto& ctrl : dirty_controls)
       ctrl->exec_routines();
     dirty_controls.clear();
