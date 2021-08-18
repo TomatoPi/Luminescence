@@ -134,6 +134,9 @@ namespace objects
       Sin = 1,
       Varislope = 2,
       Noise = 3,
+      SawTooth = 4,
+      Square = 5,
+      Triangle = 6,
     };
   }
 
@@ -147,7 +150,7 @@ namespace objects
   struct Modulation {
     static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Modulation;
     //
-    uint8_t kind : 2;   // ModulationKind
+    uint8_t kind : 4;   // ModulationKind
     uint8_t param1 : 7; // saturation | fixed_point | fixed_point
     uint8_t param2 : 7; // -- | 0 square, 127 triangle | variance
     // 2

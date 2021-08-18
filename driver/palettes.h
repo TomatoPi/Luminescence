@@ -16,4 +16,11 @@ static constexpr ColorPalette deep_blue_and_bright_yellow {
   { 0,   255,    255,     51  }  // BLUE
 };
 
+static constexpr ColorPalette test {
+//  min  max  pulsation  phase
+  { 0,   255,    255,      127  }, // RED
+  { 0,   255,    255,     51  }, // GREEN
+  { 0,   255,    0,     64  }  // BLUE
+};
+
 }

@@ -53,6 +53,34 @@ objects::Compo compos[8];
 
 SerialParser parser;
 
+void init_objects()
+{
+  master = {
+    20,  // bpm
+    0,    // sync  
+    10,  // brigthness
+    0
+  };
+  uint8_t idx = 0;
+  for (auto& compo : compos)
+  {
+    compo = {
+      idx++,
+      0,
+      { 0 }
+    };
+  }
+  compos[0].modulation.kind = objects::flags::ModulationKind::SawTooth;
+  compos[0].modulation.istimemod = 0;
+  compos[0].modulation.min = 0;
+  compos[0].modulation.max = 255;
+  
+  compos[1].modulation.kind = objects::flags::ModulationKind::SawTooth;
+  compos[1].modulation.istimemod = 1;
+  compos[1].modulation.min = 0;
+  compos[1].modulation.max = 255;
+}
+
 /// Remaps i that is in the range [0, max_i-1] to the range [0, 255]
 uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
 {
@@ -62,6 +90,7 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
 
 void setup()
 {
+  init_objects();
   Serial.begin(115200);
   FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
@@ -108,7 +137,7 @@ void loop()
     for (const auto& compo : compos) {
       value = apply_modulation(compo.modulation, value, time, space);
     }
-    leds[i] = Palettes::deep_blue_and_bright_yellow.eval(value);
+    leds[i] = Palettes::rainbow.eval(value);
   }
 
   if (master.strobe)
