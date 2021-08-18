@@ -53,9 +53,6 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
 {
   uint32_t didx = 0xFFFFFFFFu / max_i;
   return static_cast<uint8_t>((i * didx) >> 24);
-  
-  // float t = i / (float) max_i;
-  // return static_cast<uint8_t>(t * 255);
 }
 
 void setup()
