@@ -79,10 +79,35 @@ struct {
   }
 } timebase;
 
-std::queue<std::vector<uint8_t>> serial_queue;
+std::unordered_map<void*, SerialPacket> dirty_stack;
 apc::APC40& APC40 = apc::APC40::Get();
 
-objects::RGB optopoulpe;
+objects::Master master;
+std::array<objects::Compo, apc::PadsColumnsCount> compos;
+
+void init_objects()
+{
+  master = {
+    120,  // bpm
+    0,    // sync  
+    127,  // brigthness
+    0
+  };
+  uint8_t idx = 0;
+  for (auto& compo : compos)
+  {
+    compo = {
+      idx++,
+      0,
+      { 0 }
+    };
+  }
+}
+
+template <typename T>
+void arduino_push(const T& obj, uint8_t flags = 0) {
+  dirty_stack.insert_or_assign((void*)&obj, Serializer::serialize(obj, flags));
+}
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
@@ -170,18 +195,27 @@ int main(int argc, const char* argv[])
 
   jack_free(ports_names);
 
+  apc::Panic::Get()->add_routine([&](Controller::Control*){
+    arduino_push(master);
+    for (const auto& compo : compos)
+      arduino_push(compo);
+  });
+
   apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.r = static_cast<apc::Encoder*>(ctrl)->get_value();
+      master.strobe = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
   });
   apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.g = static_cast<apc::Encoder*>(ctrl)->get_value();
+      master.istimemod = static_cast<apc::Encoder*>(ctrl)->get_value() >> 7;
   });
   apc::Encoder::Get(0, 2, 0)->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.b = static_cast<apc::Encoder*>(ctrl)->get_value();
+      master.pulse_width = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
+  });
+  apc::Encoder::Get(0, 5, 0)->add_routine([&](Controller::Control* ctrl){
+      // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
   });
 
   apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
-      optopoulpe.x = static_cast<apc::MainFader*>(ctrl)->get_value();
+      master.brightness = static_cast<apc::MainFader*>(ctrl)->get_value();
   });
 
   apc::Fader::Get(0)->add_routine([&](Controller::Control* ctrl){
@@ -191,30 +225,34 @@ int main(int argc, const char* argv[])
     jack_time_t t = jack_get_time();
     timebase.length = t - timebase.last_hit;
     timebase.last_hit = t;
-    optopoulpe.bpm = timebase.bpm();
+    master.bpm = timebase.bpm();
+    arduino_push(master);
   });
 
   apc::IncTempo::Get()->add_routine([&](Controller::Control* ctrl){
-    optopoulpe.sync_correction = std::min((unsigned int)optopoulpe.sync_correction + 10, 255u);
-    optopoulpe.bpm = timebase.bpm();
+    master.sync_correction = (master.sync_correction + 10) % 255;
+    arduino_push(master);
   });
   apc::DecTempo::Get()->add_routine([&](Controller::Control* ctrl){
-    optopoulpe.sync_correction = std::max((unsigned int)optopoulpe.sync_correction + 10, 0u);
-    optopoulpe.bpm = timebase.bpm();
+    master.sync_correction = (master.sync_correction - 10) % 255;
+    arduino_push(master);
   });
 
   apc::SyncPot::Get()->add_routine([&](Controller::Control* ctrl){
     uint8_t val = static_cast<apc::SyncPot*>(ctrl)->get_value();
     if (val < 64)
-      timebase.length *= 0.95;
+      timebase.length *= 0.96;
     else
-      timebase.length *= 1.05;
-    optopoulpe.bpm = timebase.bpm();
+      timebase.length *= 1.04;
+    master.bpm = timebase.bpm();
+    arduino_push(master);
   });
 
-  Serializer serializer;
+  init_objects();
 
   // APC40.dump();
+
+  std::unordered_map<void*, SerialPacket>::iterator last_sent_packet;
 
   while (1)
   {
@@ -224,7 +262,9 @@ int main(int argc, const char* argv[])
     bool received_start = false;
     do
     {
+      memset(buffer, 0, 512);
       res = serialport_read_until(arduino, buffer, STOP_BYTE, 512, framerate);
+      uint8_t* raw = (uint8_t*)buffer;
       if (res == -2)
       {
         ++timeout_cptr;
@@ -232,7 +272,13 @@ int main(int argc, const char* argv[])
           break;
         continue;
       }
-      if (static_cast<uint8_t>(*buffer) == static_cast<uint8_t>(STOP_BYTE))
+      if (raw[0] == 0 && raw[1] == static_cast<uint8_t>(STOP_BYTE))
+      {
+        // fprintf(stderr, "RCV : %d : ACK\n", res);
+        dirty_stack.erase(last_sent_packet);
+        received_start = true;
+      }
+      if (raw[0] == static_cast<uint8_t>(STOP_BYTE))
       {
         // fprintf(stderr, "RCV : %d : START\n", res);
         received_start = true;
@@ -250,14 +296,23 @@ int main(int argc, const char* argv[])
     if (received_start)
     {
       received_start = false;
-      const uint8_t* raw = serializer.serialize(optopoulpe);
-      for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
+      if (dirty_stack.empty())
       {
-        uint8_t byte = raw[i];
-        serialport_writebyte(arduino, byte);
-        // fprintf(stderr, "0x%02x ", byte); 
+        serialport_writebyte(arduino, STOP_BYTE);
       }
-      // fprintf(stderr, "\n");
+      else
+      {
+        last_sent_packet = dirty_stack.begin();
+        const auto& [_, packet] = *last_sent_packet;
+        const uint8_t* raw = Serializer::bytestream(packet);
+        for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
+        {
+          uint8_t byte = raw[i];
+          serialport_writebyte(arduino, byte);
+          // fprintf(stderr, "0x%02x ", byte); 
+        }
+        // fprintf(stderr, "\n");
+      }
     }
 
     // while (!serial_queue.empty())

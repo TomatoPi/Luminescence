@@ -40,7 +40,9 @@ coef_t master_clock = coef_t(0);
 Range pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, 0);
 color_t leds[MaxLedsCount];
 
-objects::RGB optopoulpe;
+objects::Master master;
+objects::Compo compos[8];
+
 SerialParser parser;
 
 void setup()
@@ -76,7 +78,7 @@ void loop()
   static unsigned long master_clock_period = 0;
   static unsigned long master_last_timestamp = 0;
   
-  master_clock_period = 1 + (60lu * 1000lu) / ((optopoulpe.bpm + 1));
+  master_clock_period = 1 + (60lu * 1000lu) / ((master.bpm + 1));
   uint32_t dt = 0xFFFFFFFFu / (master_clock_period);
   
   master_clock += (millis() - master_last_timestamp) * dt;
@@ -87,7 +89,7 @@ void loop()
 //  Serial.println(dt);
 //  Serial.write(STOP_BYTE);
 
-  uint8_t value = (master_clock >> 24) + optopoulpe.sync_correction;
+  uint8_t value = (master_clock >> 24) + master.sync_correction;
 
   static unsigned long last_packet_timestamp = 0;
   static unsigned long message_begin_timestamp = 0;
@@ -98,12 +100,12 @@ void loop()
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
-  const uint8_t* c = (const uint8_t*)&optopoulpe;
+  const CRGB c = CRGB(127, 0, 200);
   for (index_t i = 0 ; i < MaxLedsCount ; ++i)
   {
     leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
   }
-  nscale8_video(leds, MaxLedsCount, optopoulpe.x);
+  nscale8_video(leds, MaxLedsCount, master.brightness);
   unsigned long compute_end = millis();
 
   unsigned long draw_begin = millis();
@@ -203,11 +205,25 @@ int update_frame() {
 //        Serial.print(c[2], HEX); Serial.print(" ");
 //        Serial.print(c[3], HEX);
 //        Serial.write(STOP_BYTE);
-        optopoulpe = result.read<objects::RGB>();
-        frame_received = true;
+        switch (result.flags)
+        {
+          case objects::flags::Master:
+            master = result.read<objects::Master>();
+            break;
+          case objects::flags::Composition:
+          {
+            objects::Compo tmp = result.read<objects::Compo>();
+            compos[tmp.index] = tmp;
+            break;
+          }
+        }
+        // Send ACK
+        Serial.write(0);
+        Serial.write(STOP_BYTE);
         break;
       }
       case ParsingResult::Status::EndOfStream:
+        frame_received = true;
         break;
       default:
 //        Serial.print("error : ");
