@@ -4,6 +4,8 @@
 
 #include <FastLED.h>
 
+#include "apply_modulation.h"
+
 /*
 Motifs :
 
@@ -44,6 +46,16 @@ objects::Master master;
 objects::Compo compos[8];
 
 SerialParser parser;
+
+/// Remaps i that is in the range [0, max_i-1] to the range [0, 255]
+uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
+{
+  uint32_t didx = 0xFFFFFFFFu / max_i;
+  return static_cast<uint8_t>((i * didx) >> 24);
+  
+  // float t = i / (float) max_i;
+  // return static_cast<uint8_t>(t * 255);
+}
 
 void setup()
 {
@@ -89,7 +101,7 @@ void loop()
 //  Serial.println(dt);
 //  Serial.write(STOP_BYTE);
 
-  uint8_t value = (master_clock >> 24) + master.sync_correction;
+  uint8_t time = (master_clock >> 24) + master.sync_correction;
 
   static unsigned long last_packet_timestamp = 0;
   static unsigned long message_begin_timestamp = 0;
@@ -101,43 +113,14 @@ void loop()
 
   unsigned long compute_begin = millis();
 
-  {
-    using namespace objects;
-    const Modulation& mod = compos[0].modulation;
-    switch (mod.kind)
-    {
-      case flags::ModulationKind::None:
-      {
-        const CRGB c = CRGB(127, 0, 200);
-        for (index_t i = 0 ; i < MaxLedsCount ; ++i)
-        {
-          leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
-        }
-        break;
-      }
-      case flags::ModulationKind::Sin:
-      {
-        if (mod.istimemod)
-        {
-          const CRGB c = CRGB(map8(sin8(value), mod.min, mod.max), 0, 200);
-          for (index_t i = 0 ; i < MaxLedsCount ; ++i)
-          {
-            leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
-          }
-        }
-        else
-        {
-          const CRGB c = CRGB(127, 0, 200);
-          uint32_t didx = 0xFFFFFFFFu / MaxLedsCount;
-          for (index_t i = 0 ; i < MaxLedsCount ; ++i)
-          {
-            uint8_t value = (i * didx) >> 24;
-            leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value + i));
-          }
-        }
-        break;
-      }
+  for (index_t i = 0; i < MaxLedsCount; ++i) {
+    uint8_t space = map_to_0_255(i, MaxLedsCount);
+    uint8_t value = 0;
+    for (const auto& compo : compos) {
+      value = apply_modulation(compo.modulation, value, time, space);
     }
+    const CRGB c{127, 0, 200};
+    leds[i] = CRGB(c[0], c[1]+ sin8(value), c[2] + cos8(value));
   }
 
   nscale8_video(leds, MaxLedsCount, master.brightness);
