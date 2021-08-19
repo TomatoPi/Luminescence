@@ -126,17 +126,33 @@ namespace objects
       Setup,
       Master,
       Composition,
+      Oscilator,
       Modulation,
     };
 
-    enum ModulationKind {
-      None = 0,
-      Sin = 1,
-      Varislope = 2,
-      Noise = 3,
-      SawTooth = 4,
-      Square = 5,
-      Triangle = 6,
+    enum OscillatorKind {
+      Sin = 0,
+      Varislope,
+      Noise,
+      SawTooth,
+      Square,
+      Triangle,
+    };
+
+    enum Modulation {
+      RebaseOnIndex = 0x00,
+      RebaseOnTime = 0x01,
+      RebaseTimeOnIndex = 0x02,
+      RebaseIndexOnTime = 0x03,
+    };
+
+    enum Blend {
+      Keep = 0x00,
+      Replace = 0x01,
+      Add = 0x02,
+      Substract = 0x03,
+      Min = 0x04,
+      Max = 0x05,
     };
   }
 
@@ -147,20 +163,19 @@ namespace objects
     uint8_t driver_index : 2;
   };
 
-  struct Modulation {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Modulation;
+  struct Oscilator {
+    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Oscilator;
     //
+    uint8_t index : 2;
     uint8_t kind : 4;   // ModulationKind
     uint8_t param1 : 7; // saturation | fixed_point | fixed_point
     uint8_t param2 : 7; // -- | 0 square, 127 triangle | variance
-    // 2
-    uint8_t istimemod : 1; // 1 if modulation is timed, 0 if spatial (on pixel index)
-    uint8_t subdivide : 3; // [0-7] multiply clock by 2 ^ (subdivide - 4)
+    // 2 + 2
+    uint8_t source : 2;    // [master, osc1, osc2, osc3]
+    uint8_t subdivide : 3; // [0-7] multiply clock by 2 ^ (subdivide - 5)
     uint8_t phase_distort_o : 6; // [0 - 64] See https://www.desmos.com/calculator/n0k6rxr5sw
     uint8_t phase_distort_d : 6; // [0 - 64] to experiment phase distortion
-    // 4
-    uint8_t min : 8;
-    uint8_t max : 8;
+    // 4 + 3
   };
 
   struct Master {
@@ -184,7 +199,15 @@ namespace objects
     uint8_t index : 4;    // [0 - 8] 8 is master
     uint8_t palette : 4;  // [0 - 15]
     // 1
-    Modulation modulation;
-    // 5
+    uint8_t modulation : 2;
+    uint8_t timesource : 2;
+    uint16_t timemod_min : 7;
+    uint16_t timemod_max : 7;
+    uint16_t indexmod_min : 7;
+    uint16_t indexmod_max : 7;
+    uint8_t time_blend : 3;
+    uint8_t index_blend : 3;
+    // 5 + 2
+    
   };
 }

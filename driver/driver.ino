@@ -45,13 +45,39 @@ static constexpr index_t MaxLedsCount = 30 * 20;
 
 color_t leds[MaxLedsCount];
 
-Clock master_clock;
 Clock strobe_clock;
+Clock osc_clocks[4];
+Clock& master_clock = osc_clocks[3];
 
 objects::Master master;
 objects::Compo compos[8];
+objects::Oscilator oscillators[3];
 
 SerialParser parser;
+
+uint8_t evalOscillator(const objects::Oscilator& osc, uint8_t time, uint8_t min, uint8_t max)
+{
+  const uint8_t d = osc.phase_distort_d << 2;
+  const uint8_t o = osc.phase_distort_o << 2;
+
+  uint8_t pp = (uint16_t)time + 256 - o;
+  pp = (pp < d) ? (((uint16_t)pp + 255 - d << 1) / ((255 - d) << 1)) >> 8 : (pp / (d << 1)) >> 8;
+  pp += o;
+
+  uint8_t value = 0;
+  switch (osc.kind)
+  {    
+    case objects::flags::OscillatorKind::Sin:      value = sin8(pp); break;
+    case objects::flags::OscillatorKind::SawTooth: value = pp; break;
+    case objects::flags::OscillatorKind::Square:   value = pp < 127 ? 0 : 255; break;
+    case objects::flags::OscillatorKind::Triangle: value = triwave8(pp); break;
+    case objects::flags::OscillatorKind::Noise:    value = random8(pp); break;
+    default:
+      return 0;
+  }
+
+  return map8(value, min, max);
+}
 
 void init_objects()
 {
@@ -67,18 +93,9 @@ void init_objects()
     compo = {
       idx++,
       0,
-      { 0 }
+      0
     };
   }
-  compos[0].modulation.kind = objects::flags::ModulationKind::SawTooth;
-  compos[0].modulation.istimemod = 0;
-  compos[0].modulation.min = 0;
-  compos[0].modulation.max = 255;
-  
-  compos[1].modulation.kind = objects::flags::ModulationKind::SawTooth;
-  compos[1].modulation.istimemod = 1;
-  compos[1].modulation.min = 0;
-  compos[1].modulation.max = 255;
 }
 
 /// Remaps i that is in the range [0, max_i-1] to the range [0, 255]
@@ -121,9 +138,20 @@ void loop()
   master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
   strobe_clock.setPeriod(master_clock.period >> master.strobe);
 
+  for (uint8_t i = 0 ; i < 3 ; ++i)
+  {
+    uint8_t subdivide = oscillators[i].subdivide;
+    uint32_t period = osc_clocks[oscillators[i].source].period;
+    if (subdivide < 5)
+      period = period >> (5 - subdivide);
+    else
+      period = period << subdivide;
+    osc_clocks[i].setPeriod(period);
+  }
+
   Clock::Tick(millis());
 
-  uint8_t time = master_clock.get8() + master.sync_correction;
+  uint8_t time8 = master_clock.get8() + master.sync_correction;
 
   unsigned long update_begin = millis();
   drop_count += update_frame();
@@ -131,24 +159,50 @@ void loop()
 
   unsigned long compute_begin = millis();
 
-  Serial.print("Compo : ");
-  Serial.println(master.active_compo);
-  Serial.write(STOP_BYTE);
-
   if (8 <= master.active_compo)
   {
     // Do something nice with a sequencer
   }
   else
   {
-    const auto& palette = Palettes::Get(compos[master.active_compo].palette);
-    for (index_t i = 0; i < MaxLedsCount; ++i) {
-      uint8_t space = map_to_0_255(i, MaxLedsCount);
-      uint8_t value = (i * 255) / MaxLedsCount;
-      for (const auto& compo : compos) {
-      // value = apply_modulation(compo.modulation, value, time, space);
+    const auto& compo = compos[master.active_compo];
+    const auto& palette = Palettes::Get(compo.palette);
+    const uint16_t pixel_dt = 0xFFFFu / MaxLedsCount;
+    uint16_t p_value = 0;
+
+    switch (compo.modulation)
+    {
+      case objects::flags::RebaseOnIndex:
+      {
+        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
+        {
+          leds[i] = palette.eval(p_value >> 8);
+        }
       }
-      leds[i] = palette.eval(value); //Palettes::rainbow.eval(value);
+      break;
+      case objects::flags::RebaseOnTime:
+      {
+        uint8_t time = osc_clocks[compo.timesource].get8();
+        time = evalOscillator(oscillators[compo.timesource], time, compo.timemod_min, compo.timemod_max);
+        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
+        {
+          leds[i] = palette.eval(time);
+        }
+      }
+      break;
+      case objects::flags::RebaseTimeOnIndex:
+      {
+        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
+        {
+          leds[i] = palette.eval(p_value >> 8);
+        }
+      }
+      break;
+      case objects::flags::RebaseIndexOnTime:
+      {
+
+      }
+      break;
     }
   }
   unsigned long compute_end = millis();
