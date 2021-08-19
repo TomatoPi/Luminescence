@@ -167,6 +167,10 @@ void loop()
     }
     else // running pulses
     {
+      /*
+      Creates realy nice tracers on the ribbon.
+      Could be extracted to apply it on any composition
+      */
       const index_t pw_inpixels = ((uint64_t)pulse_width * MaxLedsCount) >> 32;
       const index_t ck_inpixels = ((uint64_t)strobe_clock.clock * MaxLedsCount) >> 32;
       if (MaxLedsCount < ck_inpixels + pw_inpixels)
