@@ -10,12 +10,25 @@ struct PaletteParams {
   uint8_t pulsation;
   uint8_t phase;
 
-  uint8_t eval(uint8_t t) const;
+  // Theses functions have to be inilined
+  uint8_t eval(uint8_t t) const
+  {
+    return map8(cos8(pulsation * t + phase), min_value, max_value);
+  }
 };
 
 struct ColorPalette 
 {
-  CRGB eval(uint8_t t) const;
+  // Same
+  CRGB eval(uint8_t t) const
+  {
+  return {
+      params_r.eval(t),
+      params_g.eval(t),
+      params_b.eval(t)
+    };
+  }
+  
   PaletteParams params_r;
   PaletteParams params_g;
   PaletteParams params_b;

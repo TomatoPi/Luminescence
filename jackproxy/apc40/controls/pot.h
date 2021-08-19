@@ -20,14 +20,6 @@ namespace ctrls
       value = event.d2 << 1;
     }
 
-    void send_refresh() override
-    {
-      Base::send_refresh();
-      MidiMsg tmp(signature);
-      tmp.d2 = value >> 1;
-      controller->push_event(tmp);
-    }
-
   public:
 
     Pot(Controller* ctrl, uint8_t channel, uint8_t d1) :
@@ -36,7 +28,7 @@ namespace ctrls
     {
       controller->register_mapping(this, signature, std::bind_front(&Pot::handle_message, this));
     }
-    
+
     uint8_t get_value() const { return value; }
   };
 }

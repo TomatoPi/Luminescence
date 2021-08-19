@@ -175,13 +175,14 @@ namespace objects
     uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
     uint8_t unused : 3;
     // 5
+    uint8_t active_compo : 4;
   };
 
   struct Compo {
     static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Composition;
     //
-    uint8_t index : 4;                // [0 - 8] 8 is master
-    uint8_t unused : 4;
+    uint8_t index : 4;    // [0 - 8] 8 is master
+    uint8_t palette : 4;  // [0 - 15]
     // 1
     Modulation modulation;
     // 5

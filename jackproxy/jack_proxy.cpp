@@ -78,29 +78,6 @@ struct {
 apc::APC40& APC40 = apc::APC40::Get();
 std::array<std::pair<Arduino*, objects::Setup>, 2> arduinos;
 
-objects::Master master;
-std::array<objects::Compo, apc::PadsColumnsCount> compos;
-
-
-void init_objects()
-{
-  master = {
-    120,  // bpm
-    0,    // sync  
-    127,  // brigthness
-    0
-  };
-  uint8_t idx = 0;
-  for (auto& compo : compos)
-  {
-    compo = {
-      idx++,
-      0,
-      { 0 }
-    };
-  }
-}
-
 template <typename T>
 void push(const T& obj, uint8_t flags = 0)
 {
@@ -129,11 +106,11 @@ int jack_callback(jack_nframes_t nframes, void* args)
     if (3 != event.size)
       continue;
 
-    // for (size_t i = 0 ; i < 3 ; ++i)
-    // {
-    //   fprintf(stderr, "0x%02x ", event.buffer[i]);
-    // }
-    // fprintf(stderr, "\n");
+    for (size_t i = 0 ; i < 3 ; ++i)
+    {
+      fprintf(stderr, "0x%02x ", event.buffer[i]);
+    }
+    fprintf(stderr, "\n");
 
     auto& responses = APC40.handle_midi_event((const uint8_t*)event.buffer);
 
@@ -197,6 +174,11 @@ int main(int argc, const char* argv[])
 
   jack_free(ports_names);
 
+
+  objects::Master master;
+  std::array<objects::Compo, apc::PadsColumnsCount> compos;
+
+
   apc::Panic::Get()->add_routine([&](Controller::Control*){
     push(master);
     for (const auto& compo : compos)
@@ -219,6 +201,15 @@ int main(int argc, const char* argv[])
   apc::TopEncoders::Get(3, 0)->add_routine([&](Controller::Control* ctrl){
       // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
   });
+
+  for (size_t bank = 0 ; bank < apc::TracksCount ; ++bank)
+  {
+    apc::BottomEncoders::Get(bank, 0, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].palette = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 4;
+      // fprintf(stderr, "Palette %d %d\n", bank, compos[bank].palette);
+      push(compos[bank]);
+    });
+  }
 
   apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
       master.brightness = static_cast<apc::MainFader*>(ctrl)->get_value();
@@ -253,8 +244,31 @@ int main(int argc, const char* argv[])
     push(master);
   });
   
+  apc::TrackSelect::Generate([&](uint8_t track){
+    fprintf(stderr, "Track : %d\n", track);
+    apc::TrackSelect::Get(track)->add_routine([track, &master](Controller::Control* ctrl){
+      master.active_compo = track;
+      fprintf(stderr, "Track : %d\n", track);
+      push(master);
+    });
+  });
+
   {
-    init_objects();
+    master = {
+      120,  // bpm
+      0,    // sync  
+      127,  // brigthness
+      0
+    };
+    uint8_t idx = 0;
+    for (auto& compo : compos)
+    {
+      compo = {
+        idx++,
+        0,
+        { 0 }
+      };
+    }
     for (auto& pair : arduinos)
     {
       auto& [arduino, setup] = pair;
@@ -269,4 +283,8 @@ int main(int argc, const char* argv[])
   }
   
   return 0;
+}
+
+void init_objects()
+{
 }

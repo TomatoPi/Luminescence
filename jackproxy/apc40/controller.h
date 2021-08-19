@@ -103,7 +103,7 @@ public:
     std::scoped_lock<std::mutex> _(lock);
     for (auto itr = begin ; itr != end ; ++itr)
     {
-      // fprintf(stderr, "Catched\n");
+      fprintf(stderr, "Catched\n");
       auto& [key, pair] = *itr;
       auto& [ctrl, callback] = pair;
       callback(event);

@@ -94,8 +94,8 @@ namespace ctrls
 
   public:
 
-    Trigger(Controller* ctrl, uint8_t channel, uint8_t d1) : 
-      Control(ctrl), signature({0x90 | (channel & 0x0F), d1, 0})
+    Trigger(Controller* ctrl, uint8_t channel, uint8_t d1, uint8_t d0 = 0x90) : 
+      Control(ctrl), signature({(d0 & 0xF0) | (channel & 0x0F), d1, 0})
     {
       controller->register_mapping(this, signature, make_callback([this](){ this->handle_event(); }));
     }

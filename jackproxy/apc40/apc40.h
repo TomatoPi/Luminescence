@@ -20,6 +20,8 @@ namespace apc
 
   static constexpr const size_t FadersCount = 8;
 
+  static constexpr const size_t TracksCount = 8;
+
   /////////////////////////////////
   /// Pads
   /////////////////////////////////
@@ -89,13 +91,13 @@ namespace apc
     void handle_event() override {
       Base::handle_event();
       for (auto& pad : Get())
-        pad->is_active = (pad == this); 
+        pad->is_active = (pad == this);
     }
 
   public:
 
     TrackSelect(Controller* ctrl, uint8_t index) :
-      Base(ctrl, index, 0x17), Inst(index)
+      Base(ctrl, index, 0x17, 0xB0), Inst(index)
       {}
 
     bool isActive() const { return is_active; }
@@ -151,6 +153,24 @@ namespace apc
   /// Faders
   //////////////////////////////////////
 
+  // A - B panning between two things ?
+  class Faders :
+    public ctrls::Pot,
+    public ArrayInstanced<Faders, FadersCount>
+  {
+  public:
+    using Base = ctrls::Pot;
+    using Inst = ArrayInstanced<Faders, FadersCount>;
+
+  public:
+
+    Faders(Controller* ctrl, uint8_t index) :
+      Base(ctrl, index, 0x07),
+      Inst(index)
+    {
+    }
+  };
+
   // Global brightness
   class MainFader :
     public ctrls::Pot,
@@ -168,23 +188,9 @@ namespace apc
     }
   };
 
-  // Don't know what to do with them
-  class Faders :
-    public ctrls::Pot,
-    public ArrayInstanced<Faders, FadersCount>
-  {
-  public:
-    using Base = ctrls::Pot;
-    using Inst = ArrayInstanced<Faders, FadersCount>;
-
-  public:
-
-    Faders(Controller* ctrl, uint8_t index) :
-      Base(ctrl, index, 0x07),
-      Inst(index)
-    {
-    }
-  };
+  /////////////////////////////////////
+  /// Triggers
+  /////////////////////////////////////
 
   template <typename T, uint8_t D1>
   class MonoTrigger :
@@ -249,18 +255,24 @@ namespace apc
   private:
     APC40()
     {
+      PadsMatrix::Generate([this](uint8_t i, uint8_t j){addControl<PadsMatrix>(i,j);});
+      PadsBottomRow::Generate([this](uint8_t i){addControl<PadsBottomRow>(i);});
+      PadsMaster::Generate([this](uint8_t i){addControl<PadsMaster>(i);});
+
+      TrackSelect::Generate([this](uint8_t i){addControl<TrackSelect>(i);});
+
+      TopEncoders::Generate([this](uint8_t i, uint8_t j){addControl<TopEncoders>(i,j);});
+      BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
+
+      Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
       addControl<MainFader>();
+
       addControl<Panic>();
 
       addControl<TapTempo>();
       addControl<IncTempo>();
       addControl<DecTempo>();
       addControl<SyncPot>();
-
-      Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
-      PadsMatrix::Generate([this](uint8_t i, uint8_t j){addControl<PadsMatrix>(i,j);});
-      TopEncoders::Generate([this](uint8_t i, uint8_t j){addControl<TopEncoders>(i,j);});
-      BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
     }
   public:
     static APC40& Get() { static APC40 apc; return apc; }

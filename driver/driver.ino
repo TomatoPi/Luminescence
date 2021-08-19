@@ -131,13 +131,25 @@ void loop()
 
   unsigned long compute_begin = millis();
 
-  for (index_t i = 0; i < MaxLedsCount; ++i) {
-    uint8_t space = map_to_0_255(i, MaxLedsCount);
-    uint8_t value = 0;
-    for (const auto& compo : compos) {
-     // value = apply_modulation(compo.modulation, value, time, space);
+  Serial.print("Compo : ");
+  Serial.println(master.active_compo);
+  Serial.write(STOP_BYTE);
+
+  if (8 <= master.active_compo)
+  {
+    // Do something nice with a sequencer
+  }
+  else
+  {
+    const auto& palette = Palettes::Get(compos[master.active_compo].palette);
+    for (index_t i = 0; i < MaxLedsCount; ++i) {
+      uint8_t space = map_to_0_255(i, MaxLedsCount);
+      uint8_t value = (i * 255) / MaxLedsCount;
+      for (const auto& compo : compos) {
+      // value = apply_modulation(compo.modulation, value, time, space);
+      }
+      leds[i] = palette.eval(value); //Palettes::rainbow.eval(value);
     }
-    leds[i] = CRGB(255, 14, 50); //Palettes::rainbow.eval(value);
   }
   unsigned long compute_end = millis();
   
