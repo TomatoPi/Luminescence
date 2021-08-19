@@ -1,6 +1,9 @@
 #pragma once
 
 #include "controller.h"
+#include "instanced.h"
+#include "controls/pad.h"
+#include "controls/pot.h"
 
 #include <cassert>
 
@@ -10,287 +13,234 @@ namespace apc
   static constexpr const size_t PadsColumnsCount = 8;
 
   static constexpr const size_t BanksCount = 9;
+  static constexpr const size_t MasterBank = 8;
 
-  static constexpr const size_t EncodersBlockSize = 8;
-  static constexpr const size_t EncodersRowsCount = 4;
+  static constexpr const size_t EncodersRowsCount = 2;
   static constexpr const size_t EncodersColumnsCount = 4;
 
   static constexpr const size_t FadersCount = 8;
 
-  class Pad : 
-    public Controller::Control
+  /////////////////////////////////
+  /// Pads
+  /////////////////////////////////
+
+  // Will enable - disable modulation stages on a compo
+  class PadsMatrix : 
+    public ctrls::TogglePad,
+    public D2ArrayInstanced<PadsMatrix, PadsColumnsCount, PadsRowsCount>
   {
-  public:
-    using Instances = std::array<std::array<Pad*,PadsRowsCount+1>,PadsColumnsCount+1>;
   private:
-    static Instances _pads;
-
-    MidiMsg signature_on;
-    MidiMsg signature_off;
-    bool status = false;
-
-    void handleOn()
-    {
-      status = !status;
-    }
-
-    void handleOff()
-    {
-      send_refresh();
-    }
+    using Base = ctrls::TogglePad;
+    using Inst = D2ArrayInstanced<PadsMatrix, PadsColumnsCount, PadsRowsCount>;
 
   public:
 
-    void send_refresh() override
+    PadsMatrix(Controller* ctrl, uint8_t col, uint8_t row) :
+      Base(ctrl, col, 0x35 + row), Inst(col, row)
     {
-      controller->push_event(status ? signature_on : signature_off);
-    }
-
-    Pad(Controller* ctrl, uint8_t col, uint8_t row, uint8_t master, uint8_t bottom) :
-      Controller::Control(ctrl),
-      signature_on({0x90 | col, 0x35 + row, 0x7f}),
-      signature_off({0x80 | col, 0x35 + row, 0x7f})
-    {
-      signature_on.c = signature_off.c = master ? 0 : col;
-      signature_on.d1 = signature_off.d1 = (master ? 0x51 : 0x34) + (bottom ? 0 : row + 1);
-      controller->register_mapping(
-        this,
-        signature_on,
-        make_callback(
-          [this](){ handleOn(); }));
-      controller->register_mapping(
-        this,
-        signature_off,
-        make_callback(
-          [this](){ handleOff(); }));
-      _pads[col][row] = this;
-      fprintf(stderr, "%d %d %02x %02x %02x %02x\n", col, row, signature_on.s, signature_on.c, signature_on.d1, signature_on.d2);
-    }
-
-    static Instances& Get()
-    {
-      return _pads;
-    }
-    static Pad* Get(uint8_t col, uint8_t row)
-    {
-      return _pads[col][row];
     }
   };
 
-  template <uint8_t CC>
-  class Pot :
-    public Controller::Control
+  // We'll use this to momentary show a compo
+  // or to send it as a boolean input to compo's param
+  class PadsBottomRow :
+    public ctrls::MomentaryPad,
+    public ArrayInstanced<PadsBottomRow, PadsColumnsCount>
   {
-  protected:
-
-    MidiMsg signature;
-    uint8_t value = 0;
-
-    void handle_message(const MidiMsg& event)
-    {
-      value = event.d2 << 1;
-      do_handle(event);
-      fprintf(stderr, "Catched\n");
-    }
-
-    virtual void do_handle(const MidiMsg& event) {}
-
-    void register_mappings()
-    {
-      controller->register_mapping(this, signature, std::bind_front(&Pot::handle_message, this));
-    }
-
-    void send_refresh() override
-    {
-      MidiMsg tmp(signature);
-      tmp.d2 = value >> 1;
-      controller->push_event(tmp);
-    }
-
-  public:
-
-    Pot(Controller* ctrl) :
-      Control(ctrl),
-      signature({0xb0, CC, 0, 0})
-    {
-    }
-
-    uint8_t get_value() const { return value; }
-  };
-
-  class Encoder :
-    public Pot<0>
-  {
-  public:
-    using Base = Pot<0>;
-    using Instances = std::array<std::array<std::array<Encoder*,EncodersRowsCount>, EncodersColumnsCount>, BanksCount>;
   private:
-    static Instances _encoders;
+    using Base = ctrls::MomentaryPad;
+    using Inst = ArrayInstanced<PadsBottomRow, PadsColumnsCount>;
 
   public:
 
-    Encoder(Controller* ctrl, uint8_t bank, uint8_t block, uint8_t index) :
-      Base(ctrl)
-    {
-      signature.s = 0xb0;
-      signature.c = bank;
-      signature.d1 = (0 == block ? 0x30 : 0x10) + index;
-      _encoders[bank][index % 4][(block * 2) + (index / 4)] = this;
-      register_mappings();
-    }
-
-    static Instances& Get()
-    {
-      return _encoders;
-    }
-    static Encoder* Get(uint8_t bank, uint8_t col, uint8_t row)
-    {
-      return _encoders[bank][col][row];
-    }
+    PadsBottomRow(Controller* ctrl, uint8_t index) :
+      Base(ctrl, index, 0x34), Inst(index)
+      {}
   };
 
-  class MainFader :
-    public Pot<0x0e>
+  // Will enable / disable global effects
+  class PadsMaster :
+    public ctrls::TogglePad,
+    public ArrayInstanced<PadsMaster, PadsRowsCount>
   {
-  public:
-    using Base = Pot<0x0e>;
   private:
-    static MainFader* _instance;
+    using Base = ctrls::TogglePad;
+    using Inst = ArrayInstanced<PadsMaster, PadsRowsCount>;
 
   public:
 
-    void send_refresh() override {}
-
-    MainFader(Controller* ctrl) :
-      Base(ctrl)
-    {
-      assert(_instance == nullptr);
-      signature.s = 0xb0;
-      signature.c = 0;
-      signature.d1 = 0x0e;
-      _instance = this;
-      register_mappings();
-    }
-
-    static MainFader* Get()
-    {
-      return _instance;
-    }
+    PadsMaster(Controller* ctrl, uint8_t index) :
+      Base(ctrl, 0, 0x52 + index), Inst(index)
+      {}
   };
 
-  class Fader :
-    public Pot<0x07>
+  // Probably has nth to do, all is handle natively by the controller
+  // Change edited track
+  class TrackSelect :
+    public ctrls::Trigger,
+    public ArrayInstanced<TrackSelect, BanksCount>
   {
-  public:
-    using Base = Pot<0x07>;
-    using Instances = std::array<Fader*, FadersCount>;
   private:
-    static Instances _instances;
+    using Base = ctrls::Trigger;
+    using Inst = ArrayInstanced<TrackSelect, BanksCount>;
+
+    bool is_active = false;
+
+    void handle_event() override {
+      Base::handle_event();
+      for (auto& pad : Get())
+        pad->is_active = (pad == this); 
+    }
 
   public:
 
-    void send_refresh() override {}
+    TrackSelect(Controller* ctrl, uint8_t index) :
+      Base(ctrl, index, 0x17), Inst(index)
+      {}
 
-    Fader(Controller* ctrl, uint8_t index) :
-      Base(ctrl)
-    {
-      signature.s = 0xb0;
-      signature.c = index;
-      signature.d1 = 0x07;
-      register_mappings();
-      _instances[index] = this;
-    }
+    bool isActive() const { return is_active; }
 
-    static Instances& Get()
-    {
-      return _instances;
-    }
-    static Fader* Get(uint8_t index)
-    {
-      return _instances[index];
-    }
+    static TrackSelect* GetMaster() { return Get(MasterBank); }
   };
 
-  template <uint8_t CC>
-  class Trigger :
-    public Controller::Control
+  ////////////////////////////////
+  /// Encoders
+  ////////////////////////////////
+
+  // Used to edit LFOs values, or kinda global params
+  class TopEncoders :
+    public ctrls::Pot,
+    public D2ArrayInstanced<TopEncoders, EncodersColumnsCount, EncodersRowsCount>
   {
-  protected:
-    static Trigger* _instance;
-    MidiMsg signature = {0x90, CC, 0x7f};
-
-    void handle_event(const MidiMsg& event) 
-    {
-      callback(event);
-    }
-
-    virtual void callback(const MidiMsg&) {}
+  public:
+    using Base = ctrls::Pot;
+    using Inst = D2ArrayInstanced<TopEncoders, EncodersColumnsCount, EncodersRowsCount>;
   
   public:
 
-    void send_refresh() override {}
-
-    Trigger(Controller* ctrl) : Control(ctrl)
+    TopEncoders(Controller* ctrl, uint8_t col, uint8_t row) :
+      Base(ctrl, 0, 0x30 + (row * 4) + col),
+      Inst(col, row)
     {
-      controller->register_mapping(this, signature, std::bind_front(&Trigger<CC>::handle_event, this));
-      _instance = this;
     }
-
-    static Trigger* Get() { return _instance; }
   };
 
-  template <uint8_t CC> Trigger<CC>* Trigger<CC>::_instance = nullptr;
-
-  class Panic : public Trigger<0x62>
+  // Edit Current compo's params
+  class BottomEncoders :
+    public ctrls::Pot,
+    public D3ArrayInstanced<BottomEncoders, BanksCount, EncodersColumnsCount, EncodersRowsCount>
   {
-  private:
-    virtual void callback(const MidiMsg&)
+  public:
+    using Base = ctrls::Pot;
+    using Inst = D3ArrayInstanced<BottomEncoders, BanksCount, EncodersColumnsCount, EncodersRowsCount>;
+  
+  public:
+
+    BottomEncoders(Controller* ctrl, uint8_t bank, uint8_t col, uint8_t row) :
+      Base(ctrl, bank, 0x10 + (row * 4) + col),
+      Inst(bank, col, row)
+    {
+    }
+
+    static Inst::Bank& GetMaster() { return Get(MasterBank); } 
+    static Inst::Column& GetMaster(uint8_t col) { return Get(MasterBank, col); } 
+    static BottomEncoders* GetMaster(uint8_t col, uint8_t row) { return Get(MasterBank, col, row); } 
+  };
+
+  //////////////////////////////////////
+  /// Faders
+  //////////////////////////////////////
+
+  // Global brightness
+  class MainFader :
+    public ctrls::Pot,
+    public MonoInstanced<MainFader>
+  {
+  public:
+    using Base = ctrls::Pot;
+    using Inst = MonoInstanced<MainFader>;
+
+  public:
+
+    MainFader(Controller* ctrl) :
+      Base(ctrl, 0, 0x0e), Inst()
+    {
+    }
+  };
+
+  // Don't know what to do with them
+  class Faders :
+    public ctrls::Pot,
+    public ArrayInstanced<Faders, FadersCount>
+  {
+  public:
+    using Base = ctrls::Pot;
+    using Inst = ArrayInstanced<Faders, FadersCount>;
+
+  public:
+
+    Faders(Controller* ctrl, uint8_t index) :
+      Base(ctrl, index, 0x07),
+      Inst(index)
+    {
+    }
+  };
+
+  template <typename T, uint8_t D1>
+  class MonoTrigger :
+    public ctrls::Trigger,
+    public MonoInstanced<T>
+  {
+  public:
+    MonoTrigger(Controller* ctrl) : 
+      ctrls::Trigger(ctrl, 0, D1),
+      MonoInstanced<T>()
+    {
+    }
+  };
+
+  class Panic : public MonoTrigger<Panic, 0x62>
+  {
+  protected:
+    void handle_event() override
     {
       controller->refresh_all_controllers();
     }
   public:
-    Panic(Controller* ctrl) : Trigger(ctrl) {}
+    Panic(Controller* ctrl) : MonoTrigger<Panic, 0x62>(ctrl) {}
   };
 
-  class TapTempo : public Trigger<0x63>
+  class TapTempo : public MonoTrigger<TapTempo, 0x63>
   {
   public:
-    TapTempo(Controller* ctrl) : Trigger(ctrl) {}
+    TapTempo(Controller* ctrl) : MonoTrigger<TapTempo, 0x63>(ctrl) {}
   };
-  class IncTempo : public Trigger<0x64>
+  class IncTempo : public MonoTrigger<IncTempo, 0x64>
   {
   public:
-    IncTempo(Controller* ctrl) : Trigger(ctrl) {}
+    IncTempo(Controller* ctrl) : MonoTrigger<IncTempo, 0x64>(ctrl) {}
   };
-  class DecTempo : public Trigger<0x65>
+  class DecTempo : public MonoTrigger<DecTempo, 0x65>
   {
   public:
-    DecTempo(Controller* ctrl) : Trigger(ctrl) {}
+    DecTempo(Controller* ctrl) : MonoTrigger<DecTempo, 0x65>(ctrl) {}
   };
 
-
+  // Used to adjust the bpm
   class SyncPot :
-    public Pot<0x2f>
+    public ctrls::Pot,
+    public MonoInstanced<SyncPot>
   {
   public:
-    using Base = Pot<0x2f>;
-  private:
-    static SyncPot* _instance;
+    using Base = ctrls::Pot;
+    using Inst = MonoInstanced<SyncPot>;
 
   public:
-
-    void send_refresh() override {}
 
     SyncPot(Controller* ctrl) :
-      Base(ctrl)
+      Base(ctrl, 0, 0x2F),
+      Inst()
     {
-      register_mappings();
-      _instance = this;
-    }
-
-    static SyncPot* Get()
-    {
-      return _instance;
     }
   };
 
@@ -307,25 +257,10 @@ namespace apc
       addControl<DecTempo>();
       addControl<SyncPot>();
 
-      for (uint8_t fader = 0 ; fader < FadersCount ; ++fader)
-        addControl<Fader>(fader);
-
-      for (uint8_t col = 0 ; col <= PadsColumnsCount ; ++col)
-      {
-        for (uint8_t row = 0 ; row <= PadsRowsCount ; ++row)
-        {
-          addControl<Pad>(col, row, col == PadsColumnsCount, row == PadsRowsCount);
-        }
-      }
-
-      for (uint8_t bank = 0 ; bank < BanksCount ; ++bank)
-      {
-        for (uint8_t block = 0 ; block < 2 ; ++block)
-          for (uint8_t index = 0 ; index < EncodersBlockSize ; ++index)
-          {
-            addControl<Encoder>(bank, block, index);
-          }
-      }
+      Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
+      PadsMatrix::Generate([this](uint8_t i, uint8_t j){addControl<PadsMatrix>(i,j);});
+      TopEncoders::Generate([this](uint8_t i, uint8_t j){addControl<TopEncoders>(i,j);});
+      BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
     }
   public:
     static APC40& Get() { static APC40 apc; return apc; }

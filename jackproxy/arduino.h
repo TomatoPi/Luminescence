@@ -116,7 +116,8 @@ public:
   void push(const T& obj, uint8_t flags = 0)
   {
     std::scoped_lock<std::mutex> _(buffer_lock);
-    auto itr = buffer.insert_or_assign((void*)&obj, 
+    // auto itr =
+    buffer.insert_or_assign((void*)&obj, 
       std::make_pair(
         next_packet_id++,
         Serializer::serialize(obj, flags)));

@@ -154,12 +154,12 @@ void loop()
       default: pulse_width = 0xFFFFFFFFu / 10u; break;
     }
 
-    Serial.print(master.pulse_width);
-    Serial.print(" : PW : ");
-    Serial.print(pulse_width);
-    Serial.print(" : CK : ");
-    Serial.println(strobe_clock.clock);
-    Serial.write(STOP_BYTE);
+//    Serial.print(master.pulse_width);
+//    Serial.print(" : PW : ");
+//    Serial.print(pulse_width);
+//    Serial.print(" : CK : ");
+//    Serial.println(strobe_clock.clock);
+//    Serial.write(STOP_BYTE);
 
     if (master.istimemod)
     {

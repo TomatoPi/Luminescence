@@ -203,20 +203,20 @@ int main(int argc, const char* argv[])
       push(compo);
   });
 
-  apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
-      master.strobe = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
+  apc::TopEncoders::Get(0, 0)->add_routine([&](Controller::Control* ctrl){
+      master.strobe = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 6;
       push(master);
       fprintf(stderr, "Strobe %d\n", master.strobe);
   });
-  apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
-      master.istimemod = static_cast<apc::Encoder*>(ctrl)->get_value() >> 7;
+  apc::TopEncoders::Get(1, 0)->add_routine([&](Controller::Control* ctrl){
+      master.istimemod = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 7;
       push(master);
   });
-  apc::Encoder::Get(0, 2, 0)->add_routine([&](Controller::Control* ctrl){
-      master.pulse_width = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
+  apc::TopEncoders::Get(2, 0)->add_routine([&](Controller::Control* ctrl){
+      master.pulse_width = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 6;
       push(master);
   });
-  apc::Encoder::Get(0, 5, 0)->add_routine([&](Controller::Control* ctrl){
+  apc::TopEncoders::Get(3, 0)->add_routine([&](Controller::Control* ctrl){
       // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
   });
 
@@ -224,9 +224,7 @@ int main(int argc, const char* argv[])
       master.brightness = static_cast<apc::MainFader*>(ctrl)->get_value();
       push(master);
   });
-
-  apc::Fader::Get(0)->add_routine([&](Controller::Control* ctrl){
-  });
+  
 
   apc::TapTempo::Get()->add_routine([&](Controller::Control*){
     jack_time_t t = jack_get_time();
