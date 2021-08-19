@@ -135,23 +135,82 @@ void loop()
     uint8_t space = map_to_0_255(i, MaxLedsCount);
     uint8_t value = 0;
     for (const auto& compo : compos) {
-      value = apply_modulation(compo.modulation, value, time, space);
+     // value = apply_modulation(compo.modulation, value, time, space);
     }
-    leds[i] = Palettes::rainbow.eval(value);
+    leds[i] = CRGB(255, 14, 50); //Palettes::rainbow.eval(value);
   }
-
+  unsigned long compute_end = millis();
+  
+  unsigned long draw_begin = millis();
   if (master.strobe)
   {
+    uint32_t pulse_width;
+    switch (master.pulse_width)
+    {
+      case 3 : pulse_width = (0xFFFFFFFFu / 4u) * 3u; break;
+      case 2 : pulse_width = 0xFFFFFFFFu / 2u; break;
+      case 1 : pulse_width = 0xFFFFFFFFu / 3u; break;
+      case 0 :
+      default: pulse_width = 0xFFFFFFFFu / 10u; break;
+    }
 
+    Serial.print(master.pulse_width);
+    Serial.print(" : PW : ");
+    Serial.print(pulse_width);
+    Serial.print(" : CK : ");
+    Serial.println(strobe_clock.clock);
+    Serial.write(STOP_BYTE);
+
+    if (master.istimemod)
+    {
+      FastLED.show(strobe_clock.clock < pulse_width ? 0xFF : 0x00);
+    }
+    else // running pulses
+    {
+      const index_t pw_inpixels = ((uint64_t)pulse_width * MaxLedsCount) >> 32;
+      const index_t ck_inpixels = ((uint64_t)strobe_clock.clock * MaxLedsCount) >> 32;
+      if (MaxLedsCount < ck_inpixels + pw_inpixels)
+      {
+        // splited pulse
+        const index_t split = (ck_inpixels + pw_inpixels) % MaxLedsCount;
+
+        nscale8_video(
+          leds, 
+          split, 
+          0xFF);
+        nscale8_video(
+          leds + split, 
+          MaxLedsCount - pw_inpixels, 
+          0x00);
+        nscale8_video(
+          leds + ck_inpixels, 
+          pw_inpixels - split,
+          0xFF);
+      }
+      else
+      {
+        nscale8_video(
+          leds, 
+          ck_inpixels, 
+          0x00);
+        nscale8_video(
+          leds + ck_inpixels, 
+          pw_inpixels, 
+          0xFF);
+        nscale8_video(
+          leds + ck_inpixels + pw_inpixels, 
+          MaxLedsCount - ck_inpixels - pw_inpixels, 
+          0x00);
+      }
+      FastLED.show(master.brightness);
+    }
   }
-
-  nscale8_video(leds, MaxLedsCount, master.brightness);
-  unsigned long compute_end = millis();
-
-  unsigned long draw_begin = millis();
-  FastLED.show();
-  //FastLED.delay(FRAME_REFRESH_TIMEOUT);
+  else // no strobe
+  {
+    FastLED.show(master.brightness);
+  }
   unsigned long draw_end = millis();
+
 
   unsigned long endtime = millis();
   
@@ -175,8 +234,11 @@ void loop()
     Serial.print(drop_count);
     Serial.print(" : BPM : ");
     Serial.print(master.bpm);
-    Serial.print(" : Period : ");
-    Serial.println(master_clock.clock);
+    Serial.println(" : Clocks : ");
+    Serial.println(master.strobe);
+    Serial.println(master.istimemod);
+    Serial.println(master.pulse_width);
+    Serial.println(master.unused);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;

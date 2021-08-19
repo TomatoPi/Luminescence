@@ -172,7 +172,7 @@ namespace objects
     // 4
     uint8_t strobe : 2;       // enable strobbing on half, quarter or eight pulse
     uint8_t istimemod : 1;    // see Modulation
-    uint8_t pulse_width : 2;  // 0.10 0.25 0.5 0.75
+    uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
     uint8_t unused : 3;
     // 5
   };

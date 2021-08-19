@@ -19,7 +19,7 @@ struct Clock
 
   void setPeriod(uint32_t period)
   {
-    period = period;
+    this->period = period;
     _dt = 0xFFFFFFFFu / (period +1);
   }
 

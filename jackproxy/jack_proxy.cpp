@@ -206,6 +206,7 @@ int main(int argc, const char* argv[])
   apc::Encoder::Get(0, 0, 0)->add_routine([&](Controller::Control* ctrl){
       master.strobe = static_cast<apc::Encoder*>(ctrl)->get_value() >> 6;
       push(master);
+      fprintf(stderr, "Strobe %d\n", master.strobe);
   });
   apc::Encoder::Get(0, 1, 0)->add_routine([&](Controller::Control* ctrl){
       master.istimemod = static_cast<apc::Encoder*>(ctrl)->get_value() >> 7;
