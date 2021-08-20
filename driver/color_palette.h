@@ -7,13 +7,13 @@
 struct PaletteParams {
   uint8_t min_value;
   uint8_t max_value;
-  uint8_t pulsation;
+  uint8_t frequency_times_60; // Allows us to have fractional frequencies like 1/60, 1/2 etc.
   uint8_t phase;
 
   // Theses functions have to be inilined
   uint8_t eval(uint8_t t) const
   {
-    return map8(cos8(pulsation * t + phase), min_value, max_value);
+    return map8(cos8(frequency_times_60 * t / 60 + phase), min_value, max_value);
   }
 };
 

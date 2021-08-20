@@ -3,31 +3,32 @@
 namespace Palettes {
 
   static constexpr ColorPalette rainbow {
-  //  min  max  pulsation  phase
-    { 0,   255,    255,      0  }, // RED
-    { 0,   255,    255,     85  }, // GREEN
-    { 0,   255,    255,    171  }  // BLUE
+  //  min  max  frequency*60  phase
+    { 0,   255,    60,      0  }, // RED
+    { 0,   255,    60,     85  }, // GREEN
+    { 0,   255,    60,    171  }  // BLUE
   };
 
   static constexpr ColorPalette deep_blue_and_bright_yellow {
-  //  min  max  pulsation  phase
-    { 0,   255,    255,      0  }, // RED
-    { 0,   255,    255,     25  }, // GREEN
-    { 0,   255,    255,     51  }  // BLUE
+  //  min  max  frequency*60  phase
+    { 0,   255,    60,      0  }, // RED
+    { 0,   255,    60,     25  }, // GREEN
+    { 0,   255,    60,     51  }  // BLUE
   };
 
   // Realy Nice :)
   static constexpr ColorPalette test {
-  //  min  max  pulsation  phase
-    { 0,   255,    255,      127  }, // RED
-    { 0,   255,    255,     51  }, // GREEN
-    { 0,   255,    0,     64  }  // BLUE
+  //  min  max  frequency*60  phase
+    { 0,   255,    60,        127  }, // RED
+    { 0,   255,    60,         51  }, // GREEN
+    { 0,   255,    0,          64  }  // BLUE
   };
 
   static constexpr ColorPalette warm_beech {
-    { 0, 127, 127, 255 },
-    { 25, 127, 127, 255 },
-    { 51, 127, 127, 255 }
+  //  min  max  frequency*60  phase
+    { 0,   127,      30,      255 }, // RED
+    { 25,  127,      30,      255 }, // GREEN
+    { 51,  127,      30,      255 }  // BLUE
   };
 
   const ColorPalette& Get(uint8_t idx)
