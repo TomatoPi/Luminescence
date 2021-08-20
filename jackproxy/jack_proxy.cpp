@@ -58,6 +58,9 @@
   
   Nudge +, - :
     Note, 0x65 0x64
+
+  PAN,SendA - C :
+    Note, 0x57 - 0x5a 
 */
 
 const char* pgm_name = "DMX-Duino-Proxy";
@@ -177,6 +180,7 @@ int main(int argc, const char* argv[])
 
   objects::Master master;
   std::array<objects::Compo, apc::PadsColumnsCount> compos;
+  std::array<objects::Oscilator, 3> oscilators;
 
 
   apc::Panic::Get()->add_routine([&](Controller::Control*){
@@ -206,8 +210,31 @@ int main(int argc, const char* argv[])
   {
     apc::BottomEncoders::Get(bank, 0, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].palette = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 4;
-      // fprintf(stderr, "Palette %d %d\n", bank, compos[bank].palette);
       push(compos[bank]);
+    });
+    apc::BottomEncoders::Get(bank, 0, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].palette_width = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
+    });
+    apc::BottomEncoders::Get(bank, 1, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].mod_intensity = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
+    });
+    apc::BottomEncoders::Get(bank, 1, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].speed = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 6;
+      push(compos[bank]);
+    });
+  }
+
+  for (size_t i = 0 ; i < 3 ; ++i)
+  {
+    apc::TopEncoders::Get(0, 1)->add_routine([&oscilators, i](Controller::Control* ctrl){
+      oscilators[i].kind = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 4;
+      push(oscilators[i]);
+    });
+    apc::TopEncoders::Get(0, 1)->add_routine([&oscilators, i](Controller::Control* ctrl){
+      oscilators[i].subdivide = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 5;
+      push(oscilators[i]);
     });
   }
 

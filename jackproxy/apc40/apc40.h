@@ -192,6 +192,31 @@ namespace apc
   /// Triggers
   /////////////////////////////////////
 
+  class OscSelect :
+    public ctrls::Trigger,
+    public ArrayInstanced<OscSelect, 3>
+  {
+  private:
+    using Base = ctrls::Trigger;
+    using Inst = ArrayInstanced<OscSelect, 3>;
+
+    bool is_active = false;
+
+    void handle_event() override {
+      Base::handle_event();
+      for (auto& osc : Get())
+        osc->is_active = (osc == this);
+    }
+
+  public:
+
+    OscSelect(Controller* ctrl, uint8_t index) :
+      Base(ctrl, 0, 0x57 + index, 0xB0), Inst(index)
+      {}
+
+    bool isActive() const { return is_active; }
+  };
+
   template <typename T, uint8_t D1>
   class MonoTrigger :
     public ctrls::Trigger,
@@ -263,6 +288,8 @@ namespace apc
 
       TopEncoders::Generate([this](uint8_t i, uint8_t j){addControl<TopEncoders>(i,j);});
       BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
+
+      OscSelect::Generate([this](uint8_t i){addControl<OscSelect>(i);});
 
       Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
       addControl<MainFader>();

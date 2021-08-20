@@ -57,13 +57,7 @@ SerialParser parser;
 
 uint8_t evalOscillator(const objects::Oscilator& osc, uint8_t time, uint8_t min, uint8_t max)
 {
-  const uint8_t d = osc.phase_distort_d << 2;
-  const uint8_t o = osc.phase_distort_o << 2;
-
-  uint8_t pp = (uint16_t)time + 256 - o;
-  pp = (pp < d) ? (((uint16_t)pp + 255 - d << 1) / ((255 - d) << 1)) >> 8 : (pp / (d << 1)) >> 8;
-  pp += o;
-
+  uint8_t pp = time;
   uint8_t value = 0;
   switch (osc.kind)
   {    
@@ -141,7 +135,7 @@ void loop()
   for (uint8_t i = 0 ; i < 3 ; ++i)
   {
     uint8_t subdivide = oscillators[i].subdivide;
-    uint32_t period = osc_clocks[oscillators[i].source].period;
+    uint32_t period = master_clock.period;
     if (subdivide < 5)
       period = period >> (5 - subdivide);
     else
@@ -167,43 +161,25 @@ void loop()
   {
     const auto& compo = compos[master.active_compo];
     const auto& palette = Palettes::Get(compo.palette);
+
+    Serial.println(compo.speed);
+    Serial.println(compo.mod_intensity);
+    Serial.println(compo.palette_width);
+    Serial.write(STOP_BYTE);
+    
+    uint8_t time = master_clock.get8(compo.speed);
+    uint8_t time_mod = scale8(sin8(time), compo.mod_intensity);
+    
+    uint16_t p_value = time_mod << 8;
+
     const uint16_t pixel_dt = 0xFFFFu / MaxLedsCount;
-    uint16_t p_value = 0;
+    const uint16_t step = scale16by8(pixel_dt, compo.palette_width << 1);
 
-    switch (compo.modulation)
+    for (index_t i = 0; i < MaxLedsCount; ++i, p_value += step)
     {
-      case objects::flags::RebaseOnIndex:
-      {
-        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
-        {
-          leds[i] = palette.eval(p_value >> 8);
-        }
-      }
-      break;
-      case objects::flags::RebaseOnTime:
-      {
-        uint8_t time = osc_clocks[compo.timesource].get8();
-        time = evalOscillator(oscillators[compo.timesource], time, compo.timemod_min, compo.timemod_max);
-        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
-        {
-          leds[i] = palette.eval(time);
-        }
-      }
-      break;
-      case objects::flags::RebaseTimeOnIndex:
-      {
-        for (index_t i = 0; i < MaxLedsCount; ++i, p_value += pixel_dt)
-        {
-          leds[i] = palette.eval(p_value >> 8);
-        }
-      }
-      break;
-      case objects::flags::RebaseIndexOnTime:
-      {
-
-      }
-      break;
+      leds[i] = palette.eval(p_value >> 8);
     }
+    
   }
   unsigned long compute_end = millis();
   
@@ -304,11 +280,6 @@ void loop()
     Serial.print(drop_count);
     Serial.print(" : BPM : ");
     Serial.print(master.bpm);
-    Serial.println(" : Clocks : ");
-    Serial.println(master.strobe);
-    Serial.println(master.istimemod);
-    Serial.println(master.pulse_width);
-    Serial.println(master.unused);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;

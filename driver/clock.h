@@ -19,12 +19,12 @@ struct Clock
 
   void setPeriod(uint32_t period)
   {
-    this->period = period;
-    _dt = 0xFFFFFFFFu / (period +1);
+    this->period = period << 3;
+    _dt = 0xFFFFFFFFu / (((period) << 3) +1);
   }
 
-  uint8_t get8() const { return clock >> 24; }
-  uint16_t get16() const { return clock >> 16; }
+  uint8_t get8(uint8_t exp = 0) const { return ((clock & (0xFFFFFFFFu >> (3 - exp))) << (3 - exp)) >> 24; }
+  uint16_t get16(uint8_t exp = 0) const { return ((clock & (0xFFFFFFFFu >> (3 - exp))) << (3 - exp)) >> 16; }
 
   Clock()
   {
