@@ -169,6 +169,8 @@ namespace apc
   public:
     using Base = ctrls::Pot;
     using Inst = D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>;
+
+    void handle_message(const MidiMsg& event) override;
   
   public:
 
@@ -180,20 +182,19 @@ namespace apc
   };
 
   class OscSelect :
-    public ctrls::Trigger,
+    public ctrls::TogglePad,
     public ArrayInstanced<OscSelect, 3>
   {
   private:
-    using Base = ctrls::Trigger;
+    using Base = ctrls::TogglePad;
     using Inst = ArrayInstanced<OscSelect, 3>;
 
-    bool is_active = false;
-
-    void handle_event() override {
-      Base::handle_event();
+    void handle_on() override {
       for (auto& osc : Get())
-          osc->is_active = (osc == this);
-      send_refresh();
+      {
+        osc->status = (osc == this);
+        osc->send_refresh();
+      }
       OscParams::Generate([this](uint8_t bank, uint8_t col){
         if (bank == this->getIndex())
           OscParams::Get(bank, col)->send_refresh();
@@ -203,13 +204,18 @@ namespace apc
   public:
 
     OscSelect(Controller* ctrl, uint8_t index) :
-      Base(ctrl, index, 0x58), Inst(index)
+      Base(ctrl, 0, 0x58 + index), Inst(index)
       {}
-
-    bool isActive() const { return is_active; }
-
   };
 
+  void OscParams::handle_message(const MidiMsg& msg)
+  {
+    if (OscSelect::Get(getCol())->get_status())
+    {
+      Base::handle_message(msg);
+      send_refresh();
+    }
+  }
 
 
   // Edit Current compo's params

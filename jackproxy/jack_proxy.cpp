@@ -205,14 +205,17 @@ int main(int argc, const char* argv[])
   apc::StrobeParams::Get(0)->add_routine([&](Controller::Control* ctrl){
       master.strobe_speed = 32 - (static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 3);
       push(master);
+      // fprintf(stderr, "speed\n");
   });
   apc::StrobeParams::Get(1)->add_routine([&](Controller::Control* ctrl){
       master.istimemod = static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 7;
       push(master);
+      // fprintf(stderr, "timemod\n");
   });
   apc::StrobeParams::Get(2)->add_routine([&](Controller::Control* ctrl){
       master.pulse_width = static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 6;
       push(master);
+      // fprintf(stderr, "pw\n");
   });
   apc::StrobeParams::Get(3)->add_routine([&](Controller::Control* ctrl){
       // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
@@ -220,6 +223,7 @@ int main(int argc, const char* argv[])
   apc::StrobeEnable::Get()->add_routine([&](Controller::Control* ctrl){
       master.do_strobe = static_cast<apc::StrobeEnable*>(ctrl)->get_status();
       push(master);
+      // fprintf(stderr, "strobe\n");
   });
 
   for (size_t osc = 0 ; osc < 3 ; ++osc)
@@ -246,26 +250,32 @@ int main(int argc, const char* argv[])
   {
     apc::PadsMatrix::Get(bank, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].map_on_index = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "map_on_index %d\n", compos[bank].map_on_index);
       push(compos[bank]);
     });
     apc::PadsMatrix::Get(bank, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].effect1 = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "effect1 %d\n", compos[bank].effect1);
       push(compos[bank]);
     });
     apc::PadsMatrix::Get(bank, 2)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].blend_mask = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "blend_mask %d\n", compos[bank].blend_mask);
       push(compos[bank]);
     });
     apc::PadsMatrix::Get(bank, 3)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].stars = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "stars %d\n", compos[bank].stars);
       push(compos[bank]);
     });
     apc::PadsMatrix::Get(bank, 4)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].strobe = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "strobe %d\n", compos[bank].strobe);
       push(compos[bank]);
     });
     apc::PadsMatrix::Get(bank, 5)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].trigger = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      fprintf(stderr, "trigger %d\n", compos[bank].trigger);
       push(compos[bank]);
     });
 
@@ -353,6 +363,7 @@ int main(int argc, const char* argv[])
       127,  // brigthness
       0
     };
+    sequencer = {0};
     uint8_t idx = 0;
     for (auto& compo : compos)
       compo = { idx++, 0 };

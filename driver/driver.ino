@@ -39,7 +39,7 @@ using Range = range_t<index_t, coef_t>;
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
 
-static constexpr index_t MaxLedsCount = 30 * 20;
+static constexpr index_t MaxLedsCount = 30 * 21;
 
 color_t leds[MaxLedsCount];
 
@@ -125,6 +125,18 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
   p_value += scale16by8(0xFFFFu, compo.index_offset << 1);
   p_value += pixel_dt * begin;
 
+  Serial.println();
+  Serial.print(compo.map_on_index);
+  Serial.print(" ");
+  Serial.print(compo.effect1);
+  Serial.print(" ");
+  Serial.print(compo.blend_mask);
+  Serial.print(" ");
+  Serial.print(compo.stars);
+  Serial.print(" ");
+  Serial.println(compo.strobe);
+  Serial.write(STOP_BYTE);
+
   if (!compo.strobe)
   {
     for (index_t i = begin; i < end; ++i, p_value += step)
@@ -161,6 +173,8 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
           uint8_t value = p_value >> 8;
           leds[i] = palette.eval(value);
         }
+      else
+        fill_solid(leds + begin, end - begin, CRGB::Black);
     }
     else // running pulses
     {
@@ -183,8 +197,10 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
           leds[begin+i] = palette.eval(value);
         }
 
-        i += length - pw_inpixels;
-        p_value += (length - pw_inpixels) * step;
+        for (; i < split + length - ck_inpixels ; ++i, p_value += step)
+        {
+          leds[begin+i] = CRGB::Black;
+        }
 
         for (; i < length ; ++i, p_value += step)
         {
@@ -194,10 +210,19 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
       }
       else
       {
-        for (index_t i = ck_inpixels ; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
+        index_t i = 0;
+        for (; i < ck_inpixels ; ++i, p_value += step)
+        {
+          leds[begin+i] = CRGB::Black;
+        }
+        for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
           leds[begin+i] = palette.eval(value);
+        }
+        for (; i < length ; ++i, p_value += step)
+        {
+          leds[begin+i] = CRGB::Black;
         }
       }
     } // endif running pulses
@@ -235,7 +260,7 @@ void loop()
   static unsigned long drop_count = 0;
   
   master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
-  strobe_clock.setPeriod(master.strobe_speed << 1);
+  strobe_clock.setPeriod(master.strobe_speed);
 
   for (uint8_t i = 0 ; i < 3 ; ++i)
   {
@@ -263,6 +288,7 @@ void loop()
   if (8 <= master.active_compo)
   {
     static uint8_t current_step = 0;
+    
     if (beat_detector.trigger)
     {
       current_step = (current_step +1) % 3;
@@ -379,7 +405,7 @@ void loop()
     Serial.print(" : Drops : ");
     Serial.print(drop_count);
     Serial.print(" : BPM : ");
-    Serial.print(master.bpm);
+    Serial.println(master.bpm);
     Serial.write(STOP_BYTE);
     fps_accumulator = 0;
     frame_cptr = 0;

@@ -201,20 +201,20 @@ namespace objects
     uint8_t _ : 1;
     uint8_t mod_intensity : 7;
     uint8_t __ : 1;
-    uint8_t speed : 2;
     // 3
-    uint8_t map_on_index : 1;
     uint8_t index_offset : 7;
+    uint8_t map_on_index : 1;
     // 4
-    uint8_t effect1 : 1; // Up to decide
     uint8_t param1 : 7;
+    uint8_t effect1 : 1; // Up to decide
     // 5
-    uint8_t blend_mask : 1; // Up to decide
     uint8_t blend_overlay : 7;
+    uint8_t blend_mask : 1; // Up to decide
     // 6
-    uint8_t stars : 1;  // Chain break like a diamond
     uint8_t param_stars: 7; 
+    uint8_t stars : 1;  // Chain break like a diamond
     // 7
+    uint8_t speed : 2;
     uint8_t strobe : 1;
     uint8_t trigger : 1;
   };
