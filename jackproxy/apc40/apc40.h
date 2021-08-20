@@ -46,14 +46,12 @@ namespace apc
   };
 
   class SequencerPads : 
-    public ctrls::TogglePad,
+    public ctrls::MomentaryPad,
     public D2ArrayInstanced<SequencerPads, TracksCount, 3>
   {
   private:
-    using Base = ctrls::TogglePad;
+    using Base = ctrls::MomentaryPad;
     using Inst = D2ArrayInstanced<SequencerPads, TracksCount, 3>;
-
-    void handle_off() override { Base::handle_off(); send_refresh(); };
 
   public:
 

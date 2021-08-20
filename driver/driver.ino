@@ -180,6 +180,8 @@ void loop()
     if (beat_detector.trigger)
     {
       current_step = (current_step +1) % 3;
+      if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
+      if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
       beat_detector.reset();
     }
 //    Serial.println(sequencer.steps[current_step]);
