@@ -190,9 +190,8 @@ int main(int argc, const char* argv[])
   });
 
   apc::TopEncoders::Get(0, 0)->add_routine([&](Controller::Control* ctrl){
-      master.strobe = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 6;
+      master.strobe = 32 - (static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 3);
       push(master);
-      fprintf(stderr, "Strobe %d\n", master.strobe);
   });
   apc::TopEncoders::Get(1, 0)->add_routine([&](Controller::Control* ctrl){
       master.istimemod = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 7;

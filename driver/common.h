@@ -181,10 +181,9 @@ namespace objects
     uint8_t sync_correction;  // Masterclock phase offset [0 - 255]
     uint8_t brightness;       // Master brightness [0 - 255] TODO : modify scaling
     // 4
-    uint8_t strobe : 2;       // enable strobbing on half, quarter or eight pulse
+    uint8_t strobe : 5;       // strobe period in frames
     uint8_t istimemod : 1;    // see Modulation
     uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
-    uint8_t unused : 3;
     // 5
     uint8_t active_compo : 4;
   };

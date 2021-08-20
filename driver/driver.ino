@@ -41,11 +41,14 @@ constexpr const uint8_t SerialPacket::Header[3];
 uint8_t Clock::_clockIndex = 0;
 Clock* Clock::_clocks[Clock::MaxClocksCount];
 
+uint8_t FastClock::_clockIndex = 0;
+FastClock* FastClock::_clocks[FastClock::MaxClocksCount];
+
 static constexpr index_t MaxLedsCount = 30 * 20;
 
 color_t leds[MaxLedsCount];
 
-Clock strobe_clock;
+FastClock strobe_clock;
 Clock osc_clocks[4];
 Clock& master_clock = osc_clocks[3];
 
@@ -130,7 +133,7 @@ void loop()
   static unsigned long drop_count = 0;
   
   master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
-  strobe_clock.setPeriod(master_clock.period >> master.strobe);
+  strobe_clock.setPeriod(master.strobe);
 
   for (uint8_t i = 0 ; i < 3 ; ++i)
   {
@@ -144,6 +147,7 @@ void loop()
   }
 
   Clock::Tick(millis());
+  FastClock::Tick();
 
   uint8_t time8 = master_clock.get8() + master.sync_correction;
 
@@ -205,7 +209,7 @@ void loop()
 
     if (master.istimemod)
     {
-      FastLED.show(strobe_clock.clock < pulse_width ? 0xFF : 0x00);
+      FastLED.show(strobe_clock.coarse_value ? 0xFF : 0x00);
     }
     else // running pulses
     {
@@ -214,7 +218,7 @@ void loop()
       Could be extracted to apply it on any composition
       */
       const index_t pw_inpixels = ((uint64_t)pulse_width * MaxLedsCount) >> 32;
-      const index_t ck_inpixels = ((uint64_t)strobe_clock.clock * MaxLedsCount) >> 32;
+      const index_t ck_inpixels = ((uint64_t)strobe_clock.finevalue * MaxLedsCount) >> 8;
       if (MaxLedsCount < ck_inpixels + pw_inpixels)
       {
         // splited pulse
