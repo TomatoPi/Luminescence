@@ -183,6 +183,15 @@ int main(int argc, const char* argv[])
   std::array<objects::Oscilator, 3> oscilators;
   objects::Sequencer sequencer;
 
+  apc::PadsMaster::Get(3)->add_routine([&master](Controller::Control* ctrl){
+      master.blur = static_cast<apc::PadsMaster*>(ctrl)->get_status();
+      push(master);
+  });
+  apc::PadsMaster::Get(4)->add_routine([&master](Controller::Control* ctrl){
+      master.fade = static_cast<apc::PadsMaster*>(ctrl)->get_status();
+      push(master);
+  });
+
   apc::SequencerPads::Generate([&](uint8_t col, uint8_t row){
     apc::SequencerPads::Get(col, row)->add_routine([&sequencer](Controller::Control* ctrl){
       auto pad = static_cast<apc::SequencerPads*>(ctrl);
@@ -218,7 +227,8 @@ int main(int argc, const char* argv[])
       // fprintf(stderr, "pw\n");
   });
   apc::StrobeParams::Get(3)->add_routine([&](Controller::Control* ctrl){
-      // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
+    master.feedback = static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 1;
+    push(master);
   });
   apc::StrobeEnable::Get()->add_routine([&](Controller::Control* ctrl){
       master.do_strobe = static_cast<apc::StrobeEnable*>(ctrl)->get_status();

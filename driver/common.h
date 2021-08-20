@@ -189,6 +189,10 @@ namespace objects
     uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
     // 5
     uint8_t active_compo : 4;
+    uint8_t _ : 4;
+    uint8_t feedback : 7;
+    uint8_t blur : 1;
+    uint8_t fade : 1;
   };
 
   struct Compo {

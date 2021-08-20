@@ -125,17 +125,17 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
   p_value += scale16by8(0xFFFFu, compo.index_offset << 1);
   p_value += pixel_dt * begin;
 
-  Serial.println();
-  Serial.print(compo.map_on_index);
-  Serial.print(" ");
-  Serial.print(compo.effect1);
-  Serial.print(" ");
-  Serial.print(compo.blend_mask);
-  Serial.print(" ");
-  Serial.print(compo.stars);
-  Serial.print(" ");
-  Serial.println(compo.strobe);
-  Serial.write(STOP_BYTE);
+//  Serial.println();
+//  Serial.print(compo.map_on_index);
+//  Serial.print(" ");
+//  Serial.print(compo.effect1);
+//  Serial.print(" ");
+//  Serial.print(compo.blend_mask);
+//  Serial.print(" ");
+//  Serial.print(compo.stars);
+//  Serial.print(" ");
+//  Serial.println(compo.strobe);
+//  Serial.write(STOP_BYTE);
 
   if (!compo.strobe)
   {
@@ -146,7 +146,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
       uint8_t bright = 255;
       
       if (compo.blend_mask)
-        bright = lerp8by8(255, eval_oscillator(oscillators[2]), compo.blend_overlay << 1);
+        bright = lerp8by8(255, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
       leds[i] = nblend(leds[i], palette.eval(value), bright);
     }
   }
@@ -173,8 +173,8 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
           uint8_t value = p_value >> 8;
           leds[i] = palette.eval(value);
         }
-      else
-        fill_solid(leds + begin, end - begin, CRGB::Black);
+      else {}
+        //fill_solid(leds + begin, end - begin, CRGB::Black);
     }
     else // running pulses
     {
@@ -199,7 +199,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
 
         for (; i < split + length - ck_inpixels ; ++i, p_value += step)
         {
-          leds[begin+i] = CRGB::Black;
+          //leds[begin+i] = CRGB::Black;
         }
 
         for (; i < length ; ++i, p_value += step)
@@ -213,7 +213,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         index_t i = 0;
         for (; i < ck_inpixels ; ++i, p_value += step)
         {
-          leds[begin+i] = CRGB::Black;
+          //leds[begin+i] = CRGB::Black;
         }
         for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
         {
@@ -222,7 +222,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         }
         for (; i < length ; ++i, p_value += step)
         {
-          leds[begin+i] = CRGB::Black;
+          //leds[begin+i] = CRGB::Black;
         }
       }
     } // endif running pulses
@@ -284,6 +284,22 @@ void loop()
   unsigned long update_end = millis();
 
   unsigned long compute_begin = millis();
+
+  bool set_black = true;
+  if (master.fade)
+  {
+    fadeLightBy(leds, MaxLedsCount, 255 - (master.feedback << 1));
+    set_black = false;
+  }
+  if (master.blur)
+  {
+    blur1d(leds, MaxLedsCount, master.feedback << 1);
+    set_black = true;
+  }
+  if (set_black)
+  {
+    fill_solid(leds, MaxLedsCount, CRGB::Black);
+  }
 
   if (8 <= master.active_compo)
   {
