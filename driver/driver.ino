@@ -104,11 +104,6 @@ void eval_compo(const objects::Compo& compo)
 {
   const auto& palette = Palettes::Get(compo.palette);
 
-  Serial.println(compo.speed);
-  Serial.println(compo.mod_intensity);
-  Serial.println(compo.palette_width);
-  Serial.write(STOP_BYTE);
-  
   uint8_t time = master_clock.get8(compo.speed);
   uint8_t time_mod = scale8(sin8(time), compo.mod_intensity);
   
@@ -187,9 +182,11 @@ void loop()
       current_step = (current_step +1) % 3;
       beat_detector.reset();
     }
-    uint8_t mask = 1;
-    for (uint8_t i = 0 ; i < 8 ; ++i, mask <<= 1)
-      if (sequencer.steps[current_step] & mask)
+//    Serial.println(sequencer.steps[current_step]);
+//    Serial.println(current_step);
+//    Serial.write(STOP_BYTE);
+    for (uint8_t i = 0 ; i < 8 ; ++i)
+      if (sequencer.steps[current_step] & (1 << i))
         eval_compo(compos[i]);
   }
   else
@@ -372,6 +369,11 @@ int update_frame() {
           {
             objects::Compo tmp = result.read<objects::Compo>();
             compos[tmp.index] = tmp;
+            break;
+          }
+          case objects::flags::Sequencer:
+          {
+            sequencer = result.read<objects::Sequencer>();
             break;
           }
         }

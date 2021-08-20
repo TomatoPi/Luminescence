@@ -191,6 +191,7 @@ int main(int argc, const char* argv[])
       uint8_t status = pad->get_status();
       uint8_t val = sequencer.steps[step];
       sequencer.steps[step] = (val & ~(1 << track)) | (status << track);
+      fprintf(stderr, "%02x %02x %02x\n", sequencer.steps[0], sequencer.steps[1], sequencer.steps[2]);
       push(sequencer);
     });
   });
@@ -317,7 +318,7 @@ int main(int argc, const char* argv[])
   while (1)
   {
     APC40.update_dirty_controls();
-    usleep(1000);
+    usleep(10);
   }
   
   return 0;

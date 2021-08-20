@@ -44,14 +44,16 @@ struct Clock : public Instanced<Clock, 16>
 struct FallDetector : public Instanced<FallDetector, 16>
 {
   Clock* clock = nullptr;
-  uint32_t last_value = 0;
+  uint16_t last_value = 0;
   bool trigger = false;
   FallDetector(Clock* clock) : Instanced<FallDetector, 16>(), clock(clock) {}
   
   void tick()
   {
-    if (clock->clock < last_value)
+    uint16_t time = clock->get16();
+    if (time < last_value)
       trigger = true;
+    last_value = time;
   }
 
   void reset()

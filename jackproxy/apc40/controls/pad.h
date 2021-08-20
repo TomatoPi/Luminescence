@@ -31,8 +31,8 @@ namespace ctrls
 
       Base(ctrl),
 
-      signature_on({0x90 | channel, d1, 0}),
-      signature_off({0x80 | channel, d1, 0})
+      signature_on({0x90 | channel, d1, 0x7f}),
+      signature_off({0x80 | channel, d1, 0x7f})
     {
       controller->register_mapping(
         this,
@@ -74,7 +74,7 @@ namespace ctrls
 
   protected:
 
-    void handle_on() override { Base::handle_off(); status = !status; }
+    void handle_on() override { Base::handle_on(); status = !status; }
     void handle_off() override { Base::handle_off(); }
   
   public:

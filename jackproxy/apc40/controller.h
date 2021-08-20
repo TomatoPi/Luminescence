@@ -103,11 +103,9 @@ public:
     std::scoped_lock<std::mutex> _(lock);
     for (auto itr = begin ; itr != end ; ++itr)
     {
-      fprintf(stderr, "Catched\n");
       auto& [key, pair] = *itr;
       auto& [ctrl, callback] = pair;
       callback(event);
-      ctrl->send_refresh(); // Warning, this could break things
       dirty_controls.emplace(ctrl);
     }
     return rt_queue;

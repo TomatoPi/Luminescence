@@ -34,6 +34,8 @@ namespace apc
   private:
     using Base = ctrls::TogglePad;
     using Inst = D2ArrayInstanced<PadsMatrix, PadsColumnsCount, PadsRowsCount>;
+    
+    void handle_off() override { Base::handle_off(); send_refresh(); };
 
   public:
 
@@ -50,6 +52,8 @@ namespace apc
   private:
     using Base = ctrls::TogglePad;
     using Inst = D2ArrayInstanced<SequencerPads, TracksCount, 3>;
+
+    void handle_off() override { Base::handle_off(); send_refresh(); };
 
   public:
 
@@ -84,6 +88,8 @@ namespace apc
   private:
     using Base = ctrls::TogglePad;
     using Inst = ArrayInstanced<PadsMaster, PadsRowsCount>;
+    
+    void handle_off() override { Base::handle_off(); send_refresh(); };
 
   public:
 
