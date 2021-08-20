@@ -43,6 +43,22 @@ namespace apc
     }
   };
 
+  class SequencerPads : 
+    public ctrls::TogglePad,
+    public D2ArrayInstanced<SequencerPads, TracksCount, 3>
+  {
+  private:
+    using Base = ctrls::TogglePad;
+    using Inst = D2ArrayInstanced<SequencerPads, TracksCount, 3>;
+
+  public:
+
+    SequencerPads(Controller* ctrl, uint8_t col, uint8_t row) :
+      Base(ctrl, col, 0x32 - row), Inst(col, row)
+    {
+    }
+  };
+
   // We'll use this to momentary show a compo
   // or to send it as a boolean input to compo's param
   class PadsBottomRow :
@@ -280,6 +296,8 @@ namespace apc
   private:
     APC40()
     {
+      SequencerPads::Generate([this](uint8_t i, uint8_t j){addControl<SequencerPads>(i,j);});
+
       PadsMatrix::Generate([this](uint8_t i, uint8_t j){addControl<PadsMatrix>(i,j);});
       PadsBottomRow::Generate([this](uint8_t i){addControl<PadsBottomRow>(i);});
       PadsMaster::Generate([this](uint8_t i){addControl<PadsMaster>(i);});

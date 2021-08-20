@@ -38,11 +38,6 @@ using Range = range_t<index_t, coef_t>;
 
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
-uint8_t Clock::_clockIndex = 0;
-Clock* Clock::_clocks[Clock::MaxClocksCount];
-
-uint8_t FastClock::_clockIndex = 0;
-FastClock* FastClock::_clocks[FastClock::MaxClocksCount];
 
 static constexpr index_t MaxLedsCount = 30 * 20;
 
@@ -55,6 +50,9 @@ Clock& master_clock = osc_clocks[3];
 objects::Master master;
 objects::Compo compos[8];
 objects::Oscilator oscillators[3];
+objects::Sequencer sequencer;
+
+FallDetector beat_detector(&master_clock);
 
 SerialParser parser;
 
@@ -100,6 +98,29 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
 {
   uint32_t didx = 0xFFFFFFFFu / max_i;
   return static_cast<uint8_t>((i * didx) >> 24);
+}
+
+void eval_compo(const objects::Compo& compo)
+{
+  const auto& palette = Palettes::Get(compo.palette);
+
+  Serial.println(compo.speed);
+  Serial.println(compo.mod_intensity);
+  Serial.println(compo.palette_width);
+  Serial.write(STOP_BYTE);
+  
+  uint8_t time = master_clock.get8(compo.speed);
+  uint8_t time_mod = scale8(sin8(time), compo.mod_intensity);
+  
+  uint16_t p_value = time_mod << 8;
+
+  const uint16_t pixel_dt = 0xFFFFu / MaxLedsCount;
+  const uint16_t step = scale16by8(pixel_dt, compo.palette_width << 1);
+
+  for (index_t i = 0; i < MaxLedsCount; ++i, p_value += step)
+  {
+    leds[i] = palette.eval(p_value >> 8);
+  }
 }
 
 void setup()
@@ -148,6 +169,7 @@ void loop()
 
   Clock::Tick(millis());
   FastClock::Tick();
+  FallDetector::Tick();
 
   uint8_t time8 = master_clock.get8() + master.sync_correction;
 
@@ -159,31 +181,20 @@ void loop()
 
   if (8 <= master.active_compo)
   {
-    // Do something nice with a sequencer
+    static uint8_t current_step = 0;
+    if (beat_detector.trigger)
+    {
+      current_step = (current_step +1) % 3;
+      beat_detector.reset();
+    }
+    uint8_t mask = 1;
+    for (uint8_t i = 0 ; i < 8 ; ++i, mask <<= 1)
+      if (sequencer.steps[current_step] & mask)
+        eval_compo(compos[i]);
   }
   else
   {
-    const auto& compo = compos[master.active_compo];
-    const auto& palette = Palettes::Get(compo.palette);
-
-    Serial.println(compo.speed);
-    Serial.println(compo.mod_intensity);
-    Serial.println(compo.palette_width);
-    Serial.write(STOP_BYTE);
-    
-    uint8_t time = master_clock.get8(compo.speed);
-    uint8_t time_mod = scale8(sin8(time), compo.mod_intensity);
-    
-    uint16_t p_value = time_mod << 8;
-
-    const uint16_t pixel_dt = 0xFFFFu / MaxLedsCount;
-    const uint16_t step = scale16by8(pixel_dt, compo.palette_width << 1);
-
-    for (index_t i = 0; i < MaxLedsCount; ++i, p_value += step)
-    {
-      leds[i] = palette.eval(p_value >> 8);
-    }
-    
+    eval_compo(compos[master.active_compo]); 
   }
   unsigned long compute_end = millis();
   

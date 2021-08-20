@@ -181,7 +181,19 @@ int main(int argc, const char* argv[])
   objects::Master master;
   std::array<objects::Compo, apc::PadsColumnsCount> compos;
   std::array<objects::Oscilator, 3> oscilators;
+  objects::Sequencer sequencer;
 
+  apc::SequencerPads::Generate([&](uint8_t col, uint8_t row){
+    apc::SequencerPads::Get(col, row)->add_routine([&sequencer](Controller::Control* ctrl){
+      auto pad = static_cast<apc::SequencerPads*>(ctrl);
+      uint8_t track = pad->getCol();
+      uint8_t step = pad->getRow();
+      uint8_t status = pad->get_status();
+      uint8_t val = sequencer.steps[step];
+      sequencer.steps[step] = (val & ~(1 << track)) | (status << track);
+      push(sequencer);
+    });
+  });
 
   apc::Panic::Get()->add_routine([&](Controller::Control*){
     push(master);

@@ -1,10 +1,19 @@
 #pragma once
 
-struct Clock
+template <typename T, uint8_t _Size>
+struct Instanced
 {
-  static constexpr const uint8_t MaxClocksCount = 16;
-  static uint8_t _clockIndex;
-  static Clock* _clocks[MaxClocksCount];
+  static constexpr const uint8_t Size = _Size;
+  static uint8_t _index;
+  static T* _instances[_Size];
+
+  Instanced() {_instances[_index++] = (T*)this;}
+};
+template <typename T, uint8_t _Size> uint8_t Instanced<T, _Size>::_index;
+template <typename T, uint8_t _Size>  T* Instanced<T, _Size>::_instances[_Size];
+
+struct Clock : public Instanced<Clock, 16>
+{
   uint32_t clock = 0;
   uint32_t period = 0;
   uint32_t last_timestamp = 0;
@@ -26,22 +35,38 @@ struct Clock
   uint8_t get8(uint8_t exp = 0) const { return ((clock & (0xFFFFFFFFu >> (3 - exp))) << (3 - exp)) >> 24; }
   uint16_t get16(uint8_t exp = 0) const { return ((clock & (0xFFFFFFFFu >> (3 - exp))) << (3 - exp)) >> 16; }
 
-  Clock()
-  {
-    _clocks[_clockIndex++] = this;
-  }
-
-  static void Tick(uint32_t timestamp) {
-    for (uint8_t i = 0 ; i < _clockIndex ; ++i)
-      _clocks[i]->tick(timestamp);
+  static void Tick(uint32_t time) {
+    for (uint8_t i = 0 ; i < _index ; ++i)
+      _instances[i]->tick(time);
   }
 };
 
-struct FastClock
+struct FallDetector : public Instanced<FallDetector, 16>
 {
-  static constexpr const uint8_t MaxClocksCount = 16;
-  static uint8_t _clockIndex;
-  static FastClock* _clocks[MaxClocksCount];
+  Clock* clock = nullptr;
+  uint32_t last_value = 0;
+  bool trigger = false;
+  FallDetector(Clock* clock) : Instanced<FallDetector, 16>(), clock(clock) {}
+  
+  void tick()
+  {
+    if (clock->clock < last_value)
+      trigger = true;
+  }
+
+  void reset()
+  {
+    trigger = false;
+  }
+
+  static void Tick() {
+    for (uint8_t i = 0 ; i < _index ; ++i)
+      _instances[i]->tick();
+  }
+};
+
+struct FastClock : public Instanced<FastClock, 16>
+{
   uint8_t clock = 0;
   uint8_t period = 0;
   uint8_t coarse_value = 0;
@@ -60,13 +85,8 @@ struct FastClock
     period = frames;
   }
 
-  FastClock()
-  {
-    _clocks[_clockIndex++] = this;
-  }
-
   static void Tick() {
-    for (uint8_t i = 0 ; i < _clockIndex ; ++i)
-      _clocks[i]->tick();
+    for (uint8_t i = 0 ; i < _index ; ++i)
+      _instances[i]->tick();
   }
 };

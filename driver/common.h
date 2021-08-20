@@ -128,6 +128,7 @@ namespace objects
       Composition,
       Oscilator,
       Modulation,
+      Sequencer,
     };
 
     enum OscillatorKind {
@@ -200,5 +201,11 @@ namespace objects
     uint8_t __ : 1;
     uint8_t speed : 2;
     // 3
+  };
+
+  struct Sequencer
+  {
+    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Sequencer;
+    uint8_t steps[3];
   };
 }
