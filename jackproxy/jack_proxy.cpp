@@ -202,24 +202,73 @@ int main(int argc, const char* argv[])
       push(compo);
   });
 
-  apc::TopEncoders::Get(0, 0)->add_routine([&](Controller::Control* ctrl){
-      master.strobe = 32 - (static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 3);
+  apc::StrobeParams::Get(0)->add_routine([&](Controller::Control* ctrl){
+      master.strobe_speed = 32 - (static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 3);
       push(master);
   });
-  apc::TopEncoders::Get(1, 0)->add_routine([&](Controller::Control* ctrl){
-      master.istimemod = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 7;
+  apc::StrobeParams::Get(1)->add_routine([&](Controller::Control* ctrl){
+      master.istimemod = static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 7;
       push(master);
   });
-  apc::TopEncoders::Get(2, 0)->add_routine([&](Controller::Control* ctrl){
-      master.pulse_width = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 6;
+  apc::StrobeParams::Get(2)->add_routine([&](Controller::Control* ctrl){
+      master.pulse_width = static_cast<apc::StrobeParams*>(ctrl)->get_value() >> 6;
       push(master);
   });
-  apc::TopEncoders::Get(3, 0)->add_routine([&](Controller::Control* ctrl){
+  apc::StrobeParams::Get(3)->add_routine([&](Controller::Control* ctrl){
       // master.unused = static_cast<apc::Encoder*>(ctrl)->get_value() >> 5;
   });
+  apc::StrobeEnable::Get()->add_routine([&](Controller::Control* ctrl){
+      master.do_strobe = static_cast<apc::StrobeEnable*>(ctrl)->get_status();
+      push(master);
+  });
+
+  for (size_t osc = 0 ; osc < 3 ; ++osc)
+  {
+    apc::OscParams::Get(osc, 0)->add_routine([osc, &oscilators](Controller::Control* ctrl){
+      oscilators[osc].kind = static_cast<apc::OscParams*>(ctrl)->get_value() >> 4;
+      push(oscilators[osc]);
+    });
+    apc::OscParams::Get(osc, 1)->add_routine([osc, &oscilators](Controller::Control* ctrl){
+      oscilators[osc].param1 = static_cast<apc::OscParams*>(ctrl)->get_value() >> 1;
+      push(oscilators[osc]);
+    });
+    apc::OscParams::Get(osc, 2)->add_routine([osc, &oscilators](Controller::Control* ctrl){
+      oscilators[osc].subdivide = static_cast<apc::OscParams*>(ctrl)->get_value() >> 5;
+      push(oscilators[osc]);
+    });
+    apc::OscParams::Get(osc, 3)->add_routine([osc, &oscilators](Controller::Control* ctrl){
+      oscilators[osc].source = static_cast<apc::OscParams*>(ctrl)->get_value() >> 6;
+      push(oscilators[osc]);
+    });
+  }
 
   for (size_t bank = 0 ; bank < apc::TracksCount ; ++bank)
   {
+    apc::PadsMatrix::Get(bank, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].map_on_index = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+    apc::PadsMatrix::Get(bank, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].effect1 = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+    apc::PadsMatrix::Get(bank, 2)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].blend_mask = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+    apc::PadsMatrix::Get(bank, 3)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].stars = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+    apc::PadsMatrix::Get(bank, 4)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].strobe = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+    apc::PadsMatrix::Get(bank, 5)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].trigger = static_cast<apc::PadsMatrix*>(ctrl)->get_status();
+      push(compos[bank]);
+    });
+
     apc::BottomEncoders::Get(bank, 0, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].palette = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 4;
       push(compos[bank]);
@@ -236,17 +285,22 @@ int main(int argc, const char* argv[])
       compos[bank].speed = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 6;
       push(compos[bank]);
     });
-  }
 
-  for (size_t i = 0 ; i < 3 ; ++i)
-  {
-    apc::TopEncoders::Get(0, 1)->add_routine([&oscilators, i](Controller::Control* ctrl){
-      oscilators[i].kind = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 4;
-      push(oscilators[i]);
+    apc::BottomEncoders::Get(bank, 2, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].index_offset = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
     });
-    apc::TopEncoders::Get(0, 1)->add_routine([&oscilators, i](Controller::Control* ctrl){
-      oscilators[i].subdivide = static_cast<apc::TopEncoders*>(ctrl)->get_value() >> 5;
-      push(oscilators[i]);
+    apc::BottomEncoders::Get(bank, 2, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].param1 = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
+    });
+    apc::BottomEncoders::Get(bank, 3, 0)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].blend_overlay = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
+    });
+    apc::BottomEncoders::Get(bank, 3, 1)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].param_stars = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
     });
   }
 
@@ -301,13 +355,12 @@ int main(int argc, const char* argv[])
     };
     uint8_t idx = 0;
     for (auto& compo : compos)
-    {
-      compo = {
-        idx++,
-        0,
-        { 0 }
-      };
-    }
+      compo = { idx++, 0 };
+
+    idx = 0;
+    for (auto& osc : oscilators)
+      osc = { idx++, 0 };
+
     for (auto& pair : arduinos)
     {
       auto& [arduino, setup] = pair;

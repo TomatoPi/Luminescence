@@ -56,22 +56,29 @@ FallDetector beat_detector(&master_clock);
 
 SerialParser parser;
 
-uint8_t evalOscillator(const objects::Oscilator& osc, uint8_t time, uint8_t min, uint8_t max)
+uint8_t eval_oscillator(const objects::Oscilator& osc, uint8_t speed, uint8_t time)
 {
-  uint8_t pp = time;
-  uint8_t value = 0;
+  uint8_t value = time;
+  switch (osc.source)
+  {
+    // TODO : we need to introduce poulpe structure before
+  }
+  using namespace objects::flags;
   switch (osc.kind)
   {    
-    case objects::flags::OscillatorKind::Sin:      value = sin8(pp); break;
-    case objects::flags::OscillatorKind::SawTooth: value = pp; break;
-    case objects::flags::OscillatorKind::Square:   value = pp < 127 ? 0 : 255; break;
-    case objects::flags::OscillatorKind::Triangle: value = triwave8(pp); break;
-    case objects::flags::OscillatorKind::Noise:    value = random8(pp); break;
+    case OscillatorKind::Sin:      return sin8(value);
+    case OscillatorKind::SawTooth: return value;
+    case OscillatorKind::Square:   return value < osc.param1 ? 0 : 255; break;
+    case OscillatorKind::Triangle: return triwave8(value); break;
+    case OscillatorKind::Noise:    return random8(value); break;
     default:
       return 0;
   }
-
-  return map8(value, min, max);
+  return value;
+}
+uint8_t eval_oscillator(const objects::Oscilator& osc, uint8_t speed = 0)
+{
+  return eval_oscillator(osc, speed, osc_clocks[osc.index].get8(speed));
 }
 
 void init_objects()
@@ -100,22 +107,101 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
   return static_cast<uint8_t>((i * didx) >> 24);
 }
 
-void eval_compo(const objects::Compo& compo)
+void eval_range(const objects::Compo& compo, index_t begin, index_t end)
 {
-  const auto& palette = Palettes::Get(compo.palette);
+  if (end <= begin)
+    return;
 
-  uint8_t time = master_clock.get8(compo.speed);
-  uint8_t time_mod = scale8(sin8(time), compo.mod_intensity);
+  const auto& palette = Palettes::Get(compo.palette);
+  const index_t length = end - begin;
+
+  uint8_t time_mod = scale8(eval_oscillator(oscillators[0], compo.speed), compo.mod_intensity);
   
   uint16_t p_value = time_mod << 8;
 
-  const uint16_t pixel_dt = 0xFFFFu / MaxLedsCount;
+  const uint16_t pixel_dt = compo.map_on_index ? (0xFFFFu / length) : 0;
   const uint16_t step = scale16by8(pixel_dt, compo.palette_width << 1);
 
-  for (index_t i = 0; i < MaxLedsCount; ++i, p_value += step)
+  p_value += scale16by8(0xFFFFu, compo.index_offset << 1);
+  p_value += pixel_dt * begin;
+
+  if (!compo.strobe)
   {
-    leds[i] = palette.eval(p_value >> 8);
+    for (index_t i = begin; i < end; ++i, p_value += step)
+    {
+      const uint8_t ribbon = (i * 255) / 20;
+      uint8_t value = p_value >> 8;
+      uint8_t bright = 255;
+      
+      if (compo.blend_mask)
+        bright = lerp8by8(255, eval_oscillator(oscillators[2]), compo.blend_overlay << 1);
+      leds[i] = nblend(leds[i], palette.eval(value), bright);
+    }
   }
+  else // if strobe
+  {
+    CRGB* leds = FastLED.leds() + begin;
+    index_t leds_count = end - begin;
+    uint32_t pulse_width;
+
+    switch (master.pulse_width)
+    {
+      case 3 : pulse_width = (0xFFFFFFFFu / 4u) * 3u; break;
+      case 2 : pulse_width = 0xFFFFFFFFu / 2u; break;
+      case 1 : pulse_width = 0xFFFFFFFFu / 3u; break;
+      case 0 :
+      default: pulse_width = 0xFFFFFFFFu / 10u; break;
+    }
+
+    if (master.istimemod)
+    {
+      if (strobe_clock.coarse_value)
+        for (index_t i = begin; i < end; ++i, p_value += step)
+        {
+          uint8_t value = p_value >> 8;
+          leds[i] = palette.eval(value);
+        }
+    }
+    else // running pulses
+    {
+      /*
+      Creates realy nice tracers on the ribbon.
+      Could be extracted to apply it on any composition
+      */
+      const index_t pw_inpixels = ((uint64_t)pulse_width * length) >> 32;
+      const index_t ck_inpixels = ((uint64_t)strobe_clock.finevalue * length) >> 8;
+      if (length < ck_inpixels + pw_inpixels)
+      {
+        // splited pulse
+        const index_t split = (ck_inpixels + pw_inpixels) % length;
+
+        index_t i = 0;
+
+        for (; i < split ; ++i, p_value += step)
+        {
+          uint8_t value = p_value >> 8;
+          leds[begin+i] = palette.eval(value);
+        }
+
+        i += length - pw_inpixels;
+        p_value += (length - pw_inpixels) * step;
+
+        for (; i < length ; ++i, p_value += step)
+        {
+          uint8_t value = p_value >> 8;
+          leds[begin+i] = palette.eval(value);
+        }
+      }
+      else
+      {
+        for (index_t i = ck_inpixels ; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
+        {
+          uint8_t value = p_value >> 8;
+          leds[begin+i] = palette.eval(value);
+        }
+      }
+    } // endif running pulses
+  } // endif strobe
 }
 
 void setup()
@@ -149,7 +235,7 @@ void loop()
   static unsigned long drop_count = 0;
   
   master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
-  strobe_clock.setPeriod(master.strobe);
+  strobe_clock.setPeriod(master.strobe_speed << 1);
 
   for (uint8_t i = 0 ; i < 3 ; ++i)
   {
@@ -189,16 +275,16 @@ void loop()
 //    Serial.write(STOP_BYTE);
     for (uint8_t i = 0 ; i < 8 ; ++i)
       if (sequencer.steps[current_step] & (1 << i))
-        eval_compo(compos[i]);
+        eval_range(compos[i], 0, MaxLedsCount);
   }
   else
   {
-    eval_compo(compos[master.active_compo]); 
+    eval_range(compos[master.active_compo], 0, MaxLedsCount); 
   }
   unsigned long compute_end = millis();
   
   unsigned long draw_begin = millis();
-  if (master.strobe)
+  if (master.do_strobe)
   {
     uint32_t pulse_width;
     switch (master.pulse_width)
@@ -377,6 +463,11 @@ int update_frame() {
           {
             sequencer = result.read<objects::Sequencer>();
             break;
+          }
+          case objects::flags::Oscilator:
+          {
+            auto tmp = result.read<objects::Oscilator>();
+            oscillators[tmp.index] = tmp;
           }
         }
         // Send ACK

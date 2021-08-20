@@ -133,11 +133,11 @@ namespace objects
 
     enum OscillatorKind {
       Sin = 0,
-      Varislope,
-      Noise,
       SawTooth,
       Square,
       Triangle,
+      Noise,
+      Varislope,
     };
 
     enum Modulation {
@@ -169,9 +169,10 @@ namespace objects
     //
     uint8_t index : 2;
     uint8_t kind : 4;   // ModulationKind
+    uint8_t source : 2; // [time, tentacle_index, ribbon_index, led_index] should be replaced by MSB
     uint8_t subdivide : 3; // [0-7] multiply clock by 2 ^ (subdivide - 5)
     uint8_t param1 : 7; // saturation | fixed_point | fixed_point
-    uint8_t param2 : 7; // -- | 0 square, 127 triangle | variance
+    uint8_t _ : 1;
     // 2 + 2
   };
 
@@ -182,8 +183,9 @@ namespace objects
     uint8_t sync_correction;  // Masterclock phase offset [0 - 255]
     uint8_t brightness;       // Master brightness [0 - 255] TODO : modify scaling
     // 4
-    uint8_t strobe : 5;       // strobe period in frames
+    uint8_t do_strobe : 1;
     uint8_t istimemod : 1;    // see Modulation
+    uint8_t strobe_speed : 4;       // strobe period / 2 in frames
     uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
     // 5
     uint8_t active_compo : 4;
@@ -201,6 +203,20 @@ namespace objects
     uint8_t __ : 1;
     uint8_t speed : 2;
     // 3
+    uint8_t map_on_index : 1;
+    uint8_t index_offset : 7;
+    // 4
+    uint8_t effect1 : 1; // Up to decide
+    uint8_t param1 : 7;
+    // 5
+    uint8_t blend_mask : 1; // Up to decide
+    uint8_t blend_overlay : 7;
+    // 6
+    uint8_t stars : 1;  // Chain break like a diamond
+    uint8_t param_stars: 7; 
+    // 7
+    uint8_t strobe : 1;
+    uint8_t trigger : 1;
   };
 
   struct Sequencer

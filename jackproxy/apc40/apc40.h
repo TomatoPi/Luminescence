@@ -130,22 +130,87 @@ namespace apc
   ////////////////////////////////
 
   // Used to edit LFOs values, or kinda global params
-  class TopEncoders :
+  class StrobeParams :
     public ctrls::Pot,
-    public D2ArrayInstanced<TopEncoders, EncodersColumnsCount, EncodersRowsCount>
+    public ArrayInstanced<StrobeParams, EncodersColumnsCount>
   {
   public:
     using Base = ctrls::Pot;
-    using Inst = D2ArrayInstanced<TopEncoders, EncodersColumnsCount, EncodersRowsCount>;
+    using Inst = ArrayInstanced<StrobeParams, EncodersColumnsCount>;
   
   public:
 
-    TopEncoders(Controller* ctrl, uint8_t col, uint8_t row) :
-      Base(ctrl, 0, 0x30 + (row * 4) + col),
-      Inst(col, row)
+    StrobeParams(Controller* ctrl, uint8_t index) :
+      Base(ctrl, 0, 0x30 + index),
+      Inst(index)
     {
     }
   };
+
+  class StrobeEnable :
+    public ctrls::MomentaryPad,
+    public MonoInstanced<StrobeEnable>
+  {
+  private:
+    using Base = ctrls::MomentaryPad;
+    using Inst = MonoInstanced<StrobeEnable>;
+
+  public:
+
+    StrobeEnable(Controller* ctrl) :
+      Base(ctrl, 0, 0x57), Inst()
+      {}
+  };
+
+  class OscParams :
+    public ctrls::Pot,
+    public D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>
+  {
+  public:
+    using Base = ctrls::Pot;
+    using Inst = D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>;
+  
+  public:
+
+    OscParams(Controller* ctrl, uint8_t osc, uint8_t param) :
+      Base(ctrl, 0, 0x34 + param),
+      Inst(osc, param)
+    {
+    }
+  };
+
+  class OscSelect :
+    public ctrls::Trigger,
+    public ArrayInstanced<OscSelect, 3>
+  {
+  private:
+    using Base = ctrls::Trigger;
+    using Inst = ArrayInstanced<OscSelect, 3>;
+
+    bool is_active = false;
+
+    void handle_event() override {
+      Base::handle_event();
+      for (auto& osc : Get())
+          osc->is_active = (osc == this);
+      send_refresh();
+      OscParams::Generate([this](uint8_t bank, uint8_t col){
+        if (bank == this->getIndex())
+          OscParams::Get(bank, col)->send_refresh();
+      });
+    }
+
+  public:
+
+    OscSelect(Controller* ctrl, uint8_t index) :
+      Base(ctrl, index, 0x58), Inst(index)
+      {}
+
+    bool isActive() const { return is_active; }
+
+  };
+
+
 
   // Edit Current compo's params
   class BottomEncoders :
@@ -211,31 +276,6 @@ namespace apc
   /////////////////////////////////////
   /// Triggers
   /////////////////////////////////////
-
-  class OscSelect :
-    public ctrls::Trigger,
-    public ArrayInstanced<OscSelect, 3>
-  {
-  private:
-    using Base = ctrls::Trigger;
-    using Inst = ArrayInstanced<OscSelect, 3>;
-
-    bool is_active = false;
-
-    void handle_event() override {
-      Base::handle_event();
-      for (auto& osc : Get())
-        osc->is_active = (osc == this);
-    }
-
-  public:
-
-    OscSelect(Controller* ctrl, uint8_t index) :
-      Base(ctrl, 0, 0x57 + index, 0xB0), Inst(index)
-      {}
-
-    bool isActive() const { return is_active; }
-  };
 
   template <typename T, uint8_t D1>
   class MonoTrigger :
@@ -308,10 +348,13 @@ namespace apc
 
       TrackSelect::Generate([this](uint8_t i){addControl<TrackSelect>(i);});
 
-      TopEncoders::Generate([this](uint8_t i, uint8_t j){addControl<TopEncoders>(i,j);});
-      BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
+      StrobeParams::Generate([this](uint8_t i){addControl<StrobeParams>(i);});
+      addControl<StrobeEnable>();
 
+      OscParams::Generate([this](uint8_t i, uint8_t j){addControl<OscParams>(i,j);});
       OscSelect::Generate([this](uint8_t i){addControl<OscSelect>(i);});
+
+      BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
 
       Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
       addControl<MainFader>();
