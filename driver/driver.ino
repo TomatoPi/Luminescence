@@ -41,6 +41,7 @@ constexpr const uint8_t SerialPacket::Header[3];
 
 static constexpr index_t MaxLedsCount = 30 * 21;
 
+#include "math.h"
 color_t leds[MaxLedsCount];
 
 FastClock strobe_clock;
