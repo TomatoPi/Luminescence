@@ -174,7 +174,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         for (index_t i = begin; i < end; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
-          leds[i] = blend(leds[i],  palette.eval(value), compo.brightness << 1);
+          leds[i] = palette.eval(value);
         }
       else {}
         //fill_solid(leds + begin, end - begin, CRGB::Black);
@@ -197,7 +197,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         for (; i < split ; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
-          leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          leds[begin+i] = palette.eval(value);
         }
 
         for (; i < split + length - ck_inpixels ; ++i, p_value += step)
@@ -208,7 +208,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         for (; i < length ; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
-          leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          leds[begin+i] = palette.eval(value);
         }
       }
       else
@@ -221,7 +221,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
-          leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          leds[begin+i] = palette.eval(value);
         }
         for (; i < length ; ++i, p_value += step)
         {
@@ -236,19 +236,20 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
     {
       const uint8_t ribbon = (i * 255) / 20;
       uint8_t value = p_value >> 8;
-
       uint8_t bright = 255;
 
       if (compo.stars)
-        bright = random8() < (compo.param_stars << 1) ? bright : 0x00;
+        bright = random8() < (compo.param_stars << 1) ? 0xFF : 0x00;
+      else
+        bright = compo.brightness;
 
       if (compo.blend_mask)
         bright = lerp8by8(bright, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
 
       if (compo.effect1)
-        bright = scale8(scale8(value, 255 - compo.param1), bright);
+        bright = scale8(value, 255 - compo.param1);
 
-      leds[i] = nblend(leds[i], palette.eval(value), scale8_video(bright, compo.brightness << 1));
+      leds[i] = nblend(leds[i], palette.eval(value), bright);
     }
   }
 }
