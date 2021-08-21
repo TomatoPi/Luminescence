@@ -138,20 +138,19 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
 //  Serial.println(compo.strobe);
 //  Serial.write(STOP_BYTE);
 
-  if (!compo.strobe)
-  {
-    for (index_t i = begin; i < end; ++i, p_value += step)
-    {
-      const uint8_t ribbon = (i * 255) / 20;
-      uint8_t value = p_value >> 8;
-      uint8_t bright = compo.brightness;
+  // {
+  //   for (index_t i = begin; i < end; ++i, p_value += step)
+  //   {
+  //     const uint8_t ribbon = (i * 255) / 20;
+  //     uint8_t value = p_value >> 8;
+  //     uint8_t bright = random8() < (compo.param_stars << 1) ? 0xFF : 0x00;
       
-      if (compo.blend_mask)
-        bright = lerp8by8(255, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
-      leds[i] = nblend(leds[i], palette.eval(value), bright);
-    }
-  }
-  else // if strobe
+  //     if (compo.blend_mask)
+  //       bright = lerp8by8(255, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
+  //     leds[i] = nblend(leds[i], palette.eval(value), bright);
+  //   }
+  // }
+  if (compo.strobe)
   {
     CRGB* leds = FastLED.leds() + begin;
     index_t leds_count = end - begin;
@@ -228,6 +227,28 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
       }
     } // endif running pulses
   } // endif strobe
+  else // normal
+  {
+    for (index_t i = begin; i < end; ++i, p_value += step)
+    {
+      const uint8_t ribbon = (i * 255) / 20;
+      uint8_t value = p_value >> 8;
+      uint8_t bright = 255;
+
+      if (compo.stars)
+        bright = random8() < (compo.param_stars << 1) ? 0xFF : 0x00;
+      else
+        bright = compo.brightness;
+
+      if (compo.blend_mask)
+        bright = lerp8by8(bright, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
+
+      if (compo.effect1)
+        bright = scale8(value, 255 - compo.param1);
+
+      leds[i] = nblend(leds[i], palette.eval(value), bright);
+    }
+  }
 }
 
 void setup()

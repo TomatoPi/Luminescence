@@ -477,7 +477,7 @@ int main(int argc, const char* argv[])
       push(compos[bank]);
     });
 
-    apc::Faders::GetFaders(bank)->add_routine([bank, &compos](Controller::Control* ctrl){
+    apc::Faders::Get(bank)->add_routine([bank, &compos](Controller::Control* ctrl){
       compos[bank].brightness = static_cast<apc::Faders*>(ctrl)->get_value() >> 1;
       push(compos[bank]);
     });
