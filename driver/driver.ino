@@ -116,7 +116,10 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
   const auto& palette = Palettes::Get(compo.palette);
   const index_t length = end - begin;
 
-  uint8_t time_mod = scale8(eval_oscillator(oscillators[0], compo.speed), compo.mod_intensity);
+  uint8_t osctime = eval_oscillator(oscillators[0], compo.speed);
+  if (master.reverse)
+    osctime = 0xFFu - osctime;
+  uint8_t time_mod = scale8(osctime, compo.mod_intensity);
   
   uint16_t p_value = time_mod << 8;
 
@@ -333,9 +336,9 @@ void loop()
       if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
       beat_detector.reset();
     }
-    Serial.println(sequencer.steps[current_step]);
-    Serial.println(current_step);
-    Serial.write(STOP_BYTE);
+//    Serial.println(sequencer.steps[current_step]);
+//    Serial.println(current_step);
+//    Serial.write(STOP_BYTE);
     for (uint8_t i = 0 ; i < 8 ; ++i)
       if (sequencer.steps[current_step] & (1 << i))
         eval_range(compos[i], 0, MaxLedsCount);

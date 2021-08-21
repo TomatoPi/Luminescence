@@ -197,6 +197,7 @@ namespace objects
     uint8_t feedback : 7;
     uint8_t blur : 1;
     uint8_t fade : 1;
+    uint8_t reverse : 1;
   };
 
   struct Compo {
