@@ -225,6 +225,9 @@ namespace objects
     uint8_t speed : 2;
     uint8_t strobe : 1;
     uint8_t trigger : 1;
+    uint8_t ___ : 4;
+    // 8
+    uint8_t brightness : 7;
   };
 
   struct Sequencer

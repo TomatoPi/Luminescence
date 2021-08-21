@@ -71,7 +71,7 @@ uint8_t eval_oscillator(const objects::Oscilator& osc, uint8_t speed, uint8_t ti
     case OscillatorKind::SawTooth: return value;
     case OscillatorKind::Square:   return value < osc.param1 ? 0 : 255; break;
     case OscillatorKind::Triangle: return triwave8(value); break;
-    case OscillatorKind::Noise:    return random8(value); break;
+    case OscillatorKind::Noise:    return sin8(random8(value)); break;
     default:
       return 0;
   }
@@ -144,7 +144,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
     {
       const uint8_t ribbon = (i * 255) / 20;
       uint8_t value = p_value >> 8;
-      uint8_t bright = 255;
+      uint8_t bright = compo.brightness;
       
       if (compo.blend_mask)
         bright = lerp8by8(255, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);

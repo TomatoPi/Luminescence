@@ -476,6 +476,11 @@ int main(int argc, const char* argv[])
       compos[bank].param_stars = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
       push(compos[bank]);
     });
+
+    apc::Faders::GetFaders(bank)->add_routine([bank, &compos](Controller::Control* ctrl){
+      compos[bank].brightness = static_cast<apc::Faders*>(ctrl)->get_value() >> 1;
+      push(compos[bank]);
+    });
   } // for each bank
 
   apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
