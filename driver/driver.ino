@@ -40,6 +40,9 @@ using Range = range_t<index_t, coef_t>;
 constexpr const uint8_t SerialPacket::Header[3];
 
 static constexpr index_t MaxLedsCount = 30 * 21;
+static constexpr index_t MaxRibbonsCount = 4;
+index_t ribbonsCount = 4;
+index_t Ribbons[MaxRibbonsCount] = {1, 1, 1, 1};
 
 #include "math.h"
 color_t leds[MaxLedsCount];
@@ -108,7 +111,7 @@ uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
   return static_cast<uint8_t>((i * didx) >> 24);
 }
 
-void eval_range(const objects::Compo& compo, index_t begin, index_t end)
+void eval_range(const objects::Compo& compo, index_t begin, index_t end, bool reverse)
 {
   if (end <= begin)
     return;
@@ -116,10 +119,8 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
   const auto& palette = Palettes::Get(compo.palette);
   const index_t length = end - begin;
 
-  uint8_t osctime = eval_oscillator(oscillators[0], compo.speed);
-  if (master.reverse)
-    osctime = 0xFFu - osctime;
-  uint8_t time_mod = scale8(osctime, compo.mod_intensity);
+  uint8_t osc = (master.reverse ^ reverse) ? 255 - osc_clocks[0].get8() : osc_clocks[0].get8();
+  uint8_t time_mod = scale8(eval_oscillator(oscillators[0], compo.speed, osc), compo.mod_intensity);
   
   uint16_t p_value = time_mod << 8;
 
@@ -174,7 +175,7 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
         for (index_t i = begin; i < end; ++i, p_value += step)
         {
           uint8_t value = p_value >> 8;
-          leds[i] = palette.eval(value);
+          leds[i] = blend(leds[i],  palette.eval(value), compo.brightness << 1);
         }
       else {}
         //fill_solid(leds + begin, end - begin, CRGB::Black);
@@ -185,8 +186,9 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
       Creates realy nice tracers on the ribbon.
       Could be extracted to apply it on any composition
       */
+      uint8_t clock_val = strobe_clock.finevalue;
       const index_t pw_inpixels = ((uint64_t)pulse_width * length) >> 32;
-      const index_t ck_inpixels = ((uint64_t)strobe_clock.finevalue * length) >> 8;
+      const index_t ck_inpixels = ((uint64_t)clock_val * length) >> 8;
       if (length < ck_inpixels + pw_inpixels)
       {
         // splited pulse
@@ -194,38 +196,82 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
 
         index_t i = 0;
 
-        for (; i < split ; ++i, p_value += step)
+        if (reverse ^ master.reverse)
         {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
+          index_t j = end - 1;
+          for (; i < split ; ++i, --j, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[j] = blend(leds[j], palette.eval(value), compo.brightness << 1);
+          }
+  
+          for (; i < split + length - ck_inpixels ; ++i, --j, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          }
+  
+          for (; i < length ; ++i, --j, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[j] = blend(leds[j], palette.eval(value), compo.brightness << 1);
+          }
         }
-
-        for (; i < split + length - ck_inpixels ; ++i, p_value += step)
+        else
         {
-          //leds[begin+i] = CRGB::Black;
-        }
-
-        for (; i < length ; ++i, p_value += step)
-        {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
+          for (; i < split ; ++i, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          }
+  
+          for (; i < split + length - ck_inpixels ; ++i, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          }
+  
+          for (; i < length ; ++i, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          }
         }
       }
       else
       {
         index_t i = 0;
-        for (; i < ck_inpixels ; ++i, p_value += step)
+        
+        if (reverse ^ master.reverse)
         {
-          //leds[begin+i] = CRGB::Black;
+          index_t j = end -1;
+          for (; i < ck_inpixels ; ++i, --j, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          }
+          for (; i < ck_inpixels + pw_inpixels ; ++i, --j, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[j] = blend(leds[j], palette.eval(value), compo.brightness << 1);
+          }
+          for (; i < length ; ++i, --j, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          }
         }
-        for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
+        else
         {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
-        }
-        for (; i < length ; ++i, p_value += step)
-        {
-          //leds[begin+i] = CRGB::Black;
+          for (; i < ck_inpixels ; ++i, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          }
+          for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
+          {
+            uint8_t value = p_value >> 8;
+            leds[begin+i] = blend(leds[begin+i], palette.eval(value), compo.brightness << 1);
+          }
+          for (; i < length ; ++i, p_value += step)
+          {
+            //leds[begin+i] = CRGB::Black;
+          } 
         }
       }
     } // endif running pulses
@@ -236,20 +282,19 @@ void eval_range(const objects::Compo& compo, index_t begin, index_t end)
     {
       const uint8_t ribbon = (i * 255) / 20;
       uint8_t value = p_value >> 8;
+
       uint8_t bright = 255;
 
       if (compo.stars)
-        bright = random8() < (compo.param_stars << 1) ? 0xFF : 0x00;
-      else
-        bright = compo.brightness;
+        bright = random8() < (compo.param_stars << 1) ? bright : 0x00;
 
       if (compo.blend_mask)
         bright = lerp8by8(bright, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
 
       if (compo.effect1)
-        bright = scale8(value, 255 - compo.param1);
+        bright = scale8(scale8(value, 255 - compo.param1), bright);
 
-      leds[i] = nblend(leds[i], palette.eval(value), bright);
+      leds[i] = nblend(leds[i], palette.eval(value), scale8_video(bright, compo.brightness << 1));
     }
   }
 }
@@ -342,11 +387,37 @@ void loop()
 //    Serial.write(STOP_BYTE);
     for (uint8_t i = 0 ; i < 8 ; ++i)
       if (sequencer.steps[current_step] & (1 << i))
-        eval_range(compos[i], 0, MaxLedsCount);
+      {
+        if (master.use_ribbon)
+        {
+          bool reverse = false;
+          for (index_t r = 0, begin = 0; r < ribbonsCount ; ++r)
+          {
+            index_t end = begin + Ribbons[r] * 30;
+            eval_range(compos[i], begin, end, reverse);
+            begin = end;
+            reverse = !reverse;
+          }
+        }
+        else
+          eval_range(compos[i], 0, MaxLedsCount, false);
+      }
   }
   else
   {
-    eval_range(compos[master.active_compo], 0, MaxLedsCount); 
+    if (master.use_ribbon)
+    {
+      bool reverse = false;
+      for (index_t r = 0, begin = 0; r < ribbonsCount ; ++r)
+      {
+        index_t end = begin + Ribbons[r] * 30;
+        eval_range(compos[master.active_compo], begin, end, reverse);
+        begin = end;
+        reverse = !reverse;
+      }
+    }
+    else
+      eval_range(compos[master.active_compo], 0, MaxLedsCount, false);
   }
   unsigned long compute_end = millis();
   

@@ -85,6 +85,7 @@ struct Environement
 void update_controller_internals()
 {
   apc::PadsMaster::Get(0)->set_status(Global.master.reverse);
+  apc::PadsMaster::Get(1)->set_status(Global.master.use_ribbon);
   apc::PadsMaster::Get(3)->set_status(Global.master.blur);
   apc::PadsMaster::Get(4)->set_status(Global.master.fade);
 
@@ -342,6 +343,11 @@ int main(int argc, const char* argv[])
       master.reverse = static_cast<apc::PadsMaster*>(ctrl)->get_status();
       push(master);
   });
+  apc::PadsMaster::Get(1)->add_routine([&master](Controller::Control* ctrl){
+      master.use_ribbon = static_cast<apc::PadsMaster*>(ctrl)->get_status();
+      push(master);
+  });
+
   apc::PadsMaster::Get(3)->add_routine([&master](Controller::Control* ctrl){
       master.blur = static_cast<apc::PadsMaster*>(ctrl)->get_status();
       push(master);
