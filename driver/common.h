@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 /*
 Warning :
   Code written in this file must be platform independant.
@@ -20,6 +22,9 @@ struct SerialPacket
   uint8_t rawobj[12] = {0};
 
   void clear() { flags = 0; for (uint8_t i=0; i<ObjectSizeMax;++i) rawobj[i] = 0; }
+
+  template <typename T>
+  T read() const { return T(*(T*)rawobj); }
 };
 
 static_assert(sizeof(SerialPacket) == SerialPacket::Size);
@@ -127,7 +132,6 @@ namespace objects
       Master,
       Composition,
       Oscilator,
-      Modulation,
       Sequencer,
     };
 

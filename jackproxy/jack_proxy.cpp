@@ -69,6 +69,135 @@ jack_client_t* client;
 jack_port_t* midi_in;
 jack_port_t* midi_out;
 
+bool dirty_controller = false;
+
+const char* save_file = nullptr;
+
+struct Environement
+{
+  objects::Setup setup;
+  objects::Master master;
+  std::array<objects::Compo, apc::PadsColumnsCount> compos;
+  std::array<objects::Oscilator, 3> oscilators;
+  objects::Sequencer sequencer;
+} Global;
+
+void update_controller_internals()
+{
+  apc::PadsMaster::Get(3)->set_status(Global.master.blur);
+  apc::PadsMaster::Get(4)->set_status(Global.master.fade);
+
+  apc::SequencerPads::Generate([&](uint8_t col, uint8_t row){
+    apc::SequencerPads::Get(col, row)->set_status(!!(Global.sequencer.steps[row] & (1 << col)));
+  });
+  
+  apc::StrobeParams::Get(0)->set_value((32 - Global.master.strobe_speed) << 3);
+  apc::StrobeParams::Get(1)->set_value((Global.master.istimemod) << 7);
+  apc::StrobeParams::Get(2)->set_value((Global.master.pulse_width) << 6);
+  apc::StrobeParams::Get(3)->set_value((Global.master.feedback) << 1);
+  apc::StrobeEnable::Get()->set_status(Global.master.do_strobe);
+
+  for (size_t osc = 0 ; osc < 3 ; ++osc)
+  {
+    apc::OscParams::Get(osc, 0)->set_value(Global.oscilators[osc].kind << 4);
+    apc::OscParams::Get(osc, 1)->set_value(Global.oscilators[osc].param1 << 1);
+    apc::OscParams::Get(osc, 2)->set_value(Global.oscilators[osc].subdivide << 5);
+    apc::OscParams::Get(osc, 3)->set_value(Global.oscilators[osc].source << 6);
+  }
+
+  for (size_t bank = 0 ; bank < apc::TracksCount ; ++bank)
+  {
+    apc::PadsMatrix::Get(bank, 0)->set_status(Global.compos[bank].map_on_index);
+    apc::PadsMatrix::Get(bank, 1)->set_status(Global.compos[bank].effect1);
+    apc::PadsMatrix::Get(bank, 2)->set_status(Global.compos[bank].blend_mask);
+    apc::PadsMatrix::Get(bank, 3)->set_status(Global.compos[bank].stars);
+    apc::PadsMatrix::Get(bank, 4)->set_status(Global.compos[bank].strobe);
+    apc::PadsMatrix::Get(bank, 5)->set_status(Global.compos[bank].trigger);
+
+    apc::BottomEncoders::Get(bank, 0, 0)->set_value(Global.compos[bank].palette << 4);
+    apc::BottomEncoders::Get(bank, 0, 1)->set_value(Global.compos[bank].palette_width << 1);
+    apc::BottomEncoders::Get(bank, 1, 0)->set_value(Global.compos[bank].mod_intensity << 1);
+    apc::BottomEncoders::Get(bank, 1, 1)->set_value(Global.compos[bank].speed << 6);
+    apc::BottomEncoders::Get(bank, 2, 0)->set_value(Global.compos[bank].index_offset << 1);
+    apc::BottomEncoders::Get(bank, 2, 1)->set_value(Global.compos[bank].param1 << 1);
+    apc::BottomEncoders::Get(bank, 3, 0)->set_value(Global.compos[bank].blend_overlay << 1);
+    apc::BottomEncoders::Get(bank, 3, 1)->set_value(Global.compos[bank].param_stars << 1);
+  }
+
+  apc::MainFader::Get()->set_value(Global.master.brightness);
+}
+
+int load()
+{
+  FILE* file = fopen(save_file, "rb");
+  if (nullptr == file)
+    { perror(""); return __LINE__; }
+
+  size_t size;
+  SerialPacket result;
+  while (0 != (size = fread(&result, sizeof(result), 1, file)))
+  {
+    fprintf(stderr, "Read %ld bytes\n", size);
+    switch (result.flags)
+    {
+      case objects::flags::Setup:
+      {
+        Global.setup = result.read<objects::Setup>();
+        break;
+      }
+      case objects::flags::Master:
+        Global.master = result.read<objects::Master>();
+        break;
+      case objects::flags::Composition:
+      {
+        objects::Compo tmp = result.read<objects::Compo>();
+        Global.compos[tmp.index] = tmp;
+        fprintf(stderr, "Compo : %d %d %d\n", tmp.index, tmp.palette, tmp.palette_width);
+        break;
+      }
+      case objects::flags::Oscilator:
+      {
+        auto tmp = result.read<objects::Oscilator>();
+        Global.oscilators[tmp.index] = tmp;
+        break;
+      }
+      case objects::flags::Sequencer:
+      {
+        Global.sequencer = result.read<objects::Sequencer>();
+        break;
+      }
+    }
+  }
+  fclose(file);
+  update_controller_internals();
+  dirty_controller = true;
+  return 0;
+}
+
+int save()
+{
+  FILE* file = fopen(save_file, "wb");
+  if (nullptr == file)
+    { perror(""); return __LINE__; }
+  
+  auto save = [file] (auto& obj) {
+    auto packet = Serializer::serialize(obj);
+    auto stream = Serializer::bytestream(packet);
+    fwrite(stream, sizeof(packet), 1, file);
+  };
+
+  save(Global.setup);
+  save(Global.master);
+  for (auto& compo : Global.compos)
+    save(compo);
+  for (auto& osc : Global.oscilators)
+    save(osc);
+  save(Global.sequencer);
+
+  fclose(file);
+  return 0;
+}
+
 struct {
   jack_time_t length = 0;
   jack_time_t last_hit = 0;
@@ -85,7 +214,9 @@ template <typename T>
 void push(const T& obj, uint8_t flags = 0)
 {
   for (auto& [arduino, _] : arduinos)
+  {
     arduino->push(obj, flags);
+  }
 }
 
 int jack_callback(jack_nframes_t nframes, void* args)
@@ -123,6 +254,18 @@ int jack_callback(jack_nframes_t nframes, void* args)
       void* raw = jack_midi_event_reserve(out_buffer, event.time, tmp.size());
       memcpy(raw, tmp.data(), tmp.size());
     }
+
+    if (dirty_controller)
+    {
+      dirty_controller = false;
+      auto& responces = APC40.refresh_all_controllers(); 
+      for (auto& msg : responces)
+      {
+        auto tmp = msg.serialize();
+        void* raw = jack_midi_event_reserve(out_buffer, event.time, tmp.size());
+        memcpy(raw, tmp.data(), tmp.size());
+      }
+    }
   }
 
   return 0;
@@ -130,10 +273,17 @@ int jack_callback(jack_nframes_t nframes, void* args)
 
 int main(int argc, const char* argv[])
 {
+  
+  objects::Setup& setup = Global.setup;
+  objects::Master& master = Global.master;
+  std::array<objects::Compo, apc::PadsColumnsCount>& compos = Global.compos;
+  std::array<objects::Oscilator, 3>& oscilators = Global.oscilators;
+  objects::Sequencer& sequencer = Global.sequencer;
+
   uint8_t idx = 0;
   for (auto& arduino : arduinos)
   {
-    arduino = std::make_pair(new Arduino(argv[idx+1], idx), objects::Setup{
+    arduino = std::make_pair(new Arduino(argv[idx+2], idx), objects::Setup{
       idx
     });
     ++idx;
@@ -142,46 +292,50 @@ int main(int argc, const char* argv[])
   jack_status_t jack_status;
   client = jack_client_open(pgm_name, JackNullOption, &jack_status);
   if (nullptr == client)
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   midi_in = jack_port_register(client, "midi_in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
   if (nullptr == midi_in)
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   midi_out = jack_port_register(client, "midi_out", JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput, 0);
   if (nullptr == midi_in)
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   if (0 != jack_set_process_callback(client, jack_callback, nullptr))
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   if (0 != jack_activate(client))
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   const char** ports_names = jack_get_ports(client, nullptr, JACK_DEFAULT_MIDI_TYPE, JackPortIsOutput);
   if (nullptr == ports_names)
-    return __LINE__;
+    { perror(""); return __LINE__; }
   
   if (0 != jack_connect(client, ports_names[0], "DMX-Duino-Proxy:midi_in"))
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   jack_free(ports_names);
 
 
   ports_names = jack_get_ports(client, nullptr, JACK_DEFAULT_MIDI_TYPE, JackPortIsInput);
   if (nullptr == ports_names)
-    return __LINE__;
+    { perror(""); return __LINE__; }
   
   if (0 != jack_connect(client, "DMX-Duino-Proxy:midi_out", ports_names[0]))
-    return __LINE__;
+    { perror(""); return __LINE__; }
 
   jack_free(ports_names);
 
 
-  objects::Master master;
-  std::array<objects::Compo, apc::PadsColumnsCount> compos;
-  std::array<objects::Oscilator, 3> oscilators;
-  objects::Sequencer sequencer;
+  apc::Save::Get()->add_routine([](auto){
+    if (int err = save())
+      perror("Warning Save Failure");
+  });
+  apc::Load::Get()->add_routine([](auto){
+    if (int err = load())
+      perror("Warning Load Failure");
+  });
 
   apc::PadsMaster::Get(3)->add_routine([&master](Controller::Control* ctrl){
       master.blur = static_cast<apc::PadsMaster*>(ctrl)->get_status();
@@ -322,7 +476,7 @@ int main(int argc, const char* argv[])
       compos[bank].param_stars = static_cast<apc::BottomEncoders*>(ctrl)->get_value() >> 1;
       push(compos[bank]);
     });
-  }
+  } // for each bank
 
   apc::MainFader::Get()->add_routine([&](Controller::Control* ctrl){
       master.brightness = static_cast<apc::MainFader*>(ctrl)->get_value();
@@ -366,6 +520,8 @@ int main(int argc, const char* argv[])
     });
   });
 
+  save_file = argv[1];
+  
   {
     master = {
       120,  // bpm
@@ -388,6 +544,10 @@ int main(int argc, const char* argv[])
       arduino->push(setup);
     }
   }
+
+  if (load())
+    { perror("Error reading file"); return __LINE__; }
+    
 
   while (1)
   {

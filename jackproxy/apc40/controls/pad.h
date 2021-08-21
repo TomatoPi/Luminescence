@@ -47,6 +47,7 @@ namespace ctrls
     }
 
     bool get_status() const { return status; }
+    void set_status(bool s) { status = s; }
   };
 
   class MomentaryPad : public Pad

@@ -312,9 +312,9 @@ void loop()
       if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
       beat_detector.reset();
     }
-//    Serial.println(sequencer.steps[current_step]);
-//    Serial.println(current_step);
-//    Serial.write(STOP_BYTE);
+    Serial.println(sequencer.steps[current_step]);
+    Serial.println(current_step);
+    Serial.write(STOP_BYTE);
     for (uint8_t i = 0 ; i < 8 ; ++i)
       if (sequencer.steps[current_step] & (1 << i))
         eval_range(compos[i], 0, MaxLedsCount);
