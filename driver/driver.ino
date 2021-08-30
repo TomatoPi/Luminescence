@@ -39,7 +39,7 @@ using Range = range_t<index_t, coef_t>;
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
 
-static constexpr index_t MaxLedsCount = 30 * 21;
+static constexpr index_t MaxLedsCount = 30 * 23;
 static constexpr index_t MaxRibbonsCount = 4;
 index_t ribbonsCount = 4;
 index_t Ribbons[MaxRibbonsCount] = {1, 1, 1, 1};
