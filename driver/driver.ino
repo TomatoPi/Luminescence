@@ -65,21 +65,25 @@ void update_clocks()
 
 void loop()
 {
-    const auto& palette = Palettes::many_colors;
+    update_clocks();
+    const uint8_t time = master_clock.get8() + master.sync_correction;
+    const auto& palette = Palettes::rainbow;
     const Composition compo{
         PaletteRangeController {
             OscillatorKind::SawTooth,
             255
         },
         Slicer {
-            4,
+            3,
             150,
             true,
             true
+        },
+        Mask {
+            time,
+            80
         }
     };
-    update_clocks();
-    const uint8_t time = master_clock.get8() + master.sync_correction;
     memset(leds, 0, sizeof(CRGB) * LedsCount);
     for (uint32_t i = 0; i < LedsCount; ++i) {
         leds[i] = compo.eval(palette, time, i, LedsCount);
