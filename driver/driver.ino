@@ -65,14 +65,16 @@ void update_clocks()
 
 void loop()
 {
-    const auto& palette = Palettes::rainbow;
+    const auto& palette = Palettes::many_colors;
     const Composition compo{
         PaletteRangeController {
-            OscillatorKind::Sin,
+            OscillatorKind::SawTooth,
             255
         },
         Slicer {
-            8,
+            4,
+            150,
+            true,
             true
         }
     };
