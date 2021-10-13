@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 /*
 Warning :
   Code written in this file must be platform independant.
@@ -20,9 +22,12 @@ struct SerialPacket
   uint8_t rawobj[12] = {0};
 
   void clear() { flags = 0; for (uint8_t i=0; i<ObjectSizeMax;++i) rawobj[i] = 0; }
+
+  template <typename T>
+  T read() const { return T(*(T*)rawobj); }
 };
 
-static_assert(sizeof(SerialPacket) == SerialPacket::Size);
+static_assert(sizeof(SerialPacket) == SerialPacket::Size, "Message");
 
 struct ParsingResult {
   enum class Status {
@@ -95,7 +100,7 @@ namespace Serializer
   template <typename T>
   SerialPacket serialize(const T& obj, uint8_t flags = 0)
   {
-    static_assert(sizeof(T) <= SerialPacket::ObjectSizeMax);
+    static_assert(sizeof(T) <= SerialPacket::ObjectSizeMax, "Message");
 
     SerialPacket packet;
     packet.clear();
@@ -127,7 +132,6 @@ namespace objects
       Master,
       Composition,
       Oscilator,
-      Modulation,
       Sequencer,
     };
 
@@ -193,6 +197,8 @@ namespace objects
     uint8_t feedback : 7;
     uint8_t blur : 1;
     uint8_t fade : 1;
+    uint8_t reverse : 1;
+    uint8_t use_ribbon : 1;
   };
 
   struct Compo {
@@ -221,6 +227,9 @@ namespace objects
     uint8_t speed : 2;
     uint8_t strobe : 1;
     uint8_t trigger : 1;
+    uint8_t ___ : 4;
+    // 8
+    uint8_t brightness : 7;
   };
 
   struct Sequencer
