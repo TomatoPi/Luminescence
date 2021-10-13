@@ -60,12 +60,12 @@ struct MidiMsgEquals
 };
 using MidiStack = std::vector<MidiMsg>;
 
-using MidiCallback = std::function<void(const MidiMsg&)>;
+using MidiMsgHandler = std::function<void(const MidiMsg&)>;
 
-using MidiHashMap = std::unordered_multimap<MidiMsg, MidiCallback, MidiMsgHash, MidiMsgEquals>;
+using MidiHashMap = std::unordered_multimap<MidiMsg, MidiMsgHandler, MidiMsgHash, MidiMsgEquals>;
 
 template <typename F>
-MidiCallback make_callback(const F& f)
+MidiMsgHandler make_callback(const F& f)
 {
   return [f](const MidiMsg&) -> std::vector<MidiMsg>
   {

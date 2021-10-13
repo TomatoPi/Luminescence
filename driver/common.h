@@ -27,7 +27,7 @@ struct SerialPacket
   T read() const { return T(*(T*)rawobj); }
 };
 
-static_assert(sizeof(SerialPacket) == SerialPacket::Size);
+static_assert(sizeof(SerialPacket) == SerialPacket::Size, "Message");
 
 struct ParsingResult {
   enum class Status {
@@ -100,7 +100,7 @@ namespace Serializer
   template <typename T>
   SerialPacket serialize(const T& obj, uint8_t flags = 0)
   {
-    static_assert(sizeof(T) <= SerialPacket::ObjectSizeMax);
+    static_assert(sizeof(T) <= SerialPacket::ObjectSizeMax, "Message");
 
     SerialPacket packet;
     packet.clear();
@@ -126,115 +126,101 @@ namespace objects
 
   namespace flags
   {
-    enum ObjectKind {
+    enum Objects {
       Unknown     = 0,
       Setup,
       Master,
-      Composition,
-      Oscilator,
-      Sequencer,
-    };
-
-    enum OscillatorKind {
-      Sin = 0,
-      SawTooth,
-      Square,
-      Triangle,
-      Noise,
-      Varislope,
-    };
-
-    enum Modulation {
-      RebaseOnIndex = 0x00,
-      RebaseOnTime = 0x01,
-      RebaseTimeOnIndex = 0x02,
-      RebaseIndexOnTime = 0x03,
-    };
-
-    enum Blend {
-      Keep = 0x00,
-      Replace = 0x01,
-      Add = 0x02,
-      Substract = 0x03,
-      Min = 0x04,
-      Max = 0x05,
+      Preset,
+      Group,
+      Ribbon
     };
   }
 
   struct Setup
   {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Setup;
+    static constexpr const flags::Objects Flag = flags::Objects::Setup;
     //
-    uint8_t driver_index : 2;
-  };
-
-  struct Oscilator {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Oscilator;
-    //
-    uint8_t index : 2;
-    uint8_t kind : 4;   // ModulationKind
-    uint8_t source : 2; // [time, tentacle_index, ribbon_index, led_index] should be replaced by MSB
-    uint8_t subdivide : 3; // [0-7] multiply clock by 2 ^ (subdivide - 5)
-    uint8_t param1 : 7; // saturation | fixed_point | fixed_point
-    uint8_t _ : 1;
-    // 2 + 2
+    uint8_t ribbons_count;
+    uint8_t ribbons_lengths[8];
   };
 
   struct Master {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Master;
+    static constexpr const flags::Objects Flag = flags::Objects::Master;
     //
     uint16_t bpm;             // should be replaced by fixed point integer
     uint8_t sync_correction;  // Masterclock phase offset [0 - 255]
     uint8_t brightness;       // Master brightness [0 - 255] TODO : modify scaling
     // 4
-    uint8_t do_strobe : 1;
-    uint8_t istimemod : 1;    // see Modulation
-    uint8_t strobe_speed : 4;       // strobe period / 2 in frames
-    uint8_t pulse_width : 2;  // 0.10 0.33 0.5 0.75
-    // 5
-    uint8_t active_compo : 4;
-    uint8_t _ : 4;
-    uint8_t feedback : 7;
-    uint8_t blur : 1;
-    uint8_t fade : 1;
-    uint8_t reverse : 1;
-    uint8_t use_ribbon : 1;
   };
 
-  struct Compo {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Composition;
-    //
-    uint8_t index : 4;    // [0 - 8] 8 is master
-    uint8_t palette : 4;  // [0 - 15]
+  struct Preset {
+    static constexpr const flags::Objects Flag = flags::Objects::Preset;
+    
+    uint8_t index : 3;
+    uint8_t pads_states : 5;
+    // 1
+    uint8_t encoders[8];
+    // 9
+    uint8_t switches : 4;
+    uint8_t __0__ : 4;
+    // 10
+    uint8_t brightness : 7;
+    uint8_t __1__ : 1;
+  };
+
+  struct Group {
+    static constexpr const flags::Objects Flag = flags::Objects::Group;
+
+    uint8_t index : 2;
+    uint8_t preset : 3;
+    uint8_t palette : 3;
     // 1
     uint8_t palette_width : 7;
-    uint8_t _ : 1;
-    uint8_t mod_intensity : 7;
-    uint8_t __ : 1;
-    // 3
-    uint8_t index_offset : 7;
-    uint8_t map_on_index : 1;
-    // 4
-    uint8_t param1 : 7;
-    uint8_t effect1 : 1; // Up to decide
-    // 5
-    uint8_t blend_overlay : 7;
-    uint8_t blend_mask : 1; // Up to decide
-    // 6
-    uint8_t param_stars: 7; 
-    uint8_t stars : 1;  // Chain break like a diamond
-    // 7
-    uint8_t speed : 2;
-    uint8_t strobe : 1;
-    uint8_t trigger : 1;
-    uint8_t ___ : 4;
-    // 8
-    uint8_t brightness : 7;
   };
 
-  struct Sequencer
-  {
-    static constexpr const flags::ObjectKind Flag = flags::ObjectKind::Sequencer;
-    uint8_t steps[3];
+  struct Ribbon {
+    static constexpr const flags::Objects Flag = flags::Objects::Ribbon;
+
+    uint8_t index : 4;
+    uint8_t group : 2;
+    uint8_t __0__ : 2;
+    // 1
   };
+
+  // struct Compo {
+  //   static constexpr const flags::Objects Flag = flags::Objects::Composition;
+  //   //
+  //   uint8_t index : 4;    // [0 - 8] 8 is master
+  //   uint8_t palette : 4;  // [0 - 15]
+  //   // 1
+  //   uint8_t palette_width : 7;
+  //   uint8_t _ : 1;
+  //   uint8_t mod_intensity : 7;
+  //   uint8_t __ : 1;
+  //   // 3
+  //   uint8_t index_offset : 7;
+  //   uint8_t map_on_index : 1;
+  //   // 4
+  //   uint8_t param1 : 7;
+  //   uint8_t effect1 : 1; // Up to decide
+  //   // 5
+  //   uint8_t blend_overlay : 7;
+  //   uint8_t blend_mask : 1; // Up to decide
+  //   // 6
+  //   uint8_t param_stars: 7; 
+  //   uint8_t stars : 1;  // Chain break like a diamond
+  //   // 7
+  //   uint8_t speed : 2;
+  //   uint8_t strobe : 1;
+  //   uint8_t trigger : 1;
+  //   uint8_t ___ : 4;
+  //   // 8
+  //   uint8_t brightness : 7;
+  // };
+
+  // struct Sequencer
+  // {
+  //   static constexpr const flags::Objects Flag = flags::Objects::Sequencer;
+  //   uint8_t steps[3];
+  // };
 }
