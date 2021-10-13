@@ -47,6 +47,8 @@ private:
       else if (raw[0] == 0 && raw[1] == static_cast<uint8_t>(STOP_BYTE))
       {
         // fprintf(stderr, "RCV : %d : ACK\n", res);
+        if (buffer.empty())
+          return;
         std::scoped_lock<std::mutex> _(buffer_lock);
         if (last_packet_sent->second.first == last_sent_id)
         {
@@ -84,12 +86,13 @@ private:
       const auto& [id, packet] = pair;
       last_sent_id = id;
       // fprintf(stderr, "%lu Pending Packets\n", buffer.size());
-      // fprintf(stderr, "Send Packet : %lu %p\n", id, _);
+      fprintf(stderr, "Send Packet : %lu %p\n", id, _);
       const uint8_t* raw = Serializer::bytestream(packet);
       for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
       {
         uint8_t byte = raw[i];
         serialport_writebyte(fd, byte);
+        usleep(10);
         // fprintf(stderr, "0x%02x ", byte); 
       }
       // fprintf(stderr, "\n");

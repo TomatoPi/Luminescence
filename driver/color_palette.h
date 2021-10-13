@@ -10,7 +10,7 @@ struct PaletteParams {
   uint8_t frequency_times_60; // Allows us to have fractional frequencies like 1/60, 1/2 etc.
   uint8_t phase;
 
-  // Theses functions have to be inilined
+  // Theses functions have to be inlined
   uint8_t eval(uint8_t t) const
   {
     return map8(cos8(frequency_times_60 * t / 60 + phase), min_value, max_value);
@@ -19,7 +19,7 @@ struct PaletteParams {
 
 struct ColorPalette 
 {
-  // Same
+  // Theses functions have to be inlined
   CRGB eval(uint8_t t) const
   {
   return {

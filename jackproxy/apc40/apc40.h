@@ -34,8 +34,6 @@ namespace apc
   private:
     using Base = ctrls::TogglePad;
     using Inst = D2ArrayInstanced<PadsMatrix, PadsColumnsCount, PadsRowsCount>;
-    
-    void handle_off() override { Base::handle_off(); send_refresh(); };
 
   public:
 
@@ -45,17 +43,28 @@ namespace apc
     }
   };
 
-  class SequencerPads : 
+  class GroupSelectPads : 
     public ctrls::MomentaryPad,
-    public D2ArrayInstanced<SequencerPads, TracksCount, 3>
+    public D2ArrayInstanced<GroupSelectPads, TracksCount, 3>
   {
   private:
     using Base = ctrls::MomentaryPad;
-    using Inst = D2ArrayInstanced<SequencerPads, TracksCount, 3>;
+    using Inst = D2ArrayInstanced<GroupSelectPads, TracksCount, 3>;
+
+    void handle_on() override {
+      Base::handle_on();
+      for (size_t i = 0; i < 3; ++i)
+        if (i != getRow())
+        {
+          auto other = GroupSelectPads::Get(getCol(), i);
+          other->handle_off();
+          other->push_refresh(true);
+        }
+    }
 
   public:
 
-    SequencerPads(Controller* ctrl, uint8_t col, uint8_t row) :
+    GroupSelectPads(Controller* ctrl, uint8_t col, uint8_t row) :
       Base(ctrl, col, 0x32 - row), Inst(col, row)
     {
     }
@@ -64,11 +73,11 @@ namespace apc
   // We'll use this to momentary show a compo
   // or to send it as a boolean input to compo's param
   class PadsBottomRow :
-    public ctrls::MomentaryPad,
+    public ctrls::TogglePad,
     public ArrayInstanced<PadsBottomRow, PadsColumnsCount>
   {
   private:
-    using Base = ctrls::MomentaryPad;
+    using Base = ctrls::TogglePad;
     using Inst = ArrayInstanced<PadsBottomRow, PadsColumnsCount>;
 
   public:
@@ -87,8 +96,6 @@ namespace apc
     using Base = ctrls::TogglePad;
     using Inst = ArrayInstanced<PadsMaster, PadsRowsCount>;
     
-    void handle_off() override { Base::handle_off(); send_refresh(); };
-
   public:
 
     PadsMaster(Controller* ctrl, uint8_t index) :
@@ -129,93 +136,108 @@ namespace apc
   /// Encoders
   ////////////////////////////////
 
-  // Used to edit LFOs values, or kinda global params
-  class StrobeParams :
+  class GlobalEncoders : 
     public ctrls::Pot,
-    public ArrayInstanced<StrobeParams, EncodersColumnsCount>
+    public D2ArrayInstanced<GlobalEncoders, EncodersColumnsCount, EncodersRowsCount>
   {
-  public:
     using Base = ctrls::Pot;
-    using Inst = ArrayInstanced<StrobeParams, EncodersColumnsCount>;
+    using Inst = D2ArrayInstanced<GlobalEncoders, EncodersColumnsCount, EncodersRowsCount>;
+    
+  public:
+    GlobalEncoders(Controller* ctrl, size_t col, size_t row) :
+      Base(ctrl, 0, 0x30 + col + row * EncodersColumnsCount),
+      Inst(col, row)
+    {
+    }
+  };
+
+  // // Used to edit LFOs values, or kinda global params
+  // class StrobeParams :
+  //   public ctrls::Pot,
+  //   public ArrayInstanced<StrobeParams, EncodersColumnsCount>
+  // {
+  // public:
+  //   using Base = ctrls::Pot;
+  //   using Inst = ArrayInstanced<StrobeParams, EncodersColumnsCount>;
   
-  public:
+  // public:
 
-    StrobeParams(Controller* ctrl, uint8_t index) :
-      Base(ctrl, 0, 0x30 + index),
-      Inst(index)
-    {
-    }
-  };
+  //   StrobeParams(Controller* ctrl, uint8_t index) :
+  //     Base(ctrl, 0, 0x30 + index),
+  //     Inst(index)
+  //   {
+  //   }
+  // };
 
-  class StrobeEnable :
-    public ctrls::MomentaryPad,
-    public MonoInstanced<StrobeEnable>
-  {
-  private:
-    using Base = ctrls::MomentaryPad;
-    using Inst = MonoInstanced<StrobeEnable>;
+  // class StrobeEnable :
+  //   public ctrls::MomentaryPad,
+  //   public MonoInstanced<StrobeEnable>
+  // {
+  // private:
+  //   using Base = ctrls::MomentaryPad;
+  //   using Inst = MonoInstanced<StrobeEnable>;
 
-  public:
+  // public:
 
-    StrobeEnable(Controller* ctrl) :
-      Base(ctrl, 0, 0x57), Inst()
-      {}
-  };
+  //   StrobeEnable(Controller* ctrl) :
+  //     Base(ctrl, 0, 0x57), Inst()
+  //     {}
+  // };
 
-  class OscParams :
-    public ctrls::Pot,
-    public D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>
-  {
-  public:
-    using Base = ctrls::Pot;
-    using Inst = D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>;
+  // class OscParams :
+  //   public ctrls::Pot,
+  //   public D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>
+  // {
+  // public:
+  //   using Base = ctrls::Pot;
+  //   using Inst = D2ArrayInstanced<OscParams, 3, EncodersColumnsCount>;
 
-    void handle_message(const MidiMsg& event) override;
+  //   void handle_message(const MidiMsg& event) override;
   
-  public:
+  // public:
 
-    OscParams(Controller* ctrl, uint8_t osc, uint8_t param) :
-      Base(ctrl, 0, 0x34 + param),
-      Inst(osc, param)
-    {
-    }
-  };
+  //   OscParams(Controller* ctrl, uint8_t osc, uint8_t param) :
+  //     Base(ctrl, 0, 0x34 + param),
+  //     Inst(osc, param)
+  //   {
+  //   }
+  // };
 
-  class OscSelect :
-    public ctrls::TogglePad,
-    public ArrayInstanced<OscSelect, 3>
-  {
-  private:
-    using Base = ctrls::TogglePad;
-    using Inst = ArrayInstanced<OscSelect, 3>;
+  // class OscSelect :
+  //   public ctrls::TogglePad,
+  //   public ArrayInstanced<OscSelect, 3>
+  // {
+  // private:
+  //   using Base = ctrls::TogglePad;
+  //   using Inst = ArrayInstanced<OscSelect, 3>;
 
-    void handle_on() override {
-      for (auto& osc : Get())
-      {
-        osc->status = (osc == this);
-        osc->send_refresh();
-      }
-      OscParams::Generate([this](uint8_t bank, uint8_t col){
-        if (bank == this->getIndex())
-          OscParams::Get(bank, col)->send_refresh();
-      });
-    }
+  //   void handle_on() override {
+  //     for (auto& osc : Get())
+  //     {
+  //       osc->status = (osc == this);
+  //       osc->send_refresh();
+  //     }
+  //     OscParams::Generate([this](uint8_t bank, uint8_t col){
+  //       if (bank == this->getIndex())
+  //         OscParams::Get(bank, col)->send_refresh();
+  //     });
+  //   }
 
-  public:
+  // public:
 
-    OscSelect(Controller* ctrl, uint8_t index) :
-      Base(ctrl, 0, 0x58 + index), Inst(index)
-      {}
-  };
+  //   OscSelect(Controller* ctrl, uint8_t index) :
+  //     Base(ctrl, 0, 0x58 + index), Inst(index)
+  //     {}
+  // };
 
-  void OscParams::handle_message(const MidiMsg& msg)
-  {
-    if (OscSelect::Get(getCol())->get_status())
-    {
-      Base::handle_message(msg);
-      send_refresh();
-    }
-  }
+  // void OscParams::handle_message(const MidiMsg& msg)
+  // {
+  //   if (OscSelect::Get(getCol())->get_status())
+  //   {
+  //     Base::handle_message(msg);
+  //     send_refresh();
+  //   }
+  // }
 
 
   // Edit Current compo's params
@@ -357,7 +379,7 @@ namespace apc
   private:
     APC40()
     {
-      SequencerPads::Generate([this](uint8_t i, uint8_t j){addControl<SequencerPads>(i,j);});
+      GroupSelectPads::Generate([this](uint8_t i, uint8_t j){addControl<GroupSelectPads>(i,j);});
 
       PadsMatrix::Generate([this](uint8_t i, uint8_t j){addControl<PadsMatrix>(i,j);});
       PadsBottomRow::Generate([this](uint8_t i){addControl<PadsBottomRow>(i);});
@@ -365,12 +387,8 @@ namespace apc
 
       TrackSelect::Generate([this](uint8_t i){addControl<TrackSelect>(i);});
 
-      StrobeParams::Generate([this](uint8_t i){addControl<StrobeParams>(i);});
-      addControl<StrobeEnable>();
-
-      OscParams::Generate([this](uint8_t i, uint8_t j){addControl<OscParams>(i,j);});
-      OscSelect::Generate([this](uint8_t i){addControl<OscSelect>(i);});
-
+      GlobalEncoders::Generate([this](uint8_t i, uint8_t j)
+      {addControl<GlobalEncoders>(i,j);});
       BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
 
       Faders::Generate([this](uint8_t i){addControl<Faders>(i);});

@@ -18,9 +18,8 @@ namespace ctrls
     virtual void handle_on() {};
     virtual void handle_off() {};
     
-    void send_refresh() override
+    void push_refresh(bool force) override
     {
-      Base::send_refresh();
       controller->push_event(status ? signature_on : signature_off);
     }
 
@@ -47,7 +46,7 @@ namespace ctrls
     }
 
     bool get_status() const { return status; }
-    void set_status(bool s) { status = s; }
+    void set_status(bool s) { status = s; set_dirty(); }
   };
 
   class MomentaryPad : public Pad
@@ -94,6 +93,8 @@ namespace ctrls
     virtual void handle_event() {}
 
   public:
+
+    void push_refresh(bool force) override {}
 
     Trigger(Controller* ctrl, uint8_t channel, uint8_t d1, uint8_t d0 = 0x90) : 
       Control(ctrl), signature({(d0 & 0xF0) | (channel & 0x0F), d1, 0})

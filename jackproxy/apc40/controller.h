@@ -6,6 +6,7 @@
 #include <queue>
 #include <array>
 #include <unordered_set>
+#include <optional>
 #include <vector>
 #include <mutex>
 #include <memory>
@@ -16,30 +17,50 @@ class Controller
 {
 public:
 
-  class Control;
-  using Routine = std::function<void(Control*)>;
-
   class Control
   {
+  public :
+    using RealtimeRoutine = std::function<void(Control* ctrl)>;
+    using PostRoutine = std::function<void(Control* ctrl)>;
+
   protected:
     Controller* controller = nullptr;
-    std::vector<Routine> routines;
+    std::vector<RealtimeRoutine> realtime_routines;
+    std::vector<PostRoutine> post_routines;
 
+    
   public:
     Control(Controller* ctrl = nullptr) : controller(ctrl) {}
     virtual ~Control() = default;
 
-    virtual void send_refresh() {};
+    virtual void push_refresh(bool force) = 0;
 
-    void exec_routines()
+    void exec_rt_routines()
     {
-      for (auto& routine : routines)
+      for (auto& routine : realtime_routines)
         routine(this);
     }
 
-    void add_routine(const Routine& rt)
+    void add_rt_routine(const RealtimeRoutine& rt)
     {
-      routines.emplace_back(rt);
+      realtime_routines.emplace_back(rt);
+    }
+
+
+    void exec_post_routines()
+    {
+      for (auto& routine : post_routines)
+        routine(this);
+    }
+
+    void add_post_routine(const PostRoutine& rt)
+    {
+      post_routines.emplace_back(rt);
+    }
+
+    void set_dirty()
+    {
+      controller->dirty_controls.emplace(this);
     }
   };
 
@@ -48,7 +69,10 @@ private:
   using Controls = std::vector<std::unique_ptr<Control>>;
   using MidiStack = std::vector<MidiMsg>;
 
-  using MappingsTable = std::unordered_multimap<MidiMsg, std::pair<Control*, MidiCallback>, MidiMsgHash, MidiMsgEquals>;
+  using MappingsTable = std::unordered_multimap<
+    MidiMsg, 
+    std::pair<Control*, MidiMsgHandler>, 
+    MidiMsgHash, MidiMsgEquals>;
 
   Controls controls;
   MappingsTable midi_map;
@@ -67,7 +91,7 @@ public:
   {
     return controls.emplace_back(std::make_unique<T>(this, std::forward<Args>(args)...)).get();
   }
-  void register_mapping(Control* ctrl, const MidiMsg& signature, const MidiCallback& callback)
+  void register_mapping(Control* ctrl, const MidiMsg& signature, const MidiMsgHandler& callback)
   {
     midi_map.emplace(signature, std::make_pair(ctrl, callback));
   }
@@ -105,7 +129,9 @@ public:
       auto& [key, pair] = *itr;
       auto& [ctrl, callback] = pair;
       callback(event);
-      dirty_controls.emplace(ctrl);
+      ctrl->exec_rt_routines();
+      ctrl->push_refresh(false);
+      ctrl->set_dirty();
     }
     return rt_queue;
   }
@@ -114,7 +140,7 @@ public:
   {
     rt_queue.clear();
     for (const auto& control : controls)
-      control->send_refresh();
+      control->push_refresh(true);
     return rt_queue;
   }
 
@@ -122,7 +148,7 @@ public:
   {
     std::scoped_lock<std::mutex> _(lock);
     for (auto& ctrl : dirty_controls)
-      ctrl->exec_routines();
+      ctrl->exec_post_routines();
     dirty_controls.clear();
   }
 

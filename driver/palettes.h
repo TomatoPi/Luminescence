@@ -1,5 +1,7 @@
 #pragma once
 
+#include "color_palette.h"
+
 /**
  * 
  * Palettes can be easily generated using this tool :
@@ -31,7 +33,7 @@ namespace Palettes {
     {  0, 255,   0,  64}, // BLUE
   };
 
-  static constexpr ColorPalette warm_beech {
+  static constexpr ColorPalette warm_beach {
   // min  max  f*60 phase
     {  0, 127,  30, 255 }, // RED
     { 25, 127,  30, 255 }, // GREEN
@@ -129,7 +131,7 @@ namespace Palettes {
       case 0:  return rainbow;
       case 1:  return deep_blue_and_bright_yellow;
       case 2:  return pastel;
-      case 3:  return warm_beech;
+      case 3:  return warm_beach;
       case 4:  return synthwave;
       case 5:  return acid;
       case 6:  return cocktail;
@@ -142,7 +144,7 @@ namespace Palettes {
       case 13: return no_green;
       case 14: return no_red;
       case 15: return greenfield;
-      default: return warm_beech;
+      default: return warm_beach;
     }
   }
 
