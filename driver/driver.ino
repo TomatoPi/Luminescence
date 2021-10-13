@@ -9,7 +9,7 @@
 #include "Composition.h"
 #include <array>
 
-#define SerialUSB_MESSAGE_TIMEOUT 30
+#define SerialUSB_MESSAGE_TIMEOUT 10
 #define SerialUSB_SLEEP_TIMEOUT 0
 #define FRAME_REFRESH_TIMEOUT 0
 
@@ -26,7 +26,9 @@ FastClock strobe_clock;
 Clock osc_clocks[4];
 Clock& master_clock = osc_clocks[3];
 
-struct Environement
+bool connection_lost = false;
+
+struct
 {
   objects::Setup setup;
   objects::Master master;
@@ -59,14 +61,14 @@ void setup()
 
 void update_clocks()
 {
-  master_clock.setPeriod(1 + (60lu * 1000lu) / ((/*master.bpm*/ 30 + 1)));
+  master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((Global.master.bpm + 1))) << 2);
   Clock::Tick(millis());
   FastClock::Tick();
   FallDetector::Tick();
 }
 
 void loop()
-{
+{    
     // Receive new datas from SerialUSB
     static unsigned long drop_count = 0;
     
@@ -77,14 +79,16 @@ void loop()
     // Compute next frame  
     unsigned long compute_begin = millis();
 
-    const auto& palette = Palettes::rainbow;
+    const auto& palette = Palettes::many_colors;
     const Composition compo{
         PaletteRangeController {
-            OscillatorKind::Sin,
+            OscillatorKind::SawTooth,
             255
         },
         Slicer {
-            8,
+            4,
+            150,
+            true,
             true
         }
     };
@@ -99,6 +103,9 @@ void loop()
 
     // Draw frame
     unsigned long draw_begin = millis();
+    if (connection_lost)
+      for (size_t i = 0 ; i < 30 ; ++i)
+        leds[i] = master_clock.get8() < 0x7F ? CRGB::Red : CRGB::Black;
     FastLED.show(Global.master.brightness);
     unsigned long draw_end = millis();
 
@@ -125,7 +132,7 @@ void loop()
       SerialUSB.print(draw_end - draw_begin);
       SerialUSB.print(" : Drops : ");
       SerialUSB.print(drop_count);
-      SerialUSB.print(" : BPM : ");
+      SerialUSB.print(" : Master Clock : ");
       SerialUSB.println(Global.master.bpm);
       SerialUSB.write(STOP_BYTE);
       fps_accumulator = 0;
@@ -149,6 +156,8 @@ int read_from_controller() {
     {
       if (SerialUSB_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
       {
+        connection_lost = true;
+        return 0;
         SerialUSB.write(STOP_BYTE);
         SerialUSB.flush();
         delay(SerialUSB_SLEEP_TIMEOUT);
@@ -159,7 +168,8 @@ int read_from_controller() {
 //      FastLED.delay(1);
       continue;
     }
-    
+
+    connection_lost = false;
     int byte = SerialUSB.read();
     
     if (byte < 0)

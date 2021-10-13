@@ -186,7 +186,7 @@ struct {
   jack_time_t last_hit = 0;
 
   uint16_t bpm() const {
-    return (60lu * 1000lu * 1000lu) / (length+1);
+    return (60lu * 1000lu * 1000lu * 100lu) / (length+1);
   }
 } timebase;
 
