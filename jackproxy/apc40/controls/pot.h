@@ -30,5 +30,6 @@ namespace ctrls
     }
 
     uint8_t get_value() const { return value; }
+    void set_value(uint8_t v) { value = v; }
   };
 }

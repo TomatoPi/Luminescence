@@ -323,6 +323,17 @@ namespace apc
     DecTempo(Controller* ctrl) : MonoTrigger<DecTempo, 0x65>(ctrl) {}
   };
 
+  class Save : public MonoTrigger<Save, 0x5d>
+  {
+  public:
+    Save(Controller* ctrl) : MonoTrigger<Save, 0x5d>(ctrl) {}
+  };
+  class Load : public MonoTrigger<Load, 0x5b>
+  {
+  public:
+    Load(Controller* ctrl) : MonoTrigger<Load, 0x5b>(ctrl) {}
+  };
+
   // Used to adjust the bpm
   class SyncPot :
     public ctrls::Pot,
@@ -371,6 +382,9 @@ namespace apc
       addControl<IncTempo>();
       addControl<DecTempo>();
       addControl<SyncPot>();
+
+      addControl<Save>();
+      addControl<Load>();
     }
   public:
     static APC40& Get() { static APC40 apc; return apc; }

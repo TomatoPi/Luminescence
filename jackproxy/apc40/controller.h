@@ -40,7 +40,6 @@ public:
     void add_routine(const Routine& rt)
     {
       routines.emplace_back(rt);
-      fprintf(stderr, "New routine for %p\n", this);
     }
   };
 
