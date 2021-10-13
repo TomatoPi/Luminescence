@@ -1,30 +1,12 @@
 #include "color_palette.h"
 #include "palettes.h"
 #include "clock.h"
-
 #include "range.h"
-
 #include "common.h"
-
 #include <FastLED.h>
-
 #include "apply_modulation.h"
-
-/*
-Motifs :
-
-  Réglage influence temps :
-    U [0, 1] : 0 inversé, 1 normal, 0.5 arret
-    t <- mod1((2U - 1) * t)
-
-  Modulation de l'onde :
-    R : 
-
-  Ondes linéaires :
-    Modulation sur amplitude :
-
-    Amplitude(t) = (1 - Range)()
-*/
+#include "math.h"
+#include "Composition.h"
 
 #define SERIAL_MESSAGE_TIMEOUT 30
 #define SERIAL_SLEEP_TIMEOUT 5
@@ -34,15 +16,13 @@ using color_t = CRGB;
 using index_t = uint32_t;
 using coef_t = float;
 
-using Range = range_t<index_t, coef_t>;
-
 // Needed with Arduino IDE;
 constexpr const uint8_t SerialPacket::Header[3];
 
-static constexpr index_t MaxLedsCount = 30 * 21;
+index_t ribbonsCount = 4;
+index_t Ribbons[MaxRibbonsCount] = {1, 1, 1, 1};
 
-#include "math.h"
-color_t leds[MaxLedsCount];
+color_t leds[LedsCount];
 
 FastClock strobe_clock;
 Clock osc_clocks[4];
@@ -57,376 +37,49 @@ FallDetector beat_detector(&master_clock);
 
 SerialParser parser;
 
-uint8_t eval_oscillator(const objects::Oscilator& osc, uint8_t speed, uint8_t time)
-{
-  uint8_t value = time;
-  switch (osc.source)
-  {
-    // TODO : we need to introduce poulpe structure before
-  }
-  using namespace objects::flags;
-  switch (osc.kind)
-  {    
-    case OscillatorKind::Sin:      return sin8(value);
-    case OscillatorKind::SawTooth: return value;
-    case OscillatorKind::Square:   return value < osc.param1 ? 0 : 255; break;
-    case OscillatorKind::Triangle: return triwave8(value); break;
-    case OscillatorKind::Noise:    return random8(value); break;
-    default:
-      return 0;
-  }
-  return value;
-}
-uint8_t eval_oscillator(const objects::Oscilator& osc, uint8_t speed = 0)
-{
-  return eval_oscillator(osc, speed, osc_clocks[osc.index].get8(speed));
-}
-
-void init_objects()
-{
-  master = {
-    20,  // bpm
-    0,    // sync  
-    10,  // brigthness
-    0
-  };
-  uint8_t idx = 0;
-  for (auto& compo : compos)
-  {
-    compo = {
-      idx++,
-      0,
-      0
-    };
-  }
-}
-
-/// Remaps i that is in the range [0, max_i-1] to the range [0, 255]
-uint8_t map_to_0_255(uint32_t i, uint32_t max_i)
-{
-  uint32_t didx = 0xFFFFFFFFu / max_i;
-  return static_cast<uint8_t>((i * didx) >> 24);
-}
-
-void eval_range(const objects::Compo& compo, index_t begin, index_t end)
-{
-  if (end <= begin)
-    return;
-
-  const auto& palette = Palettes::Get(compo.palette);
-  const index_t length = end - begin;
-
-  uint8_t time_mod = scale8(eval_oscillator(oscillators[0], compo.speed), compo.mod_intensity);
-  
-  uint16_t p_value = time_mod << 8;
-
-  const uint16_t pixel_dt = compo.map_on_index ? (0xFFFFu / length) : 0;
-  const uint16_t step = scale16by8(pixel_dt, compo.palette_width << 1);
-
-  p_value += scale16by8(0xFFFFu, compo.index_offset << 1);
-  p_value += pixel_dt * begin;
-
-//  Serial.println();
-//  Serial.print(compo.map_on_index);
-//  Serial.print(" ");
-//  Serial.print(compo.effect1);
-//  Serial.print(" ");
-//  Serial.print(compo.blend_mask);
-//  Serial.print(" ");
-//  Serial.print(compo.stars);
-//  Serial.print(" ");
-//  Serial.println(compo.strobe);
-//  Serial.write(STOP_BYTE);
-
-  if (!compo.strobe)
-  {
-    for (index_t i = begin; i < end; ++i, p_value += step)
-    {
-      const uint8_t ribbon = (i * 255) / 20;
-      uint8_t value = p_value >> 8;
-      uint8_t bright = 255;
-      
-      if (compo.blend_mask)
-        bright = lerp8by8(255, eval_oscillator(oscillators[0]), compo.blend_overlay << 1);
-      leds[i] = nblend(leds[i], palette.eval(value), bright);
-    }
-  }
-  else // if strobe
-  {
-    CRGB* leds = FastLED.leds() + begin;
-    index_t leds_count = end - begin;
-    uint32_t pulse_width;
-
-    switch (master.pulse_width)
-    {
-      case 3 : pulse_width = (0xFFFFFFFFu / 4u) * 3u; break;
-      case 2 : pulse_width = 0xFFFFFFFFu / 2u; break;
-      case 1 : pulse_width = 0xFFFFFFFFu / 3u; break;
-      case 0 :
-      default: pulse_width = 0xFFFFFFFFu / 10u; break;
-    }
-
-    if (master.istimemod)
-    {
-      if (strobe_clock.coarse_value)
-        for (index_t i = begin; i < end; ++i, p_value += step)
-        {
-          uint8_t value = p_value >> 8;
-          leds[i] = palette.eval(value);
-        }
-      else {}
-        //fill_solid(leds + begin, end - begin, CRGB::Black);
-    }
-    else // running pulses
-    {
-      /*
-      Creates realy nice tracers on the ribbon.
-      Could be extracted to apply it on any composition
-      */
-      const index_t pw_inpixels = ((uint64_t)pulse_width * length) >> 32;
-      const index_t ck_inpixels = ((uint64_t)strobe_clock.finevalue * length) >> 8;
-      if (length < ck_inpixels + pw_inpixels)
-      {
-        // splited pulse
-        const index_t split = (ck_inpixels + pw_inpixels) % length;
-
-        index_t i = 0;
-
-        for (; i < split ; ++i, p_value += step)
-        {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
-        }
-
-        for (; i < split + length - ck_inpixels ; ++i, p_value += step)
-        {
-          //leds[begin+i] = CRGB::Black;
-        }
-
-        for (; i < length ; ++i, p_value += step)
-        {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
-        }
-      }
-      else
-      {
-        index_t i = 0;
-        for (; i < ck_inpixels ; ++i, p_value += step)
-        {
-          //leds[begin+i] = CRGB::Black;
-        }
-        for (; i < ck_inpixels + pw_inpixels ; ++i, p_value += step)
-        {
-          uint8_t value = p_value >> 8;
-          leds[begin+i] = palette.eval(value);
-        }
-        for (; i < length ; ++i, p_value += step)
-        {
-          //leds[begin+i] = CRGB::Black;
-        }
-      }
-    } // endif running pulses
-  } // endif strobe
-}
-
 void setup()
 {
-  init_objects();
   Serial.begin(115200);
-  FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
+  FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, LedsCount / MaxRibbonsCount);
+
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
-  memset(leds, 30, sizeof(CRGB) * MaxLedsCount);
+  memset(leds, 30, sizeof(CRGB) * LedsCount);
   FastLED.show();
   FastLED.delay(100);
-  memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
+  memset(leds, 0, sizeof(CRGB) * LedsCount);
   FastLED.show();
 
-  Serial.println("Coucou");
   Serial.write(STOP_BYTE);
   FastLED.delay(1000);
 }
 
-void loop()
+void update_clocks()
 {
-// Too slow...
-//  master_clock = fmod(master_clock + coef_t(0.01f), coef_t(1.f));
-//  pouet = Range::map_on_pixel_index(0, MaxLedsCount, MaxLedsCount, master_clock);
-//  palette_rainbow.eval_range(leds, pouet);
-
-// Cheaper prototype. Use integer arithmetics
-
-  static unsigned long drop_count = 0;
-  
-  master_clock.setPeriod(1 + (60lu * 1000lu) / ((master.bpm + 1)));
-  strobe_clock.setPeriod(master.strobe_speed);
-
-  for (uint8_t i = 0 ; i < 3 ; ++i)
-  {
-    uint8_t subdivide = oscillators[i].subdivide;
-    uint32_t period = master_clock.period;
-    if (subdivide < 5)
-      period = period >> (5 - subdivide);
-    else
-      period = period << subdivide;
-    osc_clocks[i].setPeriod(period);
-  }
-
+  master_clock.setPeriod(1 + (60lu * 1000lu) / ((/*master.bpm*/ 30 + 1)));
   Clock::Tick(millis());
   FastClock::Tick();
   FallDetector::Tick();
+}
 
-  uint8_t time8 = master_clock.get8() + master.sync_correction;
-
-  unsigned long update_begin = millis();
-  drop_count += update_frame();
-  unsigned long update_end = millis();
-
-  unsigned long compute_begin = millis();
-
-  bool set_black = true;
-  if (master.fade)
-  {
-    fadeLightBy(leds, MaxLedsCount, 255 - (master.feedback << 1));
-    set_black = false;
-  }
-  if (master.blur)
-  {
-    blur1d(leds, MaxLedsCount, master.feedback << 1);
-    set_black = true;
-  }
-  if (set_black)
-  {
-    fill_solid(leds, MaxLedsCount, CRGB::Black);
-  }
-
-  if (8 <= master.active_compo)
-  {
-    static uint8_t current_step = 0;
-    
-    if (beat_detector.trigger)
-    {
-      current_step = (current_step +1) % 3;
-      if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
-      if (!sequencer.steps[current_step]) current_step = (current_step +1) % 3;
-      beat_detector.reset();
+void loop()
+{
+    const auto& palette = Palettes::rainbow;
+    const Composition compo{
+        PaletteRangeController {
+            OscillatorKind::Sin,
+            255
+        }
+    };
+    update_clocks();
+    const uint8_t time = master_clock.get8() + master.sync_correction;
+    memset(leds, 0, sizeof(CRGB) * LedsCount);
+    for (uint32_t i = 0; i < LedsCount; ++i) {
+        leds[i] = compo.eval(palette, time, i);
     }
-//    Serial.println(sequencer.steps[current_step]);
-//    Serial.println(current_step);
-//    Serial.write(STOP_BYTE);
-    for (uint8_t i = 0 ; i < 8 ; ++i)
-      if (sequencer.steps[current_step] & (1 << i))
-        eval_range(compos[i], 0, MaxLedsCount);
-  }
-  else
-  {
-    eval_range(compos[master.active_compo], 0, MaxLedsCount); 
-  }
-  unsigned long compute_end = millis();
-  
-  unsigned long draw_begin = millis();
-  if (master.do_strobe)
-  {
-    uint32_t pulse_width;
-    switch (master.pulse_width)
-    {
-      case 3 : pulse_width = (0xFFFFFFFFu / 4u) * 3u; break;
-      case 2 : pulse_width = 0xFFFFFFFFu / 2u; break;
-      case 1 : pulse_width = 0xFFFFFFFFu / 3u; break;
-      case 0 :
-      default: pulse_width = 0xFFFFFFFFu / 10u; break;
-    }
-
-//    Serial.print(master.pulse_width);
-//    Serial.print(" : PW : ");
-//    Serial.print(pulse_width);
-//    Serial.print(" : CK : ");
-//    Serial.println(strobe_clock.clock);
-//    Serial.write(STOP_BYTE);
-
-    if (master.istimemod)
-    {
-      FastLED.show(strobe_clock.coarse_value ? 0xFF : 0x00);
-    }
-    else // running pulses
-    {
-      /*
-      Creates realy nice tracers on the ribbon.
-      Could be extracted to apply it on any composition
-      */
-      const index_t pw_inpixels = ((uint64_t)pulse_width * MaxLedsCount) >> 32;
-      const index_t ck_inpixels = ((uint64_t)strobe_clock.finevalue * MaxLedsCount) >> 8;
-      if (MaxLedsCount < ck_inpixels + pw_inpixels)
-      {
-        // splited pulse
-        const index_t split = (ck_inpixels + pw_inpixels) % MaxLedsCount;
-
-        nscale8_video(
-          leds, 
-          split, 
-          0xFF);
-        nscale8_video(
-          leds + split, 
-          MaxLedsCount - pw_inpixels, 
-          0x00);
-        nscale8_video(
-          leds + ck_inpixels, 
-          pw_inpixels - split,
-          0xFF);
-      }
-      else
-      {
-        nscale8_video(
-          leds, 
-          ck_inpixels, 
-          0x00);
-        nscale8_video(
-          leds + ck_inpixels, 
-          pw_inpixels, 
-          0xFF);
-        nscale8_video(
-          leds + ck_inpixels + pw_inpixels, 
-          MaxLedsCount - ck_inpixels - pw_inpixels, 
-          0x00);
-      }
-      FastLED.show(master.brightness);
-    }
-  }
-  else // no strobe
-  {
-    FastLED.show(master.brightness);
-  }
-  unsigned long draw_end = millis();
-
-
-  unsigned long endtime = millis();
-  
-  static unsigned long fps_accumulator= 0;
-  static unsigned long frame_cptr = 0;
-  fps_accumulator += endtime - master_clock.last_timestamp;
-  frame_cptr++;
-
-  if (2000 < fps_accumulator)
-  {
-    float fps = float(frame_cptr) * 1000.f / fps_accumulator;
-    Serial.print("Avg FPS : ");
-    Serial.print(fps);
-    Serial.print(" : Serial : ");
-    Serial.print(update_end - update_begin);
-    Serial.print(" : Compute : ");
-    Serial.print(compute_end - compute_begin);
-    Serial.print(" : Draw : ");
-    Serial.print(draw_end - draw_begin);
-    Serial.print(" : Drops : ");
-    Serial.print(drop_count);
-    Serial.print(" : BPM : ");
-    Serial.println(master.bpm);
-    Serial.write(STOP_BYTE);
-    fps_accumulator = 0;
-    frame_cptr = 0;
-  }
+    FastLED.show();
+    FastLED.delay(20);
 }
 
 int update_frame() {
@@ -514,7 +167,8 @@ int update_frame() {
           }
         }
         // Send ACK
-        Serial.write(0);
+        char zero = '\0';
+        Serial.write(&zero);
         Serial.write(STOP_BYTE);
         break;
       }
