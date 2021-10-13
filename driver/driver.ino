@@ -70,13 +70,17 @@ void loop()
         PaletteRangeController {
             OscillatorKind::Sin,
             255
+        },
+        Slicer {
+            8,
+            true
         }
     };
     update_clocks();
     const uint8_t time = master_clock.get8() + master.sync_correction;
     memset(leds, 0, sizeof(CRGB) * LedsCount);
     for (uint32_t i = 0; i < LedsCount; ++i) {
-        leds[i] = compo.eval(palette, time, i);
+        leds[i] = compo.eval(palette, time, i, LedsCount);
     }
     FastLED.show();
     FastLED.delay(20);
