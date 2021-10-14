@@ -80,7 +80,7 @@ void loop()
             false
         },
         Mask {
-            time/2,
+            0,
             time,
             false
         }

@@ -36,7 +36,7 @@ Once we have found the slice that we are in, we just linearly interpolate `p` be
 
 ### Mask
 
-Not all LEDs of each strip are necessarily lit up at once. This is controlled by the `Mask`. It has a `center` and a `width` and only the LEDs that are in the range [`center - width/2`, `center + width/2`] are lit up. Note that `center` and `width` are relative ; they represent a fraction between 0 and 1 (stored as a `uint8_t`). This means that if `width == 127` half of the LEDs of the strip will be lit, no matter the actual size in pixels of the strip.
+Not all LEDs of each slice are necessarily lit up at once. This is controlled by the `Mask`. It has a `center` and a `half_width` and only the LEDs that are in the range [`center - half_width`, `center + half_width`] are lit up. Note that `center` and `half_width` are relative ; they represent a fraction between 0 and 1 (stored as a `uint8_t`). This means that if `half_width == 63` half of the LEDs of the slice will be lit, no matter the actual size in pixels of the slice.
 
 You also have `should_wrap` which controls whether the range should behave as a circle and wrap when one end overflows 0 or 255, or if should be a segment and clamp when it overflows.
 
