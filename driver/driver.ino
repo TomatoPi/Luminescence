@@ -74,14 +74,15 @@ void loop()
             255
         },
         Slicer {
-            3,
-            150,
-            true,
-            true
+            1,
+            250,
+            false,
+            false
         },
         Mask {
+            time/2,
             time,
-            80
+            false
         }
     };
     memset(leds, 0, sizeof(CRGB) * LedsCount);
