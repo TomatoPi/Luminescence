@@ -29,6 +29,8 @@ Clock& master_clock = osc_clocks[3];
 
 bool connection_lost = false;
 
+uint8_t coarse_framerate;
+
 struct
 {
   objects::Setup setup;
@@ -68,6 +70,7 @@ void setup()
 void update_clocks()
 {
   master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((Global.master.bpm + 1))) << 2);
+  strobe_clock.setPeriod(max8(2, scale8(coarse_framerate, 255 - (Global.master.strobe_speed << 1))));
   Clock::Tick(millis());
   FastClock::Tick();
   FallDetector::Tick();
@@ -87,8 +90,42 @@ void loop()
 
     update_clocks();
     
-    const uint8_t time = master_clock.get8() + Global.master.sync_correction;
-    memset(leds, 0, MaxLedsCount * sizeof(CRGB));
+    const uint8_t time = master_clock.get8();// + Global.master.sync_correction;
+
+    uint8_t feedback_per_group[3] = { 0 };
+
+    // Firt reset the ribbon according to fade out
+    for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
+    {
+      const objects::Preset& preset = Global.presets[preset_index];
+      
+      const modulator_control tracer_ctrl = {
+        preset.encoders[3],
+        preset.encoders[7],
+        !!(preset.switches & 0x08),
+        !!(preset.pads_states & 0x08)
+      };
+
+      if (!tracer_ctrl.enable)
+        continue;
+      else
+      {
+        const uint8_t preset_group = Global.ribbons[preset_index].group;
+        uint8_t feedback = scale8_video(tracer_ctrl.pot0 << 1, preset.brightness << 1);
+        feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], feedback);
+      }
+    }
+    for (uint8_t ribbon = 0 ; ribbon < Global.setup.ribbons_count ; ++ribbon)
+    {
+      uint8_t feedback = feedback_per_group[Global.ribbons[ribbon].group];
+      uint32_t ribbon_length = 30 * Global.setup.ribbons_lengths[ribbon];
+      CRGB* ribbon_ptr = leds + ribbon * MaxLedsPerRibbon;
+      
+      if (feedback == 0)
+        fill_solid(ribbon_ptr, ribbon_length, CRGB::Black);
+      else
+        fadeToBlackBy(ribbon_ptr, ribbon_length, 255 - feedback);
+    }
 
     /*
      * We apply each preset on all grouped ribbons
@@ -103,12 +140,15 @@ void loop()
       // The group which the preset is attached to
       const uint8_t preset_group = Global.ribbons[preset_index].group;
       //const objects::Group& group = Global.groups[preset_group];
-      const auto& palette = Palettes::Get(Global.master.encoders[preset_index] >> (7 - 3));
+      const auto& palette = Palettes::Get(Global.master.encoders[preset_index] >> (7 - 4));
       
       for (uint8_t ribbon_index = 0 ; ribbon_index < Global.setup.ribbons_count ; ++ribbon_index)
       {
         const objects::Ribbon& ribbon = Global.ribbons[ribbon_index];
+        
         uint32_t ribbon_length = 30 * Global.setup.ribbons_lengths[ribbon_index];
+        CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
+        const size_t ribbon_byte_size = ribbon_length * sizeof(CRGB);
 
         // Break if ribbon is associated with another group
         if (ribbon.group != preset_group)
@@ -133,31 +173,27 @@ void loop()
           !!(preset.switches & 0x04),
           !!(preset.pads_states & 0x04)
         };
-        const modulator_control tracer_ctrl = {
-          preset.encoders[3],
-          preset.encoders[7],
-          !!(preset.switches & 0x08),
-          !!(preset.pads_states & 0x08)
-        };
         const bool strobe_ctrl = !!(preset.pads_states & 0x10);
   
         // Build the compo according to parameters
         const Composition compo{
+          // Color modulation
           PaletteRangeController {
             // Center
-            eval_oscillator(map_to_oscillator_kind(colormod_ctrl.pot0 << 1), time),
+            colormod_ctrl.enable ?
+              scale8(
+                eval_oscillator(map_to_oscillator_kind(colormod_ctrl.pot0 << 1), time), 
+                colormod_ctrl.pot1 << 1
+                )
+              : colormod_ctrl.pot0 << 1
+            ,
             // Modulation depth
-            colormod_ctrl.pot1
-          },
-          Slicer {
-            // nslices from 1 to 16
-            1 + (slicer_ctrl.pot0 >> (7 - 2)),
-            // uneven factor
-            uint8_t(slicer_ctrl.pot1 << 1),
-            // flip even slices
-            slicer_ctrl.toggle,
-            // use uneven slices
-            slicer_ctrl.enable
+            colormod_ctrl.toggle ?
+              scale8(
+                eval_oscillator(map_to_oscillator_kind(colormod_ctrl.pot0 << 1), time), 
+                colormod_ctrl.pot1 << 1
+                )
+              : colormod_ctrl.pot1 << 1
           },
           Mask {
             // center : running point or static
@@ -166,18 +202,34 @@ void loop()
               : 0,
             // width
             maskmod_ctrl.toggle ?
-              maskmod_ctrl.pot1 << 1
+              maskmod_ctrl.pot1
               : scale8(eval_oscillator(map_to_oscillator_kind(maskmod_ctrl.pot0 << 1), time), maskmod_ctrl.pot1 << 1),
             // wraparound or saturate
-            maskmod_ctrl.toggle
-          }
+            maskmod_ctrl.toggle,
+            maskmod_ctrl.enable
+          },
+          // Ribbons splitting
+          Slicer {
+            // nslices from 1 to 16
+            1 + scale8(Global.setup.ribbons_lengths[ribbon_index], slicer_ctrl.pot0 << 1),
+            // uneven factor
+            uint8_t(slicer_ctrl.pot1 << 1),
+            // flip even slices
+            slicer_ctrl.toggle,
+            // use uneven slices
+            slicer_ctrl.enable
+          },
         };
-  
-        // Compute the compo
+          
+        if (strobe_ctrl && !strobe_clock.coarse_value)
+          continue;
+        
         for (uint32_t i = 0; i < ribbon_length; ++i) {
-          uint32_t led_index = i + ribbon_index * MaxLedsPerRibbon;
-          leds[led_index] = nblend(leds[led_index], compo.eval(palette, time, i, ribbon_length), preset.brightness << 1);
+          CRGB color = compo.eval(palette, time, i, ribbon_length);
+          uint8_t bright = qadd8(color.r, qadd8(color.g, color.b));
+          ribbon_ptr[i] = nblend(ribbon_ptr[i], color, scale8_video(bright, preset.brightness << 1));
         }
+        
       } // for ribbon
     } // for preset
     unsigned long compute_end = millis();
@@ -204,6 +256,8 @@ void loop()
     if (2000 < fps_accumulator)
     {
       float fps = float(frame_cptr) * 1000.f / fps_accumulator;
+      coarse_framerate = (uint8_t)fps;
+      
       SerialUSB.print("Avg FPS : ");
       SerialUSB.print(fps);
       SerialUSB.print(" : SerialUSB : ");
@@ -216,6 +270,12 @@ void loop()
       SerialUSB.print(drop_count);
       SerialUSB.print(" : Master Clock : ");
       SerialUSB.println(Global.master.bpm);
+      SerialUSB.print(" : Strobe Period : ");
+      SerialUSB.print(strobe_clock.period);
+      SerialUSB.print(" : Coarse FPS : ");
+      SerialUSB.print(coarse_framerate);
+      SerialUSB.print(" : Ctrl : ");
+      SerialUSB.println(Global.master.strobe_speed);
       SerialUSB.write(STOP_BYTE);
       fps_accumulator = 0;
       frame_cptr = 0;

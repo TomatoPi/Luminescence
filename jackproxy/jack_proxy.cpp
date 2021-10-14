@@ -315,10 +315,14 @@ int main(int argc, const char* argv[])
   apc::Save::Get()->add_post_routine([](auto){
     if (int err = save())
       perror("Warning Save Failure");
+    else
+      fprintf(stderr, "Save OK : '%s'\n", save_file);
   });
   apc::Load::Get()->add_post_routine([](auto){
     if (int err = load())
       perror("Warning Load Failure");
+    else
+      fprintf(stderr, "Load OK : '%s'\n", save_file);
   });
 
   // apc::PadsMaster::Get(0)->add_routine([&master](Controller::Control* ctrl){
@@ -402,10 +406,21 @@ int main(int argc, const char* argv[])
   for (size_t preset = 0 ; preset <  8 ; ++preset)
   {
     for (size_t i = 0 ; i < 8 ; i++)
-      apc::BottomEncoders::Get(preset, i % 4, i / 4)->add_post_routine([preset, i, &presets](Controller::Control* ctrl){
+      apc::BottomEncoders::Get(preset, i % 4, i / 4)->add_post_routine([preset, i, &presets, &ribbons](Controller::Control* ctrl){
         auto pot = static_cast<apc::BottomEncoders*>(ctrl);
         presets[preset].encoders[i] = pot->get_value();
-        push(presets[preset]);
+        // Tracers is global to the group
+        if (false && (i == 3 || i == 7))
+        {
+          for (size_t p = 0 ; p < 8 ; ++p)
+            if (ribbons[p].group == ribbons[preset].group)
+            {
+              presets[p].encoders[i] = pot->get_value();
+              push(presets[p]);
+            }
+        }
+        else
+          push(presets[preset]);
       });
     for (size_t i = 0 ; i < 4 ; ++i)
       apc::EffectsSwitches::Get(preset, i)->add_post_routine([preset, i, &presets](Controller::Control* ctrl){
@@ -422,14 +437,30 @@ int main(int argc, const char* argv[])
     });
   }
 
-  apc::PadsMatrix::Generate([&presets](uint8_t preset, uint8_t i){
-    apc::PadsMatrix::Get(preset, i)->add_post_routine([&presets, preset, i](Controller::Control* ctrl){
-      auto pad = static_cast<apc::PadsMatrix*>(ctrl);
-      uint8_t mask = 1 << i;
-      uint8_t val = presets[preset].pads_states;
-      uint8_t x = pad->get_status() << i;
-      presets[preset].pads_states = x | (val & ~mask);
-      push(presets[preset]);
+  apc::PadsMatrix::Generate([&presets, &ribbons](uint8_t preset, uint8_t i){
+    apc::PadsMatrix::Get(preset, i)->add_post_routine([&presets, &ribbons, preset, i](Controller::Control* ctrl){
+      if (false && (i == 3 || i == 4))
+      {
+        for (size_t p = 0 ; p < 8 ; ++p)
+          if (ribbons[p].group == ribbons[preset].group)
+          {        
+            auto pad = static_cast<apc::PadsMatrix*>(ctrl);
+            uint8_t mask = 1 << i;
+            uint8_t val = presets[p].pads_states;
+            uint8_t x = pad->get_status() << i;
+            presets[p].pads_states = x | (val & ~mask);
+            push(presets[p]);
+          }
+      }
+      else
+      {
+        auto pad = static_cast<apc::PadsMatrix*>(ctrl);
+        uint8_t mask = 1 << i;
+        uint8_t val = presets[preset].pads_states;
+        uint8_t x = pad->get_status() << i;
+        presets[preset].pads_states = x | (val & ~mask);
+        push(presets[preset]);
+      }
     });
   });
 
@@ -556,6 +587,10 @@ int main(int argc, const char* argv[])
       push(master);
   });
   
+  apc::StrobeFader::Get()->add_post_routine([&](Controller::Control* ctrl){
+      master.strobe_speed = static_cast<apc::StrobeFader*>(ctrl)->get_value();
+      push(master);
+  });
 
   apc::TapTempo::Get()->add_rt_routine([&](Controller::Control*){
     jack_time_t t = jack_get_time();
@@ -568,11 +603,11 @@ int main(int argc, const char* argv[])
   });
 
   apc::IncTempo::Get()->add_post_routine([&](Controller::Control* ctrl){
-    master.sync_correction = (master.sync_correction + 10) % 255;
+    //master.sync_correction = (master.sync_correction + 10) % 255;
     push(master);
   });
   apc::DecTempo::Get()->add_post_routine([&](Controller::Control* ctrl){
-    master.sync_correction = (master.sync_correction - 10) % 255;
+    //master.sync_correction = (master.sync_correction - 10) % 255;
     push(master);
   });
 

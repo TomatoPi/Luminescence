@@ -115,11 +115,11 @@ public:
   {
     MidiMsg event(std::forward<Args>(args)...);
 
-    for (size_t i = 0 ; i < 4 ; ++i)
-    {
-      fprintf(stderr, "0x%02x ", ((uint8_t*)&event)[i]);
-    }
-    fprintf(stderr, " %08lx\n", MidiMsgHash()(event));
+    // for (size_t i = 0 ; i < 4 ; ++i)
+    // {
+    //   fprintf(stderr, "0x%02x ", ((uint8_t*)&event)[i]);
+    // }
+    // fprintf(stderr, " %08lx\n", MidiMsgHash()(event));
 
     rt_queue.clear();
     auto [begin, end] = midi_map.equal_range(event);

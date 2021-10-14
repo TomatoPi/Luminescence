@@ -18,8 +18,8 @@ struct PaletteRangeController {
     uint8_t width;
 
     PaletteRange range() const {
-        return {sub8(center, width),
-                add8(center, width)};
+        return {sub8(center, width >> 1),
+                add8(center, width >> 1)};
     }
 };
 

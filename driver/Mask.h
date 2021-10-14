@@ -13,12 +13,17 @@ struct Mask {
     uint8_t center;
     uint8_t half_width;
     bool should_wrap;
+    bool enable;
     
     bool should_hide(uint8_t rel_pos) const {
-    
-      uint8_t m = min8(rel_pos, center);
-      uint8_t M = max8(rel_pos, center);
-      uint8_t dist_to_center = should_wrap ? min8(M - m, m + (255 - M)) : M - m;
-      return dist_to_center > half_width;
+      if (!enable)
+        return false;
+      else
+      {
+        uint8_t m = min8(rel_pos, center);
+        uint8_t M = max8(rel_pos, center);
+        uint8_t dist_to_center = should_wrap ? min8(M - m, m + (255 - M)) : M - m;
+        return dist_to_center > half_width;
+      }
     }
 };

@@ -317,6 +317,22 @@ namespace apc
     }
   };
 
+  class StrobeFader :
+    public ctrls::Pot,
+    public MonoInstanced<StrobeFader>
+  {
+  public:
+    using Base = ctrls::Pot;
+    using Inst = MonoInstanced<StrobeFader>;
+
+  public:
+
+    StrobeFader(Controller* ctrl) :
+      Base(ctrl, 0, 0x0f), Inst()
+    {
+    }
+  };
+
   /////////////////////////////////////
   /// Triggers
   /////////////////////////////////////
@@ -410,6 +426,7 @@ namespace apc
 
       Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
       addControl<MainFader>();
+      addControl<StrobeFader>();
 
       addControl<Panic>();
 

@@ -8,8 +8,8 @@
 
 struct Composition {
     PaletteRangeController palette_range_ctrl;
-    Slicer slicer;
     Mask mask;
+    Slicer slicer;
 
     CRGB eval(const ColorPalette& palette,
               uint8_t time,

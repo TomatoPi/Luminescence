@@ -148,10 +148,12 @@ namespace objects
     static constexpr const flags::Objects Flag = flags::Objects::Master;
     //
     uint16_t bpm;                 // should be replaced by fixed point integer
-    uint8_t sync_correction;      // Masterclock phase offset [0 - 255]
     uint8_t brightness      : 7;  // Master brightness [0 - 255] TODO : modify scaling
     uint8_t _p4_            : 1;
     // 4
+    uint8_t strobe_speed    : 7;
+    uint8_t __1__           : 1;
+    // 5
     uint8_t encoders[8];
   };
 
