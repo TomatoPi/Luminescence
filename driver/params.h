@@ -2,11 +2,6 @@
 
 #include <stdint.h>
 
-struct encoder {
-  int8_t u = 0;
-  uint8_t raw_value = 0; ///!< 7 bits encoder value
-};
-
 ///
 /// First encoder is divided in 5 zones
 ///   Both extremums (0 and 7F) are mapped to 4
@@ -14,7 +9,9 @@ struct encoder {
 ///     with mode from 0 to 3, 
 ///     and value from 0 to 32
 ///
-struct selector_encoder : public encoder {
+struct selector_encoder {
+  uint8_t raw_value; ///!< 7 bits encoder value
+  
   int active_mode() const
   {
     if (0x00 == raw_value || 0x7F == raw_value)
@@ -35,7 +32,9 @@ struct selector_encoder : public encoder {
 ///   On the right values goes from 0 to 63 clockward
 ///   Center value is mapped to 0
 ///
-struct panning_encoder : public encoder {
+struct panning_encoder {
+  uint8_t raw_value; ///!< 7 bits encoder value
+  
   int sign() const // -1 on the left, 0 on center, 1 on the right
   {
     if (raw_value < 64)
@@ -64,8 +63,8 @@ struct panning_encoder : public encoder {
 ///   Recursion
 ///
 struct modulator_control {
-  selector_encoder selector;  ///!< Modulation LFO / Recursion depth
-  panning_encoder intensity;  ///!< Modulation magnitude / Recursion split ratio
+  uint8_t pot0; //selector_encoder selector;  ///!< Modulation LFO / Recursion depth
+  uint8_t pot1; //panning_encoder intensity;  ///!< Modulation magnitude / Recursion split ratio
   bool toggle;                ///!< Toggle button below encoders
 
   bool enable;                ///!< Assigned to pad matrix
@@ -77,4 +76,4 @@ struct tracer_control {
   bool toogle;
 
   bool enable;
-}
+};

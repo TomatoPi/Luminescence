@@ -6,8 +6,12 @@ enum class OscillatorKind {
     Square,
     Triangle,
     Noise,
-    Varislope,
 };
+
+OscillatorKind map_to_oscillator_kind(uint8_t x)
+{
+  return static_cast<OscillatorKind>((x * (int)5) / 255);
+}
 
 uint8_t eval_oscillator(OscillatorKind oscillator, uint8_t x)
 {

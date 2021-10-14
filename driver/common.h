@@ -152,6 +152,7 @@ namespace objects
     uint8_t brightness      : 7;  // Master brightness [0 - 255] TODO : modify scaling
     uint8_t _p4_            : 1;
     // 4
+    uint8_t encoders[8];
   };
 
   struct Preset {

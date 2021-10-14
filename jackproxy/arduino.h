@@ -87,13 +87,13 @@ private:
       const auto& [id, packet] = pair;
       last_sent_id = id;
       // fprintf(stderr, "%lu Pending Packets\n", buffer.size());
-      fprintf(stderr, "Send Packet : %lu %p\n", id, _);
+      // fprintf(stderr, "Send Packet : %lu %p\n", id, _);
       const uint8_t* raw = Serializer::bytestream(packet);
       for (size_t i = 0 ; i < SerialPacket::Size ; ++i)
       {
         uint8_t byte = raw[i];
         serialport_writebyte(fd, byte);
-        usleep(20);
+        usleep(10);
         // fprintf(stderr, "0x%02x ", byte); 
       }
       // fprintf(stderr, "\n");

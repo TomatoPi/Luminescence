@@ -43,6 +43,22 @@ namespace apc
     }
   };
 
+  class EffectsSwitches : 
+    public ctrls::MomentaryPad,
+    public D2ArrayInstanced<EffectsSwitches, BanksCount, EncodersColumnsCount>
+  {
+  private:
+    using Base = ctrls::MomentaryPad;
+    using Inst = D2ArrayInstanced<EffectsSwitches, BanksCount, EncodersColumnsCount>;
+
+  public:
+
+    EffectsSwitches(Controller* ctrl, uint8_t col, uint8_t row) :
+      Base(ctrl, col, 0x3a + row), Inst(col, row)
+    {
+    }
+  };
+
   class GroupSelectPads : 
     public ctrls::MomentaryPad,
     public D2ArrayInstanced<GroupSelectPads, TracksCount, 3>
@@ -390,6 +406,7 @@ namespace apc
       GlobalEncoders::Generate([this](uint8_t i, uint8_t j)
       {addControl<GlobalEncoders>(i,j);});
       BottomEncoders::Generate([this](uint8_t i, uint8_t j, uint8_t k){addControl<BottomEncoders>(i,j,k);});
+      EffectsSwitches::Generate([this](uint8_t i, uint8_t j){addControl<EffectsSwitches>(i,j);});
 
       Faders::Generate([this](uint8_t i){addControl<Faders>(i);});
       addControl<MainFader>();

@@ -14,18 +14,12 @@ struct PaletteRange {
 };
 
 struct PaletteRangeController {
-    OscillatorKind oscillator;
+    uint8_t center;
     uint8_t width;
 
-    PaletteRange range(uint8_t time) const {
-        const uint8_t c = center(time);
-        return {c - width,
-                c + width};
-    }
-
-private: 
-    uint8_t center(uint8_t time) const {
-        return eval_oscillator(oscillator, time);
+    PaletteRange range() const {
+        return {sub8(center, width),
+                add8(center, width)};
     }
 };
 

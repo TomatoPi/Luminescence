@@ -94,19 +94,20 @@ void update_controller_internals()
       apc::PadsMatrix::Get(bank, pad)->set_status(!!(Global.presets[bank].pads_states & (1 << pad)));
     for (size_t pot = 0 ; pot < 8 ; ++pot)
       apc::BottomEncoders::Get(bank, pot % 4, pot / 4)->set_value(Global.presets[bank].encoders[pot]);
+    for (size_t toggle = 0 ; toggle < 4 ; ++toggle)
+      apc::EffectsSwitches::Get(bank, toggle)->set_status(Global.presets[bank].switches & (1 << toggle));
   }
 
   for (size_t i = 0 ; i < 8 ; ++i)
     apc::PadsBottomRow::Get(i)->set_status(false);
-
-  for (size_t group = 0 ; group < 3 ; ++group)
+  
+  for (size_t i = 0 ; i < 8 ; ++i)
   {
-    apc::GlobalEncoders::Get(group, 0)->set_value(Global.groups[group].palette << 3);
-    apc::GlobalEncoders::Get(group, 1)->set_value(Global.groups[group].palette_width);
-    apc::PadsBottomRow::Get(Global.groups[group].preset)->set_status(true);
+    apc::GlobalEncoders::Get(i % 4, i / 4)->set_value(Global.master.encoders[i]);
   }
+  //apc::PadsBottomRow::Get(Global.groups[group].preset)->set_status(true);
 
-  apc::MainFader::Get()->set_value(Global.master.brightness);
+  //apc::MainFader::Get()->set_value(Global.master.brightness);
 }
 
 int load()
@@ -366,19 +367,16 @@ int main(int argc, const char* argv[])
       push(compo);
     for (const auto& compo : groups)
       push(compo);
+    update_controller_internals();
+    dirty_controller = true;
   });
 
-  for (size_t group = 0 ; group < 3 ; ++group)
+  for (size_t i = 0 ; i < 8 ; ++i)
   {
-    apc::GlobalEncoders::Get(group, 0)->add_post_routine([&groups, group](Controller::Control* ctrl){
+    apc::GlobalEncoders::Get(i % 4, i / 4)->add_post_routine([&master, i](Controller::Control* ctrl){
       auto pot = static_cast<apc::GlobalEncoders*>(ctrl);
-      groups[group].palette = pot->get_value() >> 3;
-      push(groups[group]);
-    });
-    apc::GlobalEncoders::Get(group, 1)->add_post_routine([&groups, group](Controller::Control* ctrl){
-      auto pot = static_cast<apc::GlobalEncoders*>(ctrl);
-      groups[group].palette_width = pot->get_value();
-      push(groups[group]);
+      master.encoders[i] = pot->get_value();
+      push(master);
     });
   }
 
@@ -410,9 +408,16 @@ int main(int argc, const char* argv[])
         push(presets[preset]);
       });
     for (size_t i = 0 ; i < 4 ; ++i)
-      continue; // TODO : implement bottom switches
+      apc::EffectsSwitches::Get(preset, i)->add_post_routine([preset, i, &presets](Controller::Control* ctrl){
+        auto pad = static_cast<apc::EffectsSwitches*>(ctrl);
+        uint8_t mask = 1 << i;
+        uint8_t val = presets[preset].switches;
+        uint8_t x = pad->get_status() << i;
+        presets[preset].switches = x | (val & ~mask);
+        push(presets[preset]);
+      });
     apc::Faders::Get(preset)->add_post_routine([preset, &presets](Controller::Control* ctrl){
-      presets[preset].brightness = static_cast<apc::Faders*>(ctrl)->get_value() >> 1;
+      presets[preset].brightness = static_cast<apc::Faders*>(ctrl)->get_value();
       push(presets[preset]);
     });
   }
@@ -421,10 +426,10 @@ int main(int argc, const char* argv[])
     apc::PadsMatrix::Get(preset, i)->add_post_routine([&presets, preset, i](Controller::Control* ctrl){
       auto pad = static_cast<apc::PadsMatrix*>(ctrl);
       uint8_t mask = 1 << i;
-      uint8_t val = presets[i].pads_states;
+      uint8_t val = presets[preset].pads_states;
       uint8_t x = pad->get_status() << i;
-      presets[i].pads_states = x | (val & ~mask);
-      push(presets[i]);
+      presets[preset].pads_states = x | (val & ~mask);
+      push(presets[preset]);
     });
   });
 
@@ -591,29 +596,32 @@ int main(int argc, const char* argv[])
   });
 
   save_file = argv[1];
-  
+
+  if (load())
+    { perror("Error reading file"); return __LINE__; }
+    
   {
-    setup = {
-      4,
-      {2, 2, 2, 2}
-    };
-    master = {
-      120,  // bpm
-      0,    // sync  
-      127,  // brigthness
-    };
+    // setup = {
+    //   4,
+    //   {2, 2, 2, 2}
+    // };
+    // master = {
+    //   120,  // bpm
+    //   0,    // sync  
+    //   127,  // brigthness
+    // };
     
     uint8_t idx = 0;
     for (auto& preset : presets)
-      preset = { idx++, 0 };
+      preset.index = idx++;
 
     idx = 0;
     for (auto& ribbon : ribbons)
-      ribbon = { idx++, 0 };
+      ribbon.index = idx++;
 
     idx = 0;
     for (auto& group : groups)
-      group = { idx++, idx, 0 };
+      group.index = idx++;
 
     for (auto& pair : arduinos)
     {
@@ -621,10 +629,6 @@ int main(int argc, const char* argv[])
       arduino->push(setup);
     }
   }
-
-  if (load())
-    { perror("Error reading file"); return __LINE__; }
-    
 
   while (1)
   {
