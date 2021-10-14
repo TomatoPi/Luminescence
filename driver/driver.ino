@@ -68,7 +68,7 @@ void update_clocks()
 }
 
 void loop()
-{    
+{
     // Receive new datas from SerialUSB
     static unsigned long drop_count = 0;
     
@@ -79,21 +79,26 @@ void loop()
     // Compute next frame  
     unsigned long compute_begin = millis();
 
-    const auto& palette = Palettes::many_colors;
+    update_clocks();
+    const uint8_t time = master_clock.get8() + Global.master.sync_correction;
+    const auto& palette = Palettes::rainbow;
     const Composition compo{
         PaletteRangeController {
             OscillatorKind::SawTooth,
             255
         },
         Slicer {
-            4,
-            150,
+            3,
+            255,
             true,
-            true
+            false
+        },
+        Mask {
+          time,
+            80,
+            //80
         }
     };
-    update_clocks();
-    const uint8_t time = master_clock.get8() + Global.master.sync_correction;
     memset(leds, 0, sizeof(CRGB) * LedsCount);
     for (uint32_t i = 0; i < LedsCount; ++i) {
         leds[i] = compo.eval(palette, time, i, LedsCount);
@@ -107,6 +112,7 @@ void loop()
       for (size_t i = 0 ; i < 30 ; ++i)
         leds[i] = master_clock.get8() < 0x7F ? CRGB::Red : CRGB::Black;
     FastLED.show(Global.master.brightness);
+    delay(1);
     unsigned long draw_end = millis();
 
 
@@ -165,7 +171,6 @@ int read_from_controller() {
         parser.error(0);
         drop_count++;
       }
-//      FastLED.delay(1);
       continue;
     }
 
@@ -176,14 +181,17 @@ int read_from_controller() {
       continue;
     ParsingResult result = parser.parse(byte);
 
-//    SerialUSB.print(byte, HEX);
-//    SerialUSB.print(" : idx : ");
-//    SerialUSB.print((int)parser.serial_index);
-//    SerialUSB.print(" : code : ");
-//    SerialUSB.print((int)result.status);
-//    SerialUSB.println();
-//    SerialUSB.write(STOP_BYTE);
-//    delay(SerialUSB_SLEEP_TIMEOUT);
+    if (result.status != ParsingResult::Status::EndOfStream)
+    {
+  //    SerialUSB.print(byte, HEX);
+  //    SerialUSB.print(" : idx : ");
+  //    SerialUSB.print((int)parser.serial_index);
+  //    SerialUSB.print(" : code : ");
+  //    SerialUSB.print((int)result.status);
+  //    SerialUSB.println();
+  //    SerialUSB.write(STOP_BYTE);
+  //    delay(SerialUSB_SLEEP_TIMEOUT);
+    }
 
     switch (result.status)
     {
@@ -194,9 +202,9 @@ int read_from_controller() {
         break;
       case ParsingResult::Status::Finished:
       {
-//        SerialUSB.print(millis());
-//        SerialUSB.print(": full blob ok");
-//        SerialUSB.write(STOP_BYTE);
+        SerialUSB.print(millis());
+        SerialUSB.println(": full blob ok");
+        SerialUSB.write(STOP_BYTE);
 
         const uint8_t* c = parser.serial_buffer_in.rawobj;
 //        SerialUSB.print("RGB : ");

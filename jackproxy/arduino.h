@@ -2,7 +2,7 @@
 
 #include "../driver/common.h"
 
-#include <unordered_map>
+#include <map>
 #include <stdio.h>
 #include <unistd.h>
 #include <thread>
@@ -16,7 +16,7 @@
 class Arduino
 {
 public:
-  using Buffer = std::unordered_map<void*, std::pair<unsigned long, SerialPacket>>;
+  using Buffer = std::map<void*, std::pair<unsigned long, SerialPacket>>;
 
 private:
   int fd = 0;
@@ -47,13 +47,14 @@ private:
       else if (raw[0] == 0 && raw[1] == static_cast<uint8_t>(STOP_BYTE))
       {
         // fprintf(stderr, "RCV : %d : ACK\n", res);
-        if (buffer.empty())
-          return;
         std::scoped_lock<std::mutex> _(buffer_lock);
+        if (last_packet_sent == buffer.end())
+          return;
         if (last_packet_sent->second.first == last_sent_id)
         {
           // fprintf(stderr, "Packet Sent OK : %lu %p\n", last_packet_sent->second.first, last_packet_sent->first);
           buffer.erase(last_packet_sent);
+          last_packet_sent = buffer.end();
         }
         else
         {
@@ -92,7 +93,7 @@ private:
       {
         uint8_t byte = raw[i];
         serialport_writebyte(fd, byte);
-        usleep(10);
+        usleep(20);
         // fprintf(stderr, "0x%02x ", byte); 
       }
       // fprintf(stderr, "\n");
