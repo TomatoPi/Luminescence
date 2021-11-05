@@ -59,8 +59,9 @@ void setup()
   FastLED.show();
 
   Global.setup = {
-    1,
-    { 14 }
+    8,
+    { 3, 6, 5, 4, 
+      4, 5, 6, 3 }
   };
 
   SerialUSB.write(STOP_BYTE);
