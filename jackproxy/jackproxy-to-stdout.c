@@ -32,6 +32,7 @@ int jack_callback(jack_nframes_t nframes, void* args)
     }
     fprintf(stdout, "\n");
   }
+  fflush(stdout);
 
   return 0;
 }
