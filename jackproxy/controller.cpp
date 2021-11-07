@@ -166,10 +166,47 @@ void register_controls()
   
   // setup
   offset = offsetof(state_t, setup);
-  controls_list.emplace_back(control_t{ true, "ribbons-count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ true, "ribbons_count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
 
   for (size_t i=0 ; i<MAX_RIBBONS_COUNT ; ++i)
-    controls_list.emplace_back(control_t{ true, "ribbons-length:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_length) + i, control_t::UINT7, {0}, default_callback });
+    controls_list.emplace_back(control_t{ true, "ribbons_length:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_length) + i, control_t::UINT7, {0}, default_callback });
+
+  // master
+  offset = offsetof(state_t, master);
+  controls_list.emplace_back(control_t{ true, "bpm", offset + offsetof(state_t::master_t, bpm), control_t::FLOAT, {0}, default_callback});
+  controls_list.emplace_back(control_t{ true, "brightness", offset + offsetof(state_t::master_t, brightness), control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ true, "strobe_speed", offset + offsetof(state_t::master_t, strobe_speed), control_t::UINT7, {0}, default_callback});
+
+  // presets
+  for (size_t p=0 ; p<PRESETS_COUNT ; ++p)
+  {
+    offset = offsetof(state_t, presets) + p * sizeof(state_t::preset_t);
+
+    controls_list.emplace_back(control_t{ true, "palette:" + std::to_string(p), offset + offsetof(state_t::preset_t, palette), control_t::UINT7, {0}, default_callback});
+    
+    controls_list.emplace_back(control_t{ true, "colormod_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_enable), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "colormod_osc:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_osc), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "colormod_width:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_width), control_t::UINT7, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "maskmod_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_enable), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "maskmod_osc:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_osc), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "maskmod_width:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_width), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "maskmod_move:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_move), control_t::BOOL, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "slicer_osc:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_osc), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "slicer_nslices:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_nslices), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "slicer_useflip:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_useflip), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "slicer_useuneven:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_useuneven), control_t::BOOL, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "feedback_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, feedback_enable), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ true, "feedback_qty:" + std::to_string(p), offset + offsetof(state_t::preset_t, feedback_qty), control_t::UINT7, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "strobe_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, strobe_enable), control_t::BOOL, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "speed_scale:" + std::to_string(p), offset + offsetof(state_t::preset_t, speed_scale), control_t::UINT7, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ true, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
+  }
 
   // Generate tables
   for (auto& ctrl : controls_list)

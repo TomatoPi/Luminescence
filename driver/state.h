@@ -17,13 +17,15 @@ struct state_t {
     uint8_t ribbons_length[MAX_RIBBONS_COUNT];
   } setup;
 
-  struct {
+  struct master_t {
     float   bpm;
     uint8_t brightness;
     uint8_t strobe_speed;
+
+    
   } master;
 
-  struct {
+  struct preset_t {
     uint8_t palette;
 
     uint8_t colormod_enable;
