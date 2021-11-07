@@ -30,7 +30,7 @@ struct control_t
   type_e      type;
   value_u     val;
 
-  std::function<void(std::vector<const control_t*>&)> on_update;
+  std::function<void(control_t*, std::vector<const control_t*>&)> on_update;
 };
 
 std::vector<control_t>                      controls_list;
@@ -87,8 +87,7 @@ std::vector<const control_t*> process_cmd(const char* cmdstr)
       ctrl->val.f = vf;
       break;
     }
-    ctrl->on_update(result);
-    result.emplace_back(ctrl);
+    ctrl->on_update(ctrl, result);
   }
 
   return result;
@@ -100,9 +99,12 @@ const char* path_to_arduino;
 
 volatile int is_running = 1;
 
-void nullfunction(std::vector<const control_t*>&) {}
+void default_callback(control_t* ctrl, std::vector<const control_t*>& dirty_controls) 
+{
+  dirty_controls.emplace_back(ctrl);
+}
 
-void save(std::vector<const control_t*>& dirty_controls)
+void save(control_t*, std::vector<const control_t*>& dirty_controls)
 {
   FILE* file = fopen(path_of_save, "w");
   if (!file)
@@ -133,7 +135,7 @@ void save(std::vector<const control_t*>& dirty_controls)
   fclose(file);
 }
 
-void load(std::vector<const control_t*>& dirty_controls)
+void load(control_t*, std::vector<const control_t*>& dirty_controls)
 {
   FILE* file = fopen(path_of_save, "r");
   if (!file)
@@ -164,10 +166,10 @@ void register_controls()
   
   // setup
   offset = offsetof(state_t, setup);
-  controls_list.emplace_back(control_t{ true, "ribbons-count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, nullfunction});
+  controls_list.emplace_back(control_t{ true, "ribbons-count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
 
   for (size_t i=0 ; i<MAX_RIBBONS_COUNT ; ++i)
-    controls_list.emplace_back(control_t{ true, "ribbons-length:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_length) + i, control_t::UINT7, {0}, nullfunction });
+    controls_list.emplace_back(control_t{ true, "ribbons-length:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_length) + i, control_t::UINT7, {0}, default_callback });
 
   // Generate tables
   for (auto& ctrl : controls_list)
