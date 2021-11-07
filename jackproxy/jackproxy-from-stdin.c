@@ -42,11 +42,11 @@ int jack_callback(jack_nframes_t nframes, void* args)
 		}
 		else if (0 < nread)
 		{
-	        	void* raw = jack_midi_event_reserve(out_buffer, 0, nread);
-		        memcpy(raw, buff, nread);
-		        for(int i=0;i<nread;++i)
-		        	fprintf(stderr,"%02X ", (uint8_t)buff[i]);
-		        fprintf(stderr,"\n");
+      void* raw = jack_midi_event_reserve(out_buffer, 0, nread);
+      memcpy(raw, buff, nread);
+      for(int i=0;i<nread;++i)
+        fprintf(stderr,"%02X ", (uint8_t)buff[i]);
+      fprintf(stderr,"\n");
 		}
 	} while(0 < nread);
 	
