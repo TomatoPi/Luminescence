@@ -92,12 +92,12 @@ int main(int argc, char* const argv[])
 	
 	char buff[512];
 	uint8_t msg[512];
-	while (is_running && fgets(buff, 511, stdin))
+	while (is_running && fgets(buff, 512, stdin))
 	{
 		ssize_t len = 0, nread=strlen(buff);
 		fprintf(stderr, "Read %zd bytes from stdin : %s\n", nread, buff);
 		ssize_t index = 0;
-		while(index < 10)
+		while(index < nread)
 		{
 			int tmp;
 			int n = sscanf(buff+index, "%02x", &tmp);

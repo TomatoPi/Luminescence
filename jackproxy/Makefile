@@ -13,6 +13,7 @@ all:
 	make jackproxy-to-stdout
 	make jackproxy-from-stdin
 	make arduino-bridge
+	make apc40-mapping
 
 arduino-bridge: \
 	arduino-bridge.c \

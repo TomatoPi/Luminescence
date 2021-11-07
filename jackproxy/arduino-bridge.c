@@ -91,6 +91,7 @@ int main(int argc, char* const argv[])
         exit(EXIT_FAILURE);
       }
     }
+    kill(cpid, SIGTERM);
   }
 
   return 0;

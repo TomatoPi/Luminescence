@@ -1,0 +1,114 @@
+Jack: JackClient::SetupDriverSync driver sem in flush mode
+Jack: JackLinuxFutex::Connect name = jack_sem.1000_default_Jack-Proxy-Out
+Jack: Clock source : system clock via clock_gettime
+Jack: JackLibClient::Open name = Jack-Proxy-Out refnum = 4
+Jack: JackClient::PortRegister ref = 4 name = Jack-Proxy-Out:midi_in type = 8 bit raw midi port_index = 8
+Jack: JackClient::Activate
+Jack: JackPosixThread::StartImp : create non RT thread
+Jack: JackPosixThread::ThreadHandler : start
+Jack: JackClient::kBufferSizeCallback buffer_size = 1024
+Jack: JackClient::Init : period = 21333 computation = 100 constraint = 21333
+Jack: JackPosixThread::AcquireRealTimeImp priority = 5
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 2
+Jack: JackClient::kActivateClient name = Jack-Proxy-Out ref = 4 
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+Jack: JackClient::ClientNotify ref = 4 name = Jack-Proxy-Out notify = 18
+b6 07 05 
+b6 07 0b 
+b6 07 19 
+b6 07 22 
+b6 07 2a 
+b6 07 34 
+b6 07 47 
+b6 07 51 
+b6 07 5a 
+b6 07 64 
+b6 07 77 
+b6 07 7d 
+b6 07 7f 
+b6 07 7a 
+b6 07 6d 
+b6 07 61 
+b6 07 54 
+b6 07 38 
+b6 07 2c 
+b6 07 1e 
+b6 07 13 
+b6 07 01 
+b6 07 00 
+b6 07 02 
+b6 07 08 
+b6 07 16 
+b6 07 1d 
+b6 07 24 
+b6 07 2c 
+b6 07 3d 
+b6 07 45 
+b6 07 4f 
+b6 07 59 
+b6 07 6c 
+b6 07 76 
+b6 07 7d 
+b6 07 7f 
+b6 07 71 
+b6 07 69 
+b6 07 61 
+b6 07 59 
+b6 07 4a 
+b6 07 43 
+b6 07 3a 
+b6 07 30 
+b6 07 19 
+b6 07 0f 
+b6 07 06 
+b6 07 01 
+b6 07 00 
+b6 07 02 
+b6 07 05 
+b6 07 06 
+b6 07 08 
+b6 07 0a 
+b6 07 0f 
+b6 07 11 
+b6 07 14 
+b6 07 17 
+b6 07 1c 
+b6 07 1f 
+b6 07 21 
+b6 07 23 
+b6 07 26 
+b6 07 27 
+b6 07 29 
+b6 07 27 
+b6 07 21 
+b6 07 16 
+b6 07 0e 
+b6 07 01 
+b6 07 00 
+Jack: JackClient::Deactivate
+Jack: JackClient::Deactivate res = 0
+Jack: JackPosixThread::Kill
+Jack: jack_client_close
+Jack: JackClient::Close ref = 4
+Jack: JackClient::Deactivate
+Jack: JackSocketClientChannel::Stop
+Jack: JackPosixThread::Kill
+Jack: JackClientSocket::Close
+Jack: JackClientSocket::Close
+Jack: JackLibClient::~JackLibClient
+Jack: JackShmReadWritePtr1::~JackShmReadWritePtr1 4
+Jack: Succeeded in unlocking 426 byte memory area
+Jack: JackLibGlobals Destroy ce780350
+Jack: ~JackLibGlobals
+Jack: no message buffer overruns
+Jack: JackPosixThread::Stop
+Jack: JackPosixThread::ThreadHandler : exit
+Jack: JackShmReadWritePtr::~JackShmReadWritePtr 1
+Jack: Succeeded in unlocking 1196 byte memory area
+Jack: JackShmReadWritePtr::~JackShmReadWritePtr 0
+Jack: Succeeded in unlocking 107341340 byte memory area
+Jack: jack_client_close res = 0
