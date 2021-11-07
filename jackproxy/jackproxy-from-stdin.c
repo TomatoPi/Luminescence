@@ -73,7 +73,7 @@ int main(int argc, char* const argv[])
 	}
 	
 	signal(SIGTERM, sighandler);
-	signal(SIGINT, sighandler);	
+	signal(SIGINT, sighandler);
 	
 	jack_status_t jack_status;
 	client = jack_client_open(pgm_name, JackNullOption, &jack_status);

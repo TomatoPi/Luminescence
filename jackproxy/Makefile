@@ -12,9 +12,10 @@ LDXXFLAGS=-ljack -lpthread
 all: 
 	make jackproxy-to-stdout
 	make jackproxy-from-stdin
+	make arduino-bridge
 
-jack_proxy: \
-	jack_proxy.cpp \
+arduino-bridge: \
+	arduino-bridge.c \
 	arduino-serial-lib.c
 
 # apc40/apc40.o: apc40/apc40.cpp apc40/apc40.h apc40/controls.h
