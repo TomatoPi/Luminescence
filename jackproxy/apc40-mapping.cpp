@@ -71,16 +71,49 @@ volatile int is_running = 1;
 
 struct binding_t
 {
-  uint8_t        midikey[2];
-  const char*   command;
-  std::function<std::string(uint8_t)> midival_to_str;
-  std::function<uint8_t(const char*)> str_to_midival;
+  uint8_t         midikey[2];
+  std::string     command;
+  std::function<std::string(const binding_t*, uint8_t)>           midival_to_str;
+  std::function<void(const binding_t*, const char*, uint8_t[3])>  str_to_midival;
 
   uint16_t key() const { return ((uint16_t)midikey[0]) << 8 | midikey[1]; }
 };
 
-std::string uint8_to_str(uint8_t val) { return std::to_string(val); }
-uint8_t str_to_uint8(const char* str) { int res; sscanf(str, "%d", &res); return res; }
+std::string uint8_to_str(const binding_t* bnd, uint8_t val)
+{
+  return std::to_string(val);
+}
+void str_to_uint8(const binding_t* bnd, const char* str, uint8_t val[3])
+{
+  int res;
+  sscanf(str, "%d", &res);
+  val[0] = bnd->midikey[0];
+  val[1] = bnd->midikey[1];
+  val[2] = res;
+}
+
+std::string bool_to_str(const binding_t* bnd, uint8_t val)
+{
+  return 0x40 <= val ? "y" : "n";
+}
+void str_to_bool(const binding_t* bnd, const char* str, uint8_t val[3])
+{
+  val[0] = bnd->midikey[0];
+  val[1] = bnd->midikey[1];
+  val[2] = str[0] == 'y' ? 0x7F : 0x00;
+}
+
+std::string pad_to_str(const binding_t* bnd, uint8_t val)
+{
+  return 0x90 == (bnd->midikey[0] & 0xF0) ? "y" : "n";
+}
+void str_to_pad(const binding_t* bnd, const char* str, uint8_t val[3])
+{
+  val[0] = str[0] == 'y' ? 0x90 : 0x80;
+  val[0] |= bnd->midikey[0] & 0x0F;
+  val[1] = bnd->midikey[1];
+  val[2] = 0x7F;
+}
 
 std::vector<binding_t>                                  bindings_list;
 std::unordered_multimap<int16_t, const binding_t*>      midi_to_command_map;
@@ -90,9 +123,47 @@ void register_mappings()
 {
   // Generate bindings
   bindings_list = {
-    { {0xb0, 0x07}, "intensity:0", uint8_to_str, str_to_uint8 },
-    { {0x90, 0x35}, "colormod:0", uint8_to_str, str_to_uint8 },
+    { {0x90, 0x5b}, "load", bool_to_str, str_to_bool},
+    { {0x90, 0x5d}, "save", bool_to_str, str_to_bool},
+
+    { {0x90, 0x63}, "reset_bpm", bool_to_str, str_to_bool},
+    { {0xb0, 0x2f}, "correct_bpm", bool_to_str, str_to_bool},
+    { {0x90, 0x65}, "sync_left", bool_to_str, str_to_bool},
+    { {0x90, 0x64}, "sync_right", bool_to_str, str_to_bool},
+
+    { {0xb0, 0x0e}, "brightness", uint8_to_str, str_to_uint8},
+    { {0xb0, 0x0f}, "strobe_speed", uint8_to_str, str_to_uint8},
   };
+
+  for (uint8_t p=0 ; p < 8 ; ++p)
+  {
+    bindings_list.emplace_back(binding_t{{0xb0, (uint8_t)(0x30 + p)}, "palette:" + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x10}, "colormod_osc:"   + std::to_string(p), uint8_to_str, str_to_uint8});
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x14}, "colormod_width:" + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x11}, "maskmod_osc:"    + std::to_string(p), uint8_to_str, str_to_uint8});
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x15}, "maskmod_width:"  + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x12}, "slicer_nslices:" + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x13}, "feedback_qty:"   + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x17}, "speed_scale:" + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x07}, "brightness:" + std::to_string(p), uint8_to_str, str_to_uint8});
+
+    for (uint8_t o=0 ; o <= 0x10 ; o += 0x10)
+    {
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x35}, "colormod_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x36}, "maskmod_enable:"   + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3b}, "maskmod_move:"     + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x37}, "slicer_useuneven:" + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3c}, "slicer_useflip:"   + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x38}, "feedback_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x39}, "strobe_enable:"    + std::to_string(p), pad_to_str, str_to_pad});
+    }
+  }
 
   // Generate tables
   for (const auto& binding : bindings_list)
@@ -144,7 +215,7 @@ std::vector<std::string> midistr_to_command(const char* midistr)
   {
     auto& [_, binding] = *itr;
     char tmp[512];
-    sprintf(tmp, "%s %s", binding->command, binding->midival_to_str(value).c_str());
+    sprintf(tmp, "%s %s", binding->command.c_str(), binding->midival_to_str(binding, value).c_str());
     result.emplace_back(tmp);
   }
 
@@ -174,11 +245,11 @@ std::vector<std::string> command_to_midistr(const char* commandstr)
   for (auto itr = begin; itr != end; ++itr)
   {
     auto& [_, binding] = *itr;
-    uint16_t key = binding->key(); // get key from command
-    uint8_t value = binding->str_to_midival(arg);// convert args to value
+    uint8_t raw[3];
+    binding->str_to_midival(binding, arg, raw);
 
     char tmp[512];
-    sprintf(tmp, "%02x %02x %02x", key >> 8, key & 0xFF, value);
+    sprintf(tmp, "%02x %02x %02x", raw[0], raw[1], raw[2]);
     result.emplace_back(tmp);
   }
   
@@ -235,6 +306,8 @@ int main(int argc, char* const argv[])
       {
         fprintf(stdout, "%s\n", cmd.c_str());
       }
+      fflush(stdout);
+      usleep(100);
     }
   }
   else // 0 != cpid : Parent : stdin -> toAPC
@@ -255,6 +328,7 @@ int main(int argc, char* const argv[])
         fprintf(stderr, "To apc : %s\n", msg.c_str());
       }
       fflush(apc40);
+      usleep(100);
     }
     kill(cpid, SIGTERM);
   }

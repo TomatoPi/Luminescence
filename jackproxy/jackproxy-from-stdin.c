@@ -113,10 +113,18 @@ int main(int argc, char* const argv[])
 			len += 1;
 			index += 3;
 		}
-		if (write(pipefd[1], msg, len) != len)
+		while (write(pipefd[1], msg, len) != len)
 		{
-			perror("write");
-			exit(EXIT_FAILURE);
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+      {
+        usleep(100);
+				continue;
+      }
+			else
+			{
+				perror("read");
+				exit(EXIT_FAILURE);
+			}
 		}
 	}
 	

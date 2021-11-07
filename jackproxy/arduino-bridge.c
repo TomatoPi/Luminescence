@@ -73,6 +73,7 @@ int main(int argc, char* const argv[])
         perror("write to stdout");
         exit(EXIT_FAILURE);
       }
+      fflush(stdout);
     }
   }
   else // 0 != cpid : Parent : stdin -> arduino
@@ -90,6 +91,7 @@ int main(int argc, char* const argv[])
         perror("write to arduino");
         exit(EXIT_FAILURE);
       }
+      serialport_flush(serialfd);
     }
     kill(cpid, SIGTERM);
   }
