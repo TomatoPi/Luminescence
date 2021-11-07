@@ -14,6 +14,7 @@ all:
 	make jackproxy-from-stdin
 	make arduino-bridge
 	make apc40-mapping
+	make controller
 
 arduino-bridge: \
 	arduino-bridge.c \
