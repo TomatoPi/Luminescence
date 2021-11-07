@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../controller.h"
+#include <functional>
 
 namespace ctrls
 {
@@ -36,7 +37,7 @@ namespace ctrls
       Base(ctrl),
       signature({0xb0 | channel, d1, 0})
     {
-      controller->register_mapping(this, signature, std::bind_front(&Pot::handle_message, this));
+      controller->register_mapping(this, signature, std::bind(&Pot::handle_message, this, std::placeholders::_1));
     }
 
     uint8_t get_value() const { return value; }

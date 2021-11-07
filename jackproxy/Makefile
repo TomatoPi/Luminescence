@@ -1,16 +1,17 @@
 # all:
 # 	g++ -Wall --std=c++20 -ljack -g jack_proxy.cpp arduino-serial-lib.c -o jack_proxy
 
-GCC=g++
-CFLAGS=-Wall
-LDFLAGS=
+GCC=clang
+CFLAGS=-Wall -std=gnu99
+LDFLAGS=-ljack
 
-GXX=g++
-CXXFLAGS=-Wall -std=c++20 -g
+GXX=clang++
+CXXFLAGS=-Wall -std=c++2a -g
 LDXXFLAGS=-ljack -lpthread
 
 all: 
-	make jack_proxy
+	make jackproxy-to-stdout
+	make jackproxy-from-stdin
 
 jack_proxy: \
 	jack_proxy.cpp \
@@ -21,8 +22,8 @@ jack_proxy: \
 %: %.cpp
 	$(GXX) -o $@ $^ $(CXXFLAGS) $(LDXXFLAGS)
 
-# %.o: %.c
-# 	$(GXX) -o $@ -c $< $(CFLAGS) $(LDFLAGS)
+%: %.c
+	$(GCC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 # %.o: %.cpp
 # 	$(GXX) -o $@ -c $^ $(CXXFLAGS)

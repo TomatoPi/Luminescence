@@ -53,7 +53,7 @@ public:
   static Instances& Get() { return _instances; }
   static T* Get(size_t i) { return _instances[i]; }
 };
-template <typename T, size_t N> ArrayInstanced<T,N>::Instances ArrayInstanced<T,N>::_instances = ArrayInstanced<T,N>::Instances();
+template <typename T, size_t N> typename ArrayInstanced<T,N>::Instances ArrayInstanced<T,N>::_instances = ArrayInstanced<T,N>::Instances();
 
 
 template <typename T, size_t Cols, size_t Rows>
@@ -92,7 +92,7 @@ public:
   static Column& Get(size_t col) { return _instances[col]; }
   static T* Get(size_t col, size_t row) { return _instances[col][row]; }
 };
-template <typename T, size_t Cols, size_t Rows> D2ArrayInstanced<T,Cols,Rows>::Instances D2ArrayInstanced<T,Cols,Rows>::_instances = D2ArrayInstanced<T,Cols,Rows>::Instances();
+template <typename T, size_t Cols, size_t Rows> typename D2ArrayInstanced<T,Cols,Rows>::Instances D2ArrayInstanced<T,Cols,Rows>::_instances = D2ArrayInstanced<T,Cols,Rows>::Instances();
 
 
 template <typename T, size_t Banks, size_t Cols, size_t Rows>
@@ -137,4 +137,4 @@ public:
   static Column& Get(size_t bank, size_t col) { return _instances[bank][col]; }
   static T* Get(size_t bank, size_t col, size_t row) { return _instances[bank][col][row]; }
 };
-template <typename T, size_t Banks, size_t Cols, size_t Rows> D3ArrayInstanced<T,Banks,Cols,Rows>::Instances D3ArrayInstanced<T,Banks,Cols,Rows>::_instances = D3ArrayInstanced<T,Banks,Cols,Rows>::Instances();
+template <typename T, size_t Banks, size_t Cols, size_t Rows> typename D3ArrayInstanced<T,Banks,Cols,Rows>::Instances D3ArrayInstanced<T,Banks,Cols,Rows>::_instances = D3ArrayInstanced<T,Banks,Cols,Rows>::Instances();
