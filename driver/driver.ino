@@ -9,6 +9,29 @@
 #include "state.h"
 #include <array>
 
+// WS2811_PORTD: 25,26,27,28,14,15,29,11
+
+/*
+ * TODO :
+ * 
+ * Fix color blending when computing leds colors
+ * Fix colopalettes
+ * Add continuous blending between palettes instead of hard transitions
+ * 
+ * Reintroduce sync correction
+ * Evaluate time with 16 bits instead of 8
+ * 
+ * Add a samplehold control (wery usefull to sync noise)
+ * Reimplement the speed_scale for oscillators
+ * Prevent clocks from going back to zero when changing speed
+ * 
+ * Add master effects :
+ *  - Blur post processing
+ *  - Global sequencer for playing between ribbons
+ *  
+ *  Rework colormodulation controls
+ */
+
 #define SerialUSB_MESSAGE_TIMEOUT 1
 #define SerialUSB_SLEEP_TIMEOUT 0
 #define FRAME_REFRESH_TIMEOUT 0
@@ -174,6 +197,8 @@ void loop()
         
         for (uint32_t i = 0; i < ribbon_length; ++i) {
           CRGB color = compo.eval(palette, time, i, ribbon_length);
+          // better color combinaison :
+          // first scale color by preset.brightness
           uint8_t bright = qadd8(color.r, qadd8(color.g, color.b));
           ribbon_ptr[i] = nblend(ribbon_ptr[i], color, scale8_video(bright, preset.brightness << 1));
         }

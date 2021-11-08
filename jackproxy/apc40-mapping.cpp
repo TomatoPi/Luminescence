@@ -1,4 +1,9 @@
 /*
+  TODO :
+
+  Add a configuration step to change encoders display mode when usefull
+  Same with pads
+
   Pads : NoteOn 0x90, NoteOff 0x80
     channel : colonne : 0 - 8
     d1 : ligne : 0x35 - 0x39

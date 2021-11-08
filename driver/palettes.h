@@ -11,6 +11,8 @@
 
 namespace Palettes {
 
+  // FIXME : palettes should not fall to dark
+  
   static constexpr ColorPalette rainbow {
   // min  max  f*60 phase
     {  0, 255,  60,   0}, // RED
