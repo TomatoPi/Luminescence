@@ -46,7 +46,6 @@ struct FallDetector : public Instanced<FallDetector, 16>
   Clock* clock = nullptr;
   uint16_t last_value = 0;
   bool trigger = false;
-  FallDetector(Clock* clock) : Instanced<FallDetector, 16>(), clock(clock) {}
   
   void tick()
   {

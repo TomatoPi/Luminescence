@@ -138,7 +138,14 @@ void register_mappings()
 
     { {0xb0, 0x0e}, "brightness", uint8_to_str, str_to_uint8},
     { {0xb0, 0x0f}, "strobe_speed", uint8_to_str, str_to_uint8},
+
+    { {0xb8, 0x13}, "blur_qty", uint8_to_str, str_to_uint8},
   };
+
+  for (uint8_t o=0 ; o <= 0x10 ; o += 0x10)
+  {
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), 0x55}, "blur_enable", pad_to_str, str_to_pad});
+  }
 
   for (uint8_t p=0 ; p < 8 ; ++p)
   {
@@ -151,6 +158,7 @@ void register_mappings()
     bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x15}, "maskmod_width:"  + std::to_string(p), uint8_to_str, str_to_uint8});
 
     bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x12}, "slicer_nslices:" + std::to_string(p), uint8_to_str, str_to_uint8});
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x16}, "slicer_nuneven:" + std::to_string(p), uint8_to_str, str_to_uint8});
 
     bindings_list.emplace_back(binding_t{{(uint8_t)(0xb0 + p), 0x13}, "feedback_qty:"   + std::to_string(p), uint8_to_str, str_to_uint8});
 
@@ -168,6 +176,7 @@ void register_mappings()
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3c}, "slicer_useflip:"   + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x38}, "feedback_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x39}, "strobe_enable:"    + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3d}, "samplehold_enable:"    + std::to_string(p), pad_to_str, str_to_pad});
     }
   }
 

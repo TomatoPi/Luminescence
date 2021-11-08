@@ -4,8 +4,18 @@
 
 #define MAX_RIBBONS_COUNT 8
 #define PRESETS_COUNT 8
+#define PALETTES_COUNT 8
 
 struct state_t {
+
+  struct palette_t {
+    struct params_t {
+      uint8_t min_value;
+      uint8_t max_value;
+      uint8_t frequency_times_60;
+      uint8_t phase;
+    } params[3];
+  } palettes[PALETTES_COUNT];
 
   struct setup_t {
     uint8_t ribbons_count;
@@ -30,7 +40,9 @@ struct state_t {
     uint8_t brightness;
     uint8_t strobe_speed;
 
-
+    uint8_t blur_enable;
+    uint8_t blur_qty;
+    
   } master;
 
   struct preset_t {
@@ -47,8 +59,9 @@ struct state_t {
     uint8_t maskmod_move;
 
     uint8_t slicer_nslices;
-    uint8_t slicer_useflip;
     uint8_t slicer_useuneven;
+    uint8_t slicer_nuneven;
+    uint8_t slicer_useflip;
 
     uint8_t feedback_enable;
     uint8_t feedback_qty;
@@ -56,6 +69,7 @@ struct state_t {
     uint8_t strobe_enable;
 
     uint8_t speed_scale;
+    uint8_t samplehold_enable;
 
     uint8_t brightness;
 

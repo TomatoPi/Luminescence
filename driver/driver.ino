@@ -29,7 +29,7 @@
  *  - Blur post processing
  *  - Global sequencer for playing between ribbons
  *  
- *  Rework colormodulation controls
+ *  Rework colormodulation controls ??
  */
 
 #define SerialUSB_MESSAGE_TIMEOUT 1
@@ -42,18 +42,16 @@ using coef_t = float;
 
 color_t leds[MaxLedsCount];
 
+Clock master_clock;
+Clock osc_clocks[PRESETS_COUNT];
+FallDetector beat_detectors[PRESETS_COUNT];
+
 FastClock strobe_clock;
-Clock osc_clocks[4];
-Clock& master_clock = osc_clocks[3];
+uint8_t coarse_framerate;
 
 bool connection_lost = false;
 
-uint8_t coarse_framerate;
-
 state_t global;
-
-FallDetector beat_detector(&master_clock);
-
 
 void setup()
 {
@@ -63,13 +61,24 @@ void setup()
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
+  for (size_t i=0 ; i<PRESETS_COUNT ; ++i)
+  {
+    beat_detectors[i].clock = osc_clocks + i;
+  }
+
   FastLED.delay(1000);
 }
 
 void update_clocks()
 {
   master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((global.master.bpm + 1) * 2)));
-  strobe_clock.setPeriod(max8(2, scale8(coarse_framerate, 255 - (global.master.strobe_speed << 1))));
+  strobe_clock.setPeriod(max8(1, scale8(coarse_framerate, 255 - (global.master.strobe_speed << 1))));
+
+  for (size_t i=0 ; i<PRESETS_COUNT ; ++i)
+  {
+    osc_clocks[i].setPeriod(master_clock.period >> 3);
+  }
+
   Clock::Tick(millis());
   FastClock::Tick();
   FallDetector::Tick();
@@ -89,7 +98,6 @@ void loop()
 
     update_clocks();
     
-    const uint8_t time = master_clock.get8();// + Global.master.sync_correction;
 
     uint8_t feedback_per_group[3] = { 0 };
 
@@ -128,6 +136,8 @@ void loop()
       // Skip computation if brightness is 0
       if (preset.brightness == 0)
         continue;
+
+      const uint8_t time = osc_clocks[preset_index].get8();// + Global.master.sync_correction;
         
       // The group which the preset is attached to
       const uint8_t preset_group = 0; //Global.ribbons[preset_index].group;
