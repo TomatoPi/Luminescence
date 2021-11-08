@@ -1,35 +1,31 @@
 #pragma once
 
+#include "state.h"
+
 #include <FastLED.h>
 
 // From https://iquilezles.org/www/articles/palettes/palettes.htm
 
-struct PaletteParams {
-  uint8_t min_value;
-  uint8_t max_value;
-  uint8_t frequency_times_60; // Allows us to have fractional frequencies like 1/60, 1/2 etc.
-  uint8_t phase;
+using ColorPalette = state_t::palette_t;
 
-  // Theses functions have to be inlined
-  uint8_t eval(uint8_t t) const
-  {
-    return map8(cos8(frequency_times_60 * t / 60 + phase), min_value, max_value);
-  }
-};
-
-struct ColorPalette 
+inline ColorPalette lerp_palette(const ColorPalette& A, const ColorPalette& B, uint8_t t)
 {
-  // Theses functions have to be inlined
-  CRGB eval(uint8_t t) const
+  ColorPalette res;
+  for (size_t i=0 ; i<3 ; ++i)
   {
-  return {
-      params_r.eval(t),
-      params_g.eval(t),
-      params_b.eval(t)
-    };
+    res.params[i].min_value = lerp8by8(A.params[i].min_value, B.params[i].min_value, t);
+    res.params[i].max_value = lerp8by8(A.params[i].max_value, B.params[i].max_value, t);
+    res.params[i].frequency_times_60 = lerp8by8(A.params[i].frequency_times_60, B.params[i].frequency_times_60, t);
+    res.params[i].phase = lerp8by8(A.params[i].phase, B.params[i].phase, t);
   }
-  
-  PaletteParams params_r;
-  PaletteParams params_g;
-  PaletteParams params_b;
-};
+  return res;
+}
+
+inline uint8_t eval(const ColorPalette::params_t& p, uint8_t t)
+{
+  return map8(cos8(p.frequency_times_60 * t / 60 + p.phase), p.min_value, p.max_value);
+}
+inline CRGB eval(const ColorPalette& p, uint8_t t)
+{
+  return { eval(p.params[0], t), eval(p.params[1], t), eval(p.params[2], t) };
+}

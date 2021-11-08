@@ -1,5 +1,4 @@
 #include "color_palette.h"
-#include "palettes.h"
 #include "clock.h"
 #include "range.h"
 #include <FastLED.h>
@@ -137,12 +136,16 @@ void loop()
       if (preset.brightness == 0)
         continue;
 
-      const uint8_t time = osc_clocks[preset_index].get8();// + Global.master.sync_correction;
+      const uint8_t time = osc_clocks[preset_index].get8() + global.master.sync_correction;
         
       // The group which the preset is attached to
       const uint8_t preset_group = 0; //Global.ribbons[preset_index].group;
       //const objects::Group& group = Global.groups[preset_group];
-      const auto& palette = Palettes::Get(preset.palette >> (7 - 4));
+      const uint8_t palette_index = preset.palette >> (7 - 3);
+      const uint8_t palette_subindex = (preset.palette % 16) << 4;
+      const auto& paletteA = global.palettes[palette_index];
+      const auto& paletteB = global.palettes[(palette_index +1) % 8];
+      const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
       
       for (uint8_t ribbon_index = 0 ; ribbon_index < global.setup.ribbons_count ; ++ribbon_index)
       {
