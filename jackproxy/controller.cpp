@@ -230,25 +230,25 @@ void register_controls()
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "load", offset + offsetof(state_t::triggers_t, load), control_t::BOOL, {0}, load});
 
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "reset_bpm", offset + offsetof(state_t::triggers_t, reset_bpm), control_t::BOOL, {0}, 
-  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u){
+  [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& bpm = controls_by_name["bpm"];
-    bpm->val.f = 120.f;
+    bpm->val.f = 6000.0f;
     dirty_contorls.emplace_back(bpm, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "correct_bpm", offset + offsetof(state_t::triggers_t, correct_bpm), control_t::BOOL, {0}, 
-  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u){
+  [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u val){
     auto& bpm = controls_by_name["bpm"];
-    bpm->val.f *= ctrl->val.b ? 1.01f : 0.99f;
+    bpm->val.f *= val.b ? 1.01f : 0.99f;
     dirty_contorls.emplace_back(bpm, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "sync_left", offset + offsetof(state_t::triggers_t, sync_left), control_t::BOOL, {0}, 
-  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u){
+  [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& sync_correction = controls_by_name["sync_correction"];
     sync_correction->val.u -= 10;
     dirty_contorls.emplace_back(sync_correction, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "sync_right", offset + offsetof(state_t::triggers_t, sync_right), control_t::BOOL, {0}, 
-  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u){
+  [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& sync_correction = controls_by_name["sync_correction"];
     sync_correction->val.u += 10;
     dirty_contorls.emplace_back(sync_correction, false);
@@ -259,7 +259,7 @@ void register_controls()
   controls_list.emplace_back(control_t{ 0, "ribbons_count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
 
   for (size_t i=0 ; i<MAX_RIBBONS_COUNT ; ++i)
-    controls_list.emplace_back(control_t{ 0, "ribbons_length:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_length) + i, control_t::UINT7, {0}, default_callback });
+    controls_list.emplace_back(control_t{ 0, "ribbons_lengths:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_lengths) + i, control_t::UINT7, {0}, default_callback });
 
   // master
   offset = offsetof(state_t, master);
@@ -279,6 +279,7 @@ void register_controls()
     controls_list.emplace_back(control_t{ 0, "colormod_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_enable), control_t::BOOL, {0}, toggle_callback});
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "colormod_osc:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_osc), control_t::UINT7, {0}, default_callback});
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "colormod_width:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_width), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ 0, "colormod_move:" + std::to_string(p), offset + offsetof(state_t::preset_t, colormod_move), control_t::BOOL, {0}, default_callback});
 
     controls_list.emplace_back(control_t{ 0, "maskmod_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_enable), control_t::BOOL, {0}, toggle_callback});
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "maskmod_osc:" + std::to_string(p), offset + offsetof(state_t::preset_t, maskmod_osc), control_t::UINT7, {0}, default_callback});
@@ -341,18 +342,17 @@ int main(int argc, char* const argv[])
       perror("fopen from arduino");
       exit(EXIT_FAILURE);
     }
-    char buffer[512];
     while (is_running)
     {
-      ssize_t nread = fread(buffer, 1, 512, arduino);
+      char buffer;
+      ssize_t nread = fread(&buffer, 1, 1, arduino);
       if (-1 == nread)
       {
         perror("read from arduino");
         exit(EXIT_FAILURE);
       }
-      fwrite(buffer, 1, nread, stderr);
-      fprintf(stderr, "\n");
-      usleep(100);
+      fputc(buffer, stderr);
+      usleep(10);
     }
   }
   else // 0 != pid : Parent : read from stdin to stdout and arduino
@@ -414,7 +414,7 @@ int main(int argc, char* const argv[])
       }
       fflush(stdout);
       fflush(arduino);
-      usleep(100);
+      usleep(10);
     }
     kill(cpid, SIGTERM);
   }

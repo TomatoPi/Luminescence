@@ -9,7 +9,7 @@ struct state_t {
 
   struct setup_t {
     uint8_t ribbons_count;
-    uint8_t ribbons_length[MAX_RIBBONS_COUNT];
+    uint8_t ribbons_lengths[MAX_RIBBONS_COUNT];
   } setup;
 
   struct triggers_t {
@@ -39,6 +39,7 @@ struct state_t {
     uint8_t colormod_enable;
     uint8_t colormod_osc;
     uint8_t colormod_width;
+    uint8_t colormod_move;
     
     uint8_t maskmod_enable;
     uint8_t maskmod_osc;

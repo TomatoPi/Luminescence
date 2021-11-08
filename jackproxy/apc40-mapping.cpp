@@ -156,6 +156,7 @@ void register_mappings()
     for (uint8_t o=0 ; o <= 0x10 ; o += 0x10)
     {
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x35}, "colormod_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3a}, "colormod_move:"    + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x36}, "maskmod_enable:"   + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3b}, "maskmod_move:"     + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x37}, "slicer_useuneven:" + std::to_string(p), pad_to_str, str_to_pad});

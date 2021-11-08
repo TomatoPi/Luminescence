@@ -2,24 +2,20 @@
 #include "palettes.h"
 #include "clock.h"
 #include "range.h"
-#include "common.h"
 #include <FastLED.h>
 #include "apply_modulation.h"
 #include "math.h"
 #include "Composition.h"
-#include "params.h"
+#include "state.h"
 #include <array>
 
-#define SerialUSB_MESSAGE_TIMEOUT 20
+#define SerialUSB_MESSAGE_TIMEOUT 1
 #define SerialUSB_SLEEP_TIMEOUT 0
 #define FRAME_REFRESH_TIMEOUT 0
 
 using color_t = CRGB;
 using index_t = uint32_t;
 using coef_t = float;
-
-// Needed with Arduino IDE;
-constexpr const uint8_t SerialPacket::Header[3];
 
 color_t leds[MaxLedsCount];
 
@@ -31,18 +27,10 @@ bool connection_lost = false;
 
 uint8_t coarse_framerate;
 
-struct
-{
-  objects::Setup setup;
-  objects::Master master;
-  std::array<objects::Preset, 8> presets;
-  std::array<objects::Ribbon, 8> ribbons;
-  std::array<objects::Group, 3> groups;
-} Global;
+state_t global;
 
 FallDetector beat_detector(&master_clock);
 
-SerialParser parser;
 
 void setup()
 {
@@ -52,26 +40,13 @@ void setup()
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
-  memset(leds, 30, sizeof(CRGB) * MaxLedsCount);
-  FastLED.show();
-  FastLED.delay(100);
-  memset(leds, 0, sizeof(CRGB) * MaxLedsCount);
-  FastLED.show();
-
-  Global.setup = {
-    8,
-    { 3, 6, 5, 4, 
-      4, 5, 6, 3 }
-  };
-
-  SerialUSB.write(STOP_BYTE);
   FastLED.delay(1000);
 }
 
 void update_clocks()
 {
-  master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((Global.master.bpm + 1))) << 2);
-  strobe_clock.setPeriod(max8(2, scale8(coarse_framerate, 255 - (Global.master.strobe_speed << 1))));
+  master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((global.master.bpm + 1) * 2)));
+  strobe_clock.setPeriod(max8(2, scale8(coarse_framerate, 255 - (global.master.strobe_speed << 1))));
   Clock::Tick(millis());
   FastClock::Tick();
   FallDetector::Tick();
@@ -98,28 +73,21 @@ void loop()
     // Firt reset the ribbon according to fade out
     for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
     {
-      const objects::Preset& preset = Global.presets[preset_index];
+      const state_t::preset_t& preset = global.presets[preset_index];
       
-      const modulator_control tracer_ctrl = {
-        preset.encoders[3],
-        preset.encoders[7],
-        !!(preset.switches & 0x08),
-        !!(preset.pads_states & 0x08)
-      };
-
-      if (!tracer_ctrl.enable)
+      if (!preset.feedback_enable)
         continue;
       else
       {
-        const uint8_t preset_group = Global.ribbons[preset_index].group;
-        uint8_t feedback = scale8_video(tracer_ctrl.pot0 << 1, preset.brightness << 1);
+        const uint8_t preset_group = 0;//Global.ribbons[preset_index].group;
+        uint8_t feedback = scale8_video(preset.feedback_qty << 1, preset.brightness << 1);
         feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], feedback);
       }
     }
-    for (uint8_t ribbon = 0 ; ribbon < Global.setup.ribbons_count ; ++ribbon)
+    for (uint8_t ribbon = 0 ; ribbon < global.setup.ribbons_count ; ++ribbon)
     {
-      uint8_t feedback = feedback_per_group[Global.ribbons[ribbon].group];
-      uint32_t ribbon_length = 30 * Global.setup.ribbons_lengths[ribbon];
+      uint8_t feedback = feedback_per_group[0];//Global.ribbons[ribbon].group];
+      uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon];
       CRGB* ribbon_ptr = leds + ribbon * MaxLedsPerRibbon;
       
       if (feedback == 0)
@@ -133,96 +101,75 @@ void loop()
      */
     for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
     {
-      const objects::Preset& preset = Global.presets[preset_index];
+      const state_t::preset_t& preset = global.presets[preset_index];
       // Skip computation if brightness is 0
       if (preset.brightness == 0)
         continue;
         
       // The group which the preset is attached to
-      const uint8_t preset_group = Global.ribbons[preset_index].group;
+      const uint8_t preset_group = 0; //Global.ribbons[preset_index].group;
       //const objects::Group& group = Global.groups[preset_group];
-      const auto& palette = Palettes::Get(Global.master.encoders[preset_index] >> (7 - 4));
+      const auto& palette = Palettes::Get(preset.palette >> (7 - 4));
       
-      for (uint8_t ribbon_index = 0 ; ribbon_index < Global.setup.ribbons_count ; ++ribbon_index)
+      for (uint8_t ribbon_index = 0 ; ribbon_index < global.setup.ribbons_count ; ++ribbon_index)
       {
-        const objects::Ribbon& ribbon = Global.ribbons[ribbon_index];
+        //const objects::Ribbon& ribbon = Global.ribbons[ribbon_index];
         
-        uint32_t ribbon_length = 30 * Global.setup.ribbons_lengths[ribbon_index];
+        uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon_index];
         CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
         const size_t ribbon_byte_size = ribbon_length * sizeof(CRGB);
 
         // Break if ribbon is associated with another group
-        if (ribbon.group != preset_group)
-          continue;
-        
-        // Convert parameters
-        const modulator_control colormod_ctrl = {
-          preset.encoders[0],
-          preset.encoders[4],
-          !!(preset.switches & 0x01),
-          !!(preset.pads_states & 0x01)
-        };
-        const modulator_control maskmod_ctrl = {
-          preset.encoders[1],
-          preset.encoders[5],
-          !!(preset.switches & 0x02),
-          !!(preset.pads_states & 0x02)
-        };
-        const modulator_control slicer_ctrl = {
-          preset.encoders[2],
-          preset.encoders[6],
-          !!(preset.switches & 0x04),
-          !!(preset.pads_states & 0x04)
-        };
-        const bool strobe_ctrl = !!(preset.pads_states & 0x10);
+        //if (ribbon.group != preset_group)
+        //  continue;
   
         // Build the compo according to parameters
         const Composition compo{
           // Color modulation
           PaletteRangeController {
             // Center
-            colormod_ctrl.enable ?
+            preset.colormod_enable ?
               scale8(
-                eval_oscillator(map_to_oscillator_kind(colormod_ctrl.pot0 << 1), time), 
-                colormod_ctrl.pot1 << 1
+                eval_oscillator(map_to_oscillator_kind(preset.colormod_osc << 1), time), 
+                preset.colormod_width << 1
                 )
-              : colormod_ctrl.pot0 << 1
+              : preset.colormod_osc << 1
             ,
             // Modulation depth
-            colormod_ctrl.toggle ?
+            preset.colormod_move ?
               scale8(
-                eval_oscillator(map_to_oscillator_kind(colormod_ctrl.pot0 << 1), time), 
-                colormod_ctrl.pot1 << 1
+                eval_oscillator(map_to_oscillator_kind(preset.colormod_osc << 1), time), 
+                preset.colormod_width << 1
                 )
-              : colormod_ctrl.pot1 << 1
+              : preset.colormod_width << 1
           },
           Mask {
             // center : running point or static
-            maskmod_ctrl.toggle ? 
-              eval_oscillator(map_to_oscillator_kind(maskmod_ctrl.pot0 << 1), time)
+            preset.maskmod_move ? 
+              eval_oscillator(map_to_oscillator_kind(preset.maskmod_osc << 1), time)
               : 0,
             // width
-            maskmod_ctrl.toggle ?
-              maskmod_ctrl.pot1
-              : scale8(eval_oscillator(map_to_oscillator_kind(maskmod_ctrl.pot0 << 1), time), maskmod_ctrl.pot1 << 1),
+            preset.maskmod_move ?
+              preset.maskmod_width
+              : scale8(eval_oscillator(map_to_oscillator_kind(preset.maskmod_osc << 1), time), preset.maskmod_width << 1),
             // wraparound or saturate
-            maskmod_ctrl.toggle,
-            maskmod_ctrl.enable
+            preset.maskmod_move,
+            preset.maskmod_enable
           },
           // Ribbons splitting
           Slicer {
-            // nslices from 1 to 16
-            1 + scale8(Global.setup.ribbons_lengths[ribbon_index], slicer_ctrl.pot0 << 1),
+            // nslices from 1 to two slices per module
+            1 + scale8(global.setup.ribbons_lengths[ribbon_index] * 2, preset.slicer_nslices << 1),
             // uneven factor
-            uint8_t(slicer_ctrl.pot1 << 1),
+            uint8_t(preset.slicer_nslices << 1),
             // flip even slices
-            slicer_ctrl.toggle,
+            preset.slicer_useflip,
             // use uneven slices
-            slicer_ctrl.enable
+            preset.slicer_useuneven
           },
         };
           
-        if (strobe_ctrl && !strobe_clock.coarse_value)
+        if (preset.strobe_enable && !strobe_clock.coarse_value)
           continue;
         
         for (uint32_t i = 0; i < ribbon_length; ++i) {
@@ -240,7 +187,7 @@ void loop()
     if (connection_lost)
       for (size_t i = 0 ; i < 30 ; ++i)
         leds[i] = master_clock.get8() < 0x7F ? CRGB::Red : CRGB::Black;
-    FastLED.show(Global.master.brightness);
+    FastLED.show(global.master.brightness);
     delay(1);
     unsigned long draw_end = millis();
 
@@ -270,137 +217,58 @@ void loop()
       SerialUSB.print(" : Drops : ");
       SerialUSB.print(drop_count);
       SerialUSB.print(" : Master Clock : ");
-      SerialUSB.println(Global.master.bpm);
+      SerialUSB.println(global.master.bpm);
       SerialUSB.print(" : Strobe Period : ");
       SerialUSB.print(strobe_clock.period);
       SerialUSB.print(" : Coarse FPS : ");
       SerialUSB.print(coarse_framerate);
       SerialUSB.print(" : Ctrl : ");
-      SerialUSB.println(Global.master.strobe_speed);
-      SerialUSB.write(STOP_BYTE);
+      SerialUSB.println(global.master.strobe_speed);
+
       fps_accumulator = 0;
       frame_cptr = 0;
     }
 }
 
 int read_from_controller() {
-  
-  SerialUSB.write(STOP_BYTE);
-  SerialUSB.flush();
-  
-  parser.error(0);
-  
-  int drop_count = 0;
-  bool frame_received = false;
+
+  static uint8_t serial_buffer[512];
+  static size_t serial_index = 0;
+  static size_t data_address = 0;
+  static size_t data_size = 0;
+
   unsigned long timeout_timestamp = millis();
-  while (!frame_received)
+  while (SerialUSB.available() <= 0)
   {
-    if (SerialUSB.available() <= 0)
+    if (SerialUSB_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
     {
-      if (SerialUSB_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
-      {
-        connection_lost = true;
-        return 0;
-        SerialUSB.write(STOP_BYTE);
-        SerialUSB.flush();
-        delay(SerialUSB_SLEEP_TIMEOUT);
-        timeout_timestamp = millis();
-        parser.error(0);
-        drop_count++;
-      }
-      continue;
+      return 0;
     }
-
-    connection_lost = false;
-    int byte = SerialUSB.read();
+    delayMicroseconds(100);
+  }
+  while (0 < SerialUSB.available())
+  {
+    int in = SerialUSB.read();
+    if (in < 0)
+      continue;
+      
+    serial_buffer[serial_index++] = in;
     
-    if (byte < 0)
-      continue;
-    ParsingResult result = parser.parse(byte);
-
-    if (result.status != ParsingResult::Status::EndOfStream)
+    if (serial_index == 2)
     {
-  //    SerialUSB.print(byte, HEX);
-  //    SerialUSB.print(" : idx : ");
-  //    SerialUSB.print((int)parser.serial_index);
-  //    SerialUSB.print(" : code : ");
-  //    SerialUSB.print((int)result.status);
-  //    SerialUSB.println();
-  //    SerialUSB.write(STOP_BYTE);
-  //    delay(SerialUSB_SLEEP_TIMEOUT);
+      data_address = ((uint16_t)serial_buffer[0]) << 8 | serial_buffer[1];
     }
-
-    switch (result.status)
+    else if (serial_index == 3)
     {
-      case ParsingResult::Status::Running:
-        break;
-      case ParsingResult::Status::Started:
-        // drop = false;
-        break;
-      case ParsingResult::Status::Finished:
-      {
-//        SerialUSB.print(millis());
-//        SerialUSB.println(": full blob ok");
-//        SerialUSB.write(STOP_BYTE);
-
-        const uint8_t* c = parser.serial_buffer_in.rawobj;
-//        SerialUSB.print("RGB : ");
-//        SerialUSB.print(c[0], HEX); SerialUSB.print(" ");
-//        SerialUSB.print(c[1], HEX); SerialUSB.print(" ");
-//        SerialUSB.print(c[2], HEX); SerialUSB.print(" ");
-//        SerialUSB.print(c[3], HEX);
-//        SerialUSB.println();
-        switch (result.flags)
-        {
-          case objects::flags::Setup:
-          {
-            //Global.setup = result.read<objects::Setup>();
-            break;
-          }
-          case objects::flags::Master:
-            Global.master = result.read<objects::Master>();
-            break;
-          case objects::flags::Preset:
-          {
-            objects::Preset tmp = result.read<objects::Preset>();
-            Global.presets[tmp.index] = tmp;
-            break;
-          }
-          case objects::flags::Group:
-          {
-            objects::Group tmp = result.read<objects::Group>();
-            Global.groups[tmp.index] = tmp;
-            break;
-          }
-          case objects::flags::Ribbon:
-          {
-            objects::Ribbon tmp = result.read<objects::Ribbon>();
-            Global.ribbons[tmp.index] = tmp;
-            break;
-          }
-        }
-        // Send ACK
-        SerialUSB.print('\0');
-        SerialUSB.write(STOP_BYTE);
-        break;
-      }
-      case ParsingResult::Status::EndOfStream:
-        frame_received = true;
-        break;
-      default:
-//        SerialUSB.print("error : ");
-//        SerialUSB.print((int)result.error);
-//        SerialUSB.println();
-//        SerialUSB.write(STOP_BYTE);
-        parser.error(0);
-        //while (-1 != SerialUSB.read());
-        SerialUSB.write(STOP_BYTE);
-        SerialUSB.flush();
-        delay(SerialUSB_SLEEP_TIMEOUT);
-        timeout_timestamp = millis();
-        drop_count++;
-        break;
+      data_size = serial_buffer[2];
+    }
+    else if (serial_index == 3 + data_size)
+    {
+      memcpy(((uint8_t*)&global) + data_address, serial_buffer + 3, data_size);
+      SerialUSB.print("Written "); SerialUSB.print(data_size); SerialUSB.print(" bytes at addr ");
+      SerialUSB.print(data_address); SerialUSB.println();
+      serial_index = 0;
     }
   }
-  return drop_count;
+  return 0;
 }

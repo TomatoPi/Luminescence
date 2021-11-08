@@ -54,7 +54,7 @@ int main(int argc, char* const argv[])
   {
     while (is_running)
     {
-      ssize_t nread = read(serialfd, buffer, 512);
+      ssize_t nread = read(serialfd, buffer, 1);
       if (-1 == nread)
       {
         if (EAGAIN == errno || EWOULDBLOCK == errno)
@@ -74,13 +74,14 @@ int main(int argc, char* const argv[])
         exit(EXIT_FAILURE);
       }
       fflush(stdout);
+      usleep(100);
     }
   }
   else // 0 != cpid : Parent : stdin -> arduino
   {
     while (is_running)
     {
-      ssize_t nread = fread(buffer, 1, 512, stdin);
+      ssize_t nread = fread(buffer, 1, 1, stdin);
       if (-1 == nread)
       {
         perror("read from stdin");
@@ -92,6 +93,8 @@ int main(int argc, char* const argv[])
         exit(EXIT_FAILURE);
       }
       serialport_flush(serialfd);
+      fprintf(stderr, "Wrote %zd bytes to arduino\n", nread);
+      usleep(100);
     }
     kill(cpid, SIGTERM);
   }
