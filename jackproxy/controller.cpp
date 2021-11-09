@@ -315,7 +315,7 @@ void register_controls()
     controls_list.emplace_back(control_t{ 0, "strobe_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, strobe_enable), control_t::BOOL, {0}, toggle_callback});
 
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "speed_scale:" + std::to_string(p), offset + offsetof(state_t::preset_t, speed_scale), control_t::UINT7, {0}, default_callback});
-    controls_list.emplace_back(control_t{ 0, "samplehold_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, samplehold_enable), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ 0, "slicer_mergeribbon:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_mergeribbon), control_t::BOOL, {0}, default_callback});
 
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
   }

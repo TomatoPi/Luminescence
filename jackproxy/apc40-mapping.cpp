@@ -176,7 +176,7 @@ void register_mappings()
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3c}, "slicer_useflip:"   + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x38}, "feedback_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x39}, "strobe_enable:"    + std::to_string(p), pad_to_str, str_to_pad});
-      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3d}, "samplehold_enable:"+ std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3d}, "slicer_mergeribbon:"+ std::to_string(p), pad_to_str, str_to_pad});
     }
   }
 

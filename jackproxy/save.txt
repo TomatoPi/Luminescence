@@ -12,7 +12,7 @@ frequency_times_60:0:2 60
 phase:0:2 171
 
 min_value:1:0 0
-max_value:1:0 153
+max_value:1:0 204
 frequency_times_60:1:0 120
 phase:1:0 128
 min_value:1:1 0
@@ -44,7 +44,7 @@ phase:3:0 204
 min_value:3:1 0
 max_value:3:1 255
 frequency_times_60:3:1 60
-phase:3:1 0
+phase:3:1 51
 min_value:3:2 0
 max_value:3:2 255
 frequency_times_60:3:2 18
@@ -63,18 +63,18 @@ max_value:4:2 255
 frequency_times_60:4:2 24
 phase:4:2 51
 
-min_value:5:0 0
-max_value:5:0 0
-frequency_times_60:5:0 0
-phase:5:0 0
-min_value:5:1 0
-max_value:5:1 0
-frequency_times_60:5:1 0
-phase:5:1 0
+min_value:5:0 204
+max_value:5:0 255
+frequency_times_60:5:0 60
+phase:5:0 115
+min_value:5:1 16
+max_value:5:1 117
+frequency_times_60:5:1 60
+phase:5:1 130
 min_value:5:2 0
-max_value:5:2 0
-frequency_times_60:5:2 0
-phase:5:2 0
+max_value:5:2 156
+frequency_times_60:5:2 60
+phase:5:2 49
 
 min_value:6:0 0
 max_value:6:0 0
@@ -88,6 +88,7 @@ min_value:6:2 0
 max_value:6:2 0
 frequency_times_60:6:2 0
 phase:6:2 0
+
 min_value:7:0 0
 max_value:7:0 0
 frequency_times_60:7:0 0
@@ -100,6 +101,7 @@ min_value:7:2 0
 max_value:7:2 0
 frequency_times_60:7:2 0
 phase:7:2 0
+
 ribbons_count 4
 ribbons_lengths:0 8
 ribbons_lengths:1 4
@@ -132,7 +134,7 @@ feedback_enable:0 n
 feedback_qty:0 127
 strobe_enable:0 y
 speed_scale:0 92
-samplehold_enable:0 n
+slicer_mergeribbon:0 n
 brightness:0 0
 palette:1 43
 colormod_enable:1 n
@@ -151,7 +153,7 @@ feedback_enable:1 n
 feedback_qty:1 90
 strobe_enable:1 y
 speed_scale:1 62
-samplehold_enable:1 n
+slicer_mergeribbon:1 n
 brightness:1 127
 palette:2 31
 colormod_enable:2 n
@@ -170,7 +172,7 @@ feedback_enable:2 n
 feedback_qty:2 85
 strobe_enable:2 y
 speed_scale:2 57
-samplehold_enable:2 n
+slicer_mergeribbon:2 n
 brightness:2 0
 palette:3 29
 colormod_enable:3 n
@@ -189,7 +191,7 @@ feedback_enable:3 y
 feedback_qty:3 96
 strobe_enable:3 n
 speed_scale:3 0
-samplehold_enable:3 n
+slicer_mergeribbon:3 n
 brightness:3 0
 palette:4 13
 colormod_enable:4 n
@@ -208,7 +210,7 @@ feedback_enable:4 n
 feedback_qty:4 0
 strobe_enable:4 n
 speed_scale:4 63
-samplehold_enable:4 n
+slicer_mergeribbon:4 n
 brightness:4 0
 palette:5 0
 colormod_enable:5 n
@@ -227,7 +229,7 @@ feedback_enable:5 n
 feedback_qty:5 0
 strobe_enable:5 n
 speed_scale:5 64
-samplehold_enable:5 n
+slicer_mergeribbon:5 n
 brightness:5 0
 palette:6 0
 colormod_enable:6 n
@@ -246,7 +248,7 @@ feedback_enable:6 n
 feedback_qty:6 0
 strobe_enable:6 n
 speed_scale:6 65
-samplehold_enable:6 n
+slicer_mergeribbon:6 n
 brightness:6 0
 palette:7 0
 colormod_enable:7 n
@@ -265,5 +267,5 @@ feedback_enable:7 n
 feedback_qty:7 107
 strobe_enable:7 n
 speed_scale:7 62
-samplehold_enable:7 n
+slicer_mergeribbon:7 n
 brightness:7 0
