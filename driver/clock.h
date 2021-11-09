@@ -50,6 +50,8 @@ struct FallDetector : public Instanced<FallDetector, 16>
   void tick()
   {
     uint16_t time = clock->get16();
+    if (trigger == true)
+      trigger = false;
     if (time < last_value)
       trigger = true;
     last_value = time;
@@ -76,8 +78,7 @@ struct FastClock : public Instanced<FastClock, 16>
   void tick()
   {
     clock = (clock +1) % period;
-    if (0 == clock)
-      coarse_value = coarse_value ? 0x00 : 0xFF;
+    coarse_value = clock == 0;
     finevalue = ((uint16_t)clock * 255) / period;
   }
 

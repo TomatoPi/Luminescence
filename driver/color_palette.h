@@ -23,7 +23,7 @@ inline ColorPalette lerp_palette(const ColorPalette& A, const ColorPalette& B, u
 
 inline uint8_t eval(const ColorPalette::params_t& p, uint8_t t)
 {
-  return map8(cos8(p.frequency_times_60 * t / 60 + p.phase), p.min_value, p.max_value);
+  return dim8_video(map8(cos8(p.frequency_times_60 * t / 60 + p.phase), p.min_value, p.max_value));
 }
 inline CRGB eval(const ColorPalette& p, uint8_t t)
 {

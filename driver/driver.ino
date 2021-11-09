@@ -44,6 +44,7 @@ color_t leds[MaxLedsCount];
 Clock master_clock;
 Clock osc_clocks[PRESETS_COUNT];
 FallDetector beat_detectors[PRESETS_COUNT];
+uint8_t holded_values[PRESETS_COUNT][MaxRibbonsCount][2];
 
 FastClock strobe_clock;
 uint8_t coarse_framerate;
@@ -71,11 +72,19 @@ void setup()
 void update_clocks()
 {
   master_clock.setPeriod(1 + ((60lu * 1000lu * 100lu) / ((global.master.bpm + 1) * 2)));
-  strobe_clock.setPeriod(max8(1, scale8(coarse_framerate, 255 - (global.master.strobe_speed << 1))));
+  strobe_clock.setPeriod(max8(2, scale8(10, 255 - (global.master.strobe_speed << 1))));
 
   for (size_t i=0 ; i<PRESETS_COUNT ; ++i)
   {
-    osc_clocks[i].setPeriod(master_clock.period >> 3);
+    uint8_t clockmul = global.presets[i].speed_scale >> (7 - 3);
+    uint32_t clockperiod = master_clock.period;
+    if (clockmul < 9)
+      clockperiod = clockperiod >> clockmul;
+    else
+      clockperiod = clockperiod << (9 - clockmul);
+    if (96 <= global.presets[i].maskmod_osc)
+      clockperiod = clockperiod >> 2;
+    osc_clocks[i].setPeriod(clockperiod);
   }
 
   Clock::Tick(millis());
@@ -110,8 +119,10 @@ void loop()
       else
       {
         const uint8_t preset_group = 0;//Global.ribbons[preset_index].group;
-        uint8_t feedback = scale8_video(preset.feedback_qty << 1, preset.brightness << 1);
-        feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], feedback);
+        if (preset.brightness < 8)
+          continue;
+        else
+          feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], preset.feedback_qty << 1);
       }
     }
     for (uint8_t ribbon = 0 ; ribbon < global.setup.ribbons_count ; ++ribbon)
@@ -143,9 +154,9 @@ void loop()
       //const objects::Group& group = Global.groups[preset_group];
       const uint8_t palette_index = preset.palette >> (7 - 3);
       const uint8_t palette_subindex = (preset.palette % 16) << 4;
-      const auto& paletteA = global.palettes[palette_index];
-      const auto& paletteB = global.palettes[(palette_index +1) % 8];
-      const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
+      const auto& palette = global.palettes[palette_index];
+      //const auto& paletteB = global.palettes[(palette_index +1) % 8];
+      //const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
       
       for (uint8_t ribbon_index = 0 ; ribbon_index < global.setup.ribbons_count ; ++ribbon_index)
       {
@@ -158,6 +169,25 @@ void loop()
         // Break if ribbon is associated with another group
         //if (ribbon.group != preset_group)
         //  continue;
+
+        OscillatorKind colormod_kind = map_to_oscillator_kind(preset.colormod_osc << 1);
+        OscillatorKind maskmod_kind = map_to_oscillator_kind(preset.maskmod_osc << 1);
+        uint8_t colormod_osc = eval_oscillator(colormod_kind, OscillatorKind::Noise == colormod_kind ? time << 2 : time);
+        uint8_t maskmod_osc  = eval_oscillator(maskmod_kind, OscillatorKind::Noise == maskmod_kind ? time << 2 : time);
+        
+        if (OscillatorKind::Noise == colormod_kind || OscillatorKind::Noise == maskmod_kind)
+        {
+          if (beat_detectors[preset_index].trigger)
+          {
+            holded_values[preset_index][ribbon_index][0] = colormod_osc;
+            holded_values[preset_index][ribbon_index][1] = maskmod_osc;
+          }
+          else
+          {
+            if (OscillatorKind::Noise == colormod_kind) colormod_osc = holded_values[preset_index][ribbon_index][0];
+            if (OscillatorKind::Noise == maskmod_kind) maskmod_osc = holded_values[preset_index][ribbon_index][1];
+          }
+        }
   
         // Build the compo according to parameters
         const Composition compo{
@@ -166,7 +196,7 @@ void loop()
             // Center
             preset.colormod_enable ?
               scale8(
-                eval_oscillator(map_to_oscillator_kind(preset.colormod_osc << 1), time), 
+                colormod_osc, 
                 preset.colormod_width << 1
                 )
               : preset.colormod_osc << 1
@@ -174,7 +204,7 @@ void loop()
             // Modulation depth
             preset.colormod_move ?
               scale8(
-                eval_oscillator(map_to_oscillator_kind(preset.colormod_osc << 1), time), 
+                colormod_osc,
                 preset.colormod_width << 1
                 )
               : preset.colormod_width << 1
@@ -182,7 +212,7 @@ void loop()
           Mask {
             // center : running point or static
             preset.maskmod_move ? 
-              eval_oscillator(map_to_oscillator_kind(preset.maskmod_osc << 1), time)
+              maskmod_osc
               : 0,
             // width
             preset.maskmod_move ?
@@ -197,7 +227,7 @@ void loop()
             // nslices from 1 to two slices per module
             1 + scale8(global.setup.ribbons_lengths[ribbon_index] * 2, preset.slicer_nslices << 1),
             // uneven factor
-            uint8_t(preset.slicer_nslices << 1),
+            preset.samplehold_enable ? 255 : min8(uint8_t(preset.slicer_nuneven << 1), 253),
             // flip even slices
             preset.slicer_useflip,
             // use uneven slices
@@ -209,15 +239,22 @@ void loop()
           continue;
         
         for (uint32_t i = 0; i < ribbon_length; ++i) {
-          CRGB color = compo.eval(palette, time, i, ribbon_length);
-          // better color combinaison :
-          // first scale color by preset.brightness
-          uint8_t bright = qadd8(color.r, qadd8(color.g, color.b));
-          ribbon_ptr[i] = nblend(ribbon_ptr[i], color, scale8_video(bright, preset.brightness << 1));
+          CRGB c = compo.eval(palette, time, i, ribbon_length);
+          CRGB o = ribbon_ptr[i];
+          uint8_t bright = dim8_video(preset.brightness << 1);
+          nscale8_video(&c, 1, bright);
+         
+          ribbon_ptr[i] = CRGB(max8(c.r, o.r), max8(c.g, o.g), max8(c.b, o.b));
         }
         
       } // for ribbon
     } // for preset
+    if (global.master.blur_enable)
+    {
+      for (uint8_t ribbon_index = 0; ribbon_index < global.setup.ribbons_count; ++ribbon_index)
+        for (uint8_t pass = 0 ; pass < (global.master.blur_qty >> (7 - 3)) ; ++pass)
+          blur1d(leds + ribbon_index * MaxLedsPerRibbon, global.setup.ribbons_lengths[ribbon_index], global.master.blur_qty << 1);
+    }
     unsigned long compute_end = millis();
 
     // Draw frame

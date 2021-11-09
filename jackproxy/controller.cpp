@@ -232,7 +232,7 @@ void register_controls()
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "reset_bpm", offset + offsetof(state_t::triggers_t, reset_bpm), control_t::BOOL, {0}, 
   [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& bpm = controls_by_name["bpm"];
-    bpm->val.f = 6000.0f;
+    bpm->val.f = 1200.0f;
     dirty_contorls.emplace_back(bpm, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "correct_bpm", offset + offsetof(state_t::triggers_t, correct_bpm), control_t::BOOL, {0}, 
@@ -315,7 +315,7 @@ void register_controls()
     controls_list.emplace_back(control_t{ 0, "strobe_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, strobe_enable), control_t::BOOL, {0}, toggle_callback});
 
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "speed_scale:" + std::to_string(p), offset + offsetof(state_t::preset_t, speed_scale), control_t::UINT7, {0}, default_callback});
-    controls_list.emplace_back(control_t{ 0, "samplehold_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, samplehold_enable), control_t::BOOL, {0}, toggle_callback});
+    controls_list.emplace_back(control_t{ 0, "samplehold_enable:" + std::to_string(p), offset + offsetof(state_t::preset_t, samplehold_enable), control_t::BOOL, {0}, default_callback});
 
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
   }

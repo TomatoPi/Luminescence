@@ -23,7 +23,7 @@ struct Mask {
         uint8_t m = min8(rel_pos, center);
         uint8_t M = max8(rel_pos, center);
         uint8_t dist_to_center = should_wrap ? min8(M - m, m + (255 - M)) : M - m;
-        return dist_to_center > half_width;
+        return dist_to_center > (half_width + 1);
       }
     }
 };
