@@ -13,6 +13,9 @@
 /*
  * TODO :
  * 
+ * Color modulation is too harsh, need rework
+ * Continuous blending is ugly, need rework palettes and some controls
+ * 
  * Fix color blending when computing leds colors
  * Fix colopalettes
  * Add continuous blending between palettes instead of hard transitions

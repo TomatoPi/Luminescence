@@ -50,6 +50,8 @@ std::unordered_map<std::string, control_t*> controls_by_name;
 std::unordered_map<size_t, control_t*>      controls_by_addr;
 
 
+
+
 dirty_list_t process_cmd(const char* cmdstr)
 {
   char cmd[64], arg[64];
@@ -110,6 +112,9 @@ const char* path_of_save;
 const char* path_from_arduino;
 const char* path_to_arduino;
 
+std::vector<std::string> presets_list;
+size_t current_preset_index;
+
 volatile int is_running = 1;
 
 void default_callback(control_t* ctrl, dirty_list_t& dirty_controls, control_t::value_u val)
@@ -124,9 +129,53 @@ void toggle_callback(control_t* ctrl, dirty_list_t& dirty_controls, control_t::v
   dirty_controls.emplace_back(ctrl, false);
 }
 
+void load_saves_list()
+{
+  FILE* file = fopen(path_of_save, "r");
+  if (!file)
+  {
+    perror("fopen save");
+    exit(EXIT_FAILURE);
+  }
+  char buffer[512];
+  presets_list.clear();
+  while (fgets(buffer, 512, file))
+  {
+    size_t len = strlen(buffer);
+    if (len == 0)
+      continue;
+    if (buffer[len-1] == '\n')
+      buffer[len-1] = '\0';
+    FILE* tmp = fopen(buffer, "r");
+    if (!tmp)
+    {
+      perror("verify preset file");
+      fprintf(stderr, "ERROR : Invalid save file : %s\n", buffer);
+      return;
+    }
+    fclose(tmp);
+    presets_list.emplace_back(buffer);
+  }
+  if (presets_list.size() == 0)
+  {
+    fprintf(stderr, "ERROR : No presets\n");
+    return;
+  }
+  if (presets_list.size() <= current_preset_index)
+  {
+    fprintf(stderr, "WARNING : Fallback to preset 0\n");
+    current_preset_index = 0;
+  }
+}
+
 void save(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
 {
-  FILE* file = fopen(path_of_save, "w");
+  if (presets_list.size() == 0)
+  {
+    fprintf(stderr, "ERROR : Failed to save\n");
+    return;
+  }
+  FILE* file = fopen(presets_list[current_preset_index].c_str(), "w");
   if (!file)
   {
     perror("fopen save");
@@ -153,11 +202,18 @@ void save(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
     fprintf(file, "\n");
   }
   fclose(file);
+  fprintf(stderr, "Successfully saved : %s\n", presets_list[current_preset_index].c_str());
 }
 
 void load(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
 {
-  FILE* file = fopen(path_of_save, "r");
+  load_saves_list();
+  if (presets_list.size() == 0)
+  {
+    fprintf(stderr, "ERROR : Failed to load\n");
+    return;
+  }
+  FILE* file = fopen(presets_list[current_preset_index].c_str(), "r");
   if (!file)
   {
     perror("fopen save");
@@ -217,6 +273,7 @@ void load(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
     }
   }
   fclose(file);
+  fprintf(stderr, "Successfully Loaded : %s\n", presets_list[current_preset_index].c_str());
 }
 
 void register_controls()
@@ -228,6 +285,21 @@ void register_controls()
   offset = offsetof(state_t, triggers);
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "save", offset + offsetof(state_t::triggers_t, save), control_t::BOOL, {0}, save});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "load", offset + offsetof(state_t::triggers_t, load), control_t::BOOL, {0}, load});
+  controls_list.emplace_back(control_t{ control_t::TRIGGER, "next_preset", offset + offsetof(state_t::triggers_t, next_preset), control_t::BOOL, {0}, 
+  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u val){
+    current_preset_index = (current_preset_index+1) % presets_list.size();
+    load(ctrl, dirty_contorls, val);
+  }});
+  controls_list.emplace_back(control_t{ control_t::TRIGGER, "prev_preset", offset + offsetof(state_t::triggers_t, prev_preset), control_t::BOOL, {0}, 
+  [](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u val){
+    if (presets_list.size() != 0)
+    {
+      if (current_preset_index == 0)
+        current_preset_index = presets_list.size();
+      current_preset_index = current_preset_index-1;
+    }
+    load(ctrl, dirty_contorls, val);
+  }});
 
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "reset_bpm", offset + offsetof(state_t::triggers_t, reset_bpm), control_t::BOOL, {0}, 
   [](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){

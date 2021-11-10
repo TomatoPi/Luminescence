@@ -25,6 +25,8 @@ struct state_t {
   struct triggers_t {
     uint8_t save;
     uint8_t load;
+    uint8_t next_preset;
+    uint8_t prev_preset;
 
     uint8_t reset_bpm;
     uint8_t correct_bpm;

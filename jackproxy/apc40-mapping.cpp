@@ -130,6 +130,8 @@ void register_mappings()
   bindings_list = {
     { {0x90, 0x5b}, "load", bool_to_str, str_to_bool},
     { {0x90, 0x5d}, "save", bool_to_str, str_to_bool},
+    { {0x90, 0x61}, "prev_preset", bool_to_str, str_to_bool},
+    { {0x90, 0x60}, "next_preset", bool_to_str, str_to_bool},
 
     { {0x90, 0x63}, "reset_bpm", bool_to_str, str_to_bool},
     { {0xb0, 0x2f}, "correct_bpm", bool_to_str, str_to_bool},
