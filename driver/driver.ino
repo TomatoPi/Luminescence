@@ -25,7 +25,7 @@
  * Prevent clocks from going back to zero when changing speed
  * 
  * Add master effects :
- *  - Blur post processing
+ *  - Blur post processing << doesn't work ??
  *  - Global sequencer for playing between ribbons
  *  
  *  Rework colormodulation controls ??
@@ -225,9 +225,9 @@ void loop()
           // Ribbons splitting
           Slicer {
             // nslices from 1 to two slices per module
-            1 + scale8(global.setup.ribbons_lengths[ribbon_index] * 2, preset.slicer_nslices << 1),
+            1 + scale8(global.setup.ribbons_lengths[ribbon_index] * 4, preset.slicer_nslices << 1),
             // uneven factor
-            preset.samplehold_enable ? 255 : min8(uint8_t(preset.slicer_nuneven << 1), 253),
+            preset.slicer_mergeribbon ? 255 : min8(uint8_t(preset.slicer_nuneven << 1), 253),
             // flip even slices
             preset.slicer_useflip,
             // use uneven slices

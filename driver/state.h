@@ -61,6 +61,7 @@ struct state_t {
     uint8_t slicer_nslices;
     uint8_t slicer_useuneven;
     uint8_t slicer_nuneven;
+    uint8_t slicer_mergeribbon;
     uint8_t slicer_useflip;
 
     uint8_t feedback_enable;
@@ -69,7 +70,6 @@ struct state_t {
     uint8_t strobe_enable;
 
     uint8_t speed_scale;
-    uint8_t samplehold_enable;
 
     uint8_t brightness;
 
