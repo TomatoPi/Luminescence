@@ -31,7 +31,9 @@ struct control_t
   enum flags_e {
     NONE          = 0,
     NON_SAVEABLE  = 0x01,
-    VOLATILE      = 0x02,
+    NON_LOADABLE  = 0x02,
+    VOLATILE      = 0x04,
+    PHYSICAL      = NON_SAVEABLE | NON_LOADABLE | VOLATILE,
     TRIGGER       = NON_SAVEABLE | VOLATILE,
   };
   
@@ -353,8 +355,8 @@ void register_controls()
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "bpm",         offset + offsetof(state_t::master_t, bpm), control_t::FLOAT, {0}, default_callback});
   controls_list.emplace_back(control_t{ 0, "sync_correction", offset + offsetof(state_t::master_t, sync_correction), control_t::UINT7, {0}, default_callback});
 
-  controls_list.emplace_back(control_t{ control_t::VOLATILE, "brightness",    offset + offsetof(state_t::master_t, brightness),   control_t::UINT7, {0}, default_callback});
-  controls_list.emplace_back(control_t{ 0, "strobe_speed",  offset + offsetof(state_t::master_t, strobe_speed), control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::PHYSICAL, "brightness",    offset + offsetof(state_t::master_t, brightness),   control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::PHYSICAL, "strobe_speed",  offset + offsetof(state_t::master_t, strobe_speed), control_t::UINT7, {0}, default_callback});
 
   controls_list.emplace_back(control_t{ 0, "blur_enable",    offset + offsetof(state_t::master_t, blur_enable),   control_t::BOOL, {0}, toggle_callback});
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "blur_qty",    offset + offsetof(state_t::master_t, blur_qty),   control_t::UINT7, {0}, default_callback});
@@ -389,7 +391,7 @@ void register_controls()
     controls_list.emplace_back(control_t{ control_t::VOLATILE, "speed_scale:" + std::to_string(p), offset + offsetof(state_t::preset_t, speed_scale), control_t::UINT7, {0}, default_callback});
     controls_list.emplace_back(control_t{ 0, "slicer_mergeribbon:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_mergeribbon), control_t::BOOL, {0}, default_callback});
 
-    controls_list.emplace_back(control_t{ control_t::VOLATILE, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
+    controls_list.emplace_back(control_t{ control_t::PHYSICAL, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
   }
 
   // Generate tables

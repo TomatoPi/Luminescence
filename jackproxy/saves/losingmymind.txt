@@ -105,8 +105,6 @@ ribbons_lengths:6 2
 ribbons_lengths:7 2
 bpm 1835
 sync_correction 134
-brightness 127
-strobe_speed 127
 blur_enable n
 blur_qty 127
 palette:0 24
@@ -127,7 +125,6 @@ feedback_qty:0 72
 strobe_enable:0 y
 speed_scale:0 78
 slicer_mergeribbon:0 n
-brightness:0 127
 palette:1 33
 colormod_enable:1 n
 colormod_osc:1 66
@@ -146,7 +143,6 @@ feedback_qty:1 81
 strobe_enable:1 n
 speed_scale:1 125
 slicer_mergeribbon:1 n
-brightness:1 0
 palette:2 32
 colormod_enable:2 y
 colormod_osc:2 127
@@ -165,7 +161,6 @@ feedback_qty:2 93
 strobe_enable:2 n
 speed_scale:2 104
 slicer_mergeribbon:2 n
-brightness:2 0
 palette:3 44
 colormod_enable:3 n
 colormod_osc:3 68
@@ -184,7 +179,6 @@ feedback_qty:3 108
 strobe_enable:3 n
 speed_scale:3 65
 slicer_mergeribbon:3 n
-brightness:3 0
 palette:4 40
 colormod_enable:4 n
 colormod_osc:4 88
@@ -203,7 +197,6 @@ feedback_qty:4 90
 strobe_enable:4 n
 speed_scale:4 63
 slicer_mergeribbon:4 y
-brightness:4 0
 palette:5 43
 colormod_enable:5 n
 colormod_osc:5 107
@@ -222,7 +215,6 @@ feedback_qty:5 90
 strobe_enable:5 n
 speed_scale:5 64
 slicer_mergeribbon:5 n
-brightness:5 0
 palette:6 51
 colormod_enable:6 n
 colormod_osc:6 100
@@ -241,7 +233,6 @@ feedback_qty:6 0
 strobe_enable:6 n
 speed_scale:6 65
 slicer_mergeribbon:6 n
-brightness:6 0
 palette:7 2
 colormod_enable:7 n
 colormod_osc:7 109
@@ -260,4 +251,3 @@ feedback_qty:7 107
 strobe_enable:7 n
 speed_scale:7 62
 slicer_mergeribbon:7 n
-brightness:7 0
