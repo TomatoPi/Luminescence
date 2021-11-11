@@ -103,7 +103,7 @@ ribbons_lengths:4 2
 ribbons_lengths:5 2
 ribbons_lengths:6 2
 ribbons_lengths:7 2
-bpm 1835
+bpm 1967
 sync_correction 134
 blur_enable n
 blur_qty 127
@@ -120,7 +120,7 @@ slicer_nslices:0 127
 slicer_useuneven:0 n
 slicer_nuneven:0 124
 slicer_useflip:0 n
-feedback_enable:0 y
+feedback_enable:0 n
 feedback_qty:0 72
 strobe_enable:0 y
 speed_scale:0 78
@@ -140,7 +140,7 @@ slicer_nuneven:1 64
 slicer_useflip:1 n
 feedback_enable:1 n
 feedback_qty:1 81
-strobe_enable:1 n
+strobe_enable:1 y
 speed_scale:1 125
 slicer_mergeribbon:1 n
 palette:2 32
@@ -158,7 +158,7 @@ slicer_nuneven:2 0
 slicer_useflip:2 y
 feedback_enable:2 n
 feedback_qty:2 93
-strobe_enable:2 n
+strobe_enable:2 y
 speed_scale:2 104
 slicer_mergeribbon:2 n
 palette:3 44
@@ -194,7 +194,7 @@ slicer_nuneven:4 0
 slicer_useflip:4 n
 feedback_enable:4 n
 feedback_qty:4 90
-strobe_enable:4 n
+strobe_enable:4 y
 speed_scale:4 63
 slicer_mergeribbon:4 y
 palette:5 43

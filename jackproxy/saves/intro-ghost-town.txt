@@ -96,9 +96,9 @@ frequency_times_60:7:2 0
 phase:7:2 0
 ribbons_count 4
 ribbons_lengths:0 8
-ribbons_lengths:1 4
-ribbons_lengths:2 4
-ribbons_lengths:3 4
+ribbons_lengths:1 8
+ribbons_lengths:2 8
+ribbons_lengths:3 8
 ribbons_lengths:4 2
 ribbons_lengths:5 2
 ribbons_lengths:6 2

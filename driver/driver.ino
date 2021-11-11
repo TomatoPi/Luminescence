@@ -6,9 +6,30 @@
 #include "math.h"
 #include "Composition.h"
 #include "state.h"
-#include <array>
+
+#ifdef ARDUINO_SAM_DUE
+#else // ifdef ARDUINO_SAM_DUE
+#endif // ifdef ARDUINO_SAM_DUE
+
+
+#ifdef ARDUINO_SAM_DUE
+
+  #define SERIAL SerialUSB
+  static constexpr bool is_maindriver = true;
+
+#else // ifdef ARDUINO_SAM_DUE
+
+  #define SERIAL Serial
+  static constexpr bool is_maindriver = false;
+
+#endif // ifdef ARDUINO_SAM_DUE
+
+static constexpr bool is_solodriver = !is_maindriver;
+static size_t solodriver_index = 0;
 
 // WS2811_PORTD: 25,26,27,28,14,15,29,11
+// Nano : Leds data : D2 : Index select : D3
+//  Set D3 to ground for solo driver 0, leave it floating for driver 1
 
 /*
  * TODO :
@@ -58,9 +79,21 @@ state_t global;
 
 void setup()
 {
-  SerialUSB.begin(115200);
-  FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
+  SERIAL.begin(115200);
 
+  #ifdef ARDUINO_SAM_DUE
+    FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
+  #else // ifdef ARDUINO_SAM_DUE
+    FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
+  #endif // ifdef ARDUINO_SAM_DUE
+
+  if (is_solodriver)
+  {
+    pinMode(3, INPUT_PULLUP);
+    delay(100);
+    solodriver_index = digitalRead(3);
+  }
+  
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
@@ -262,10 +295,16 @@ void loop()
 
     // Draw frame
     unsigned long draw_begin = millis();
-    if (connection_lost)
-      for (size_t i = 0 ; i < 30 ; ++i)
-        leds[i] = master_clock.get8() < 0x7F ? CRGB::Red : CRGB::Black;
-    FastLED.show(global.master.brightness);
+    if (is_solodriver)
+    {
+      for (size_t i = 0 ; i < 60 ; ++i)
+        leds[i] = solodriver_index ? CRGB::Red : CRGB::Blue; 
+      FastLED.show();
+    }
+    else
+    {
+      FastLED.show(global.master.brightness); 
+    }
     delay(1);
     unsigned long draw_end = millis();
 
@@ -284,24 +323,24 @@ void loop()
       float fps = float(frame_cptr) * 1000.f / fps_accumulator;
       coarse_framerate = (uint8_t)fps;
       
-      SerialUSB.print("Avg FPS : ");
-      SerialUSB.print(fps);
-      SerialUSB.print(" : SerialUSB : ");
-      SerialUSB.print(update_end - update_begin);
-      SerialUSB.print(" : Compute : ");
-      SerialUSB.print(compute_end - compute_begin);
-      SerialUSB.print(" : Draw : ");
-      SerialUSB.print(draw_end - draw_begin);
-      SerialUSB.print(" : Drops : ");
-      SerialUSB.print(drop_count);
-      SerialUSB.print(" : Master Clock : ");
-      SerialUSB.println(global.master.bpm);
-      SerialUSB.print(" : Strobe Period : ");
-      SerialUSB.print(strobe_clock.period);
-      SerialUSB.print(" : Coarse FPS : ");
-      SerialUSB.print(coarse_framerate);
-      SerialUSB.print(" : Ctrl : ");
-      SerialUSB.println(global.master.strobe_speed);
+      SERIAL.print("Avg FPS : ");
+      SERIAL.print(fps);
+      SERIAL.print(" : SerialUSB : ");
+      SERIAL.print(update_end - update_begin);
+      SERIAL.print(" : Compute : ");
+      SERIAL.print(compute_end - compute_begin);
+      SERIAL.print(" : Draw : ");
+      SERIAL.print(draw_end - draw_begin);
+      SERIAL.print(" : Drops : ");
+      SERIAL.print(drop_count);
+      SERIAL.print(" : Master Clock : ");
+      SERIAL.println(global.master.bpm);
+      SERIAL.print(" : Strobe Period : ");
+      SERIAL.print(strobe_clock.period);
+      SERIAL.print(" : Coarse FPS : ");
+      SERIAL.print(coarse_framerate);
+      SERIAL.print(" : Ctrl : ");
+      SERIAL.println(global.master.strobe_speed);
 
       fps_accumulator = 0;
       frame_cptr = 0;
@@ -316,7 +355,7 @@ int read_from_controller() {
   static size_t data_size = 0;
 
   unsigned long timeout_timestamp = millis();
-  while (SerialUSB.available() <= 0)
+  while (SERIAL.available() <= 0)
   {
     if (SerialUSB_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
     {
@@ -324,9 +363,9 @@ int read_from_controller() {
     }
     delayMicroseconds(100);
   }
-  while (0 < SerialUSB.available())
+  while (0 < SERIAL.available())
   {
-    int in = SerialUSB.read();
+    int in = SERIAL.read();
     if (in < 0)
       continue;
       
@@ -343,8 +382,8 @@ int read_from_controller() {
     else if (serial_index == 3 + data_size)
     {
       memcpy(((uint8_t*)&global) + data_address, serial_buffer + 3, data_size);
-      SerialUSB.print("Written "); SerialUSB.print(data_size); SerialUSB.print(" bytes at addr ");
-      SerialUSB.print(data_address); SerialUSB.println();
+      SERIAL.print("Written "); SERIAL.print(data_size); SERIAL.print(" bytes at addr ");
+      SERIAL.print(data_address); SERIAL.println();
       serial_index = 0;
     }
   }
