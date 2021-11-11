@@ -5,6 +5,7 @@
 #define MAX_RIBBONS_COUNT 8
 #define PRESETS_COUNT 8
 #define PALETTES_COUNT 8
+#define SOLOS_COUNT 4
 
 struct state_t {
 
@@ -20,6 +21,7 @@ struct state_t {
   struct setup_t {
     uint8_t ribbons_count;
     uint8_t ribbons_lengths[MAX_RIBBONS_COUNT];
+    uint8_t soloribbons_location[SOLOS_COUNT];
   } setup;
 
   struct triggers_t {
@@ -44,6 +46,13 @@ struct state_t {
 
     uint8_t blur_enable;
     uint8_t blur_qty;
+
+    uint8_t solo_enable;
+    uint8_t solo_index;
+    uint8_t solo_weak_dim;
+    uint8_t solo_strong_dim;
+
+    uint8_t do_kill_lights;
     
   } master;
 
@@ -75,5 +84,12 @@ struct state_t {
 
     uint8_t brightness;
 
+    uint8_t is_active_on_master;
+    uint8_t is_active_on_solo;
+    uint8_t do_ignore_solo;
+
+    uint8_t do_litmax;
+
   } presets[PRESETS_COUNT];
+
 };

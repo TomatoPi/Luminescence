@@ -180,7 +180,21 @@ void loop()
     {
       const state_t::preset_t& preset = global.presets[preset_index];
       // Skip computation if brightness is 0
-      if (preset.brightness == 0)
+      if (!preset.do_litmax && preset.brightness == 0)
+        continue;
+
+      if (is_solodriver)
+      {
+        if (!preset.is_active_on_solo)
+          continue;
+      }
+      else
+      {
+        if (!preset.is_active_on_master)
+          continue;
+      }
+      
+      if (preset.strobe_enable && !strobe_clock.coarse_value)
         continue;
 
       const uint8_t time = osc_clocks[preset_index].get8() + global.master.sync_correction;
@@ -193,12 +207,18 @@ void loop()
       const auto& palette = global.palettes[palette_index];
       //const auto& paletteB = global.palettes[(palette_index +1) % 8];
       //const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
-      
-      for (uint8_t ribbon_index = 0 ; ribbon_index < global.setup.ribbons_count ; ++ribbon_index)
+
+      uint8_t ribbons_count = is_maindriver ? global.setup.ribbons_count : 2;
+      for (uint8_t ribbon_index = 0 ; ribbon_index < ribbons_count ; ++ribbon_index)
       {
-        //const objects::Ribbon& ribbon = Global.ribbons[ribbon_index];
+        if (is_solodriver)
+        {
+          if (global.master.solo_enable)
+            if ((solodriver_index * 2 + ribbon_index) != global.setup.soloribbons_location[global.master.solo_index])
+              continue;
+        }
         
-        uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon_index];
+        uint32_t ribbon_length = is_maindriver ? 30 * global.setup.ribbons_lengths[ribbon_index] : 30;
         CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
         const size_t ribbon_byte_size = ribbon_length * sizeof(CRGB);
 
@@ -261,7 +281,7 @@ void loop()
           // Ribbons splitting
           Slicer {
             // nslices from 1 to two slices per module
-            1 + scale8(global.setup.ribbons_lengths[ribbon_index] * 4, preset.slicer_nslices << 1),
+            1 + scale8(ribbon_length * 4, preset.slicer_nslices << 1),
             // uneven factor
             preset.slicer_mergeribbon ? 255 : min8(uint8_t(preset.slicer_nuneven << 1), 253),
             // flip even slices
@@ -270,41 +290,37 @@ void loop()
             preset.slicer_useuneven
           },
         };
-          
-        if (preset.strobe_enable && !strobe_clock.coarse_value)
-          continue;
         
         for (uint32_t i = 0; i < ribbon_length; ++i) {
           CRGB c = compo.eval(palette, time, i, ribbon_length);
           CRGB o = ribbon_ptr[i];
           uint8_t bright = dim8_video(preset.brightness << 1);
-          nscale8_video(&c, 1, bright);
+          if (!preset.do_litmax)
+            nscale8_video(&c, 1, bright);
          
           ribbon_ptr[i] = CRGB(max8(c.r, o.r), max8(c.g, o.g), max8(c.b, o.b));
         }
         
       } // for ribbon
     } // for preset
-    if (global.master.blur_enable)
-    {
-      for (uint8_t ribbon_index = 0; ribbon_index < global.setup.ribbons_count; ++ribbon_index)
-        for (uint8_t pass = 0 ; pass < (global.master.blur_qty >> (7 - 3)) ; ++pass)
-          blur1d(leds + ribbon_index * MaxLedsPerRibbon, global.setup.ribbons_lengths[ribbon_index], global.master.blur_qty << 1);
-    }
     unsigned long compute_end = millis();
 
     // Draw frame
     unsigned long draw_begin = millis();
-    if (is_solodriver)
+    // When solowing, all ribbons on the other side than the soloing one are strongly dimmed
+    //  All ribbons on the same side are weakly dimmed
+    if (is_maindriver && global.master.solo_enable)
     {
-      for (size_t i = 0 ; i < 60 ; ++i)
-        leds[i] = solodriver_index ? CRGB::Red : CRGB::Blue; 
-      FastLED.show();
+      // a number between 0 and 4 excluded indicating which ribbon is soloing
+      uint8_t soloribbon = global.setup.soloribbons_location[global.master.solo_index];
+      uint8_t soloside = soloribbon / 2;
+      uint8_t dimleft = soloside == 0 ? global.master.solo_weak_dim : global.master.solo_strong_dim;
+      uint8_t dimright = soloside == 1 ? global.master.solo_weak_dim : global.master.solo_strong_dim;
+      size_t halfglobalwidth = (MaxLedsPerRibbon / 2) * global.setup.ribbons_count;
+      nscale8_video(leds, halfglobalwidth, dim8_video(dimleft));
+      nscale8_video(leds + halfglobalwidth, halfglobalwidth, dim8_video(dimright));
     }
-    else
-    {
-      FastLED.show(global.master.brightness); 
-    }
+    FastLED.show(global.master.do_kill_lights ? 0 : global.master.brightness);
     delay(1);
     unsigned long draw_end = millis();
 
