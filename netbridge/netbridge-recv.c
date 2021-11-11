@@ -87,7 +87,11 @@ int main(int argc, const char* argv[])
 			       peer_addr_len, host, NI_MAXHOST,
 			       service, NI_MAXSERV, NI_NUMERICSERV);
 		if (s == 0)
-		   printf("%s", buf);
+    {
+		  fprintf(stdout, "%s", buf);
+      fprintf(stderr, "Recv : %s", buf);
+      fflush(stdout);
+    }
 		else
 		   fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
 

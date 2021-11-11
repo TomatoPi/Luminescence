@@ -10,8 +10,8 @@ CXXFLAGS=-Wall -std=c++2a -g
 LDXXFLAGS=-ljack -lpthread
 
 all: 
-	make netbridge-server
-	make netbridge-client
+	make netbridge-recv
+	make netbridge-send
 
 # apc40/apc40.o: apc40/apc40.cpp apc40/apc40.h apc40/controls.h
 

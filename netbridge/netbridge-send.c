@@ -74,7 +74,7 @@ int main(int argc, const char* argv[])
 	while (fgets(buf, BUF_SIZE-1, stdin)) {
 		len = strlen(buf) + 1;
 		/* +1 for terminating null byte */
-
+    fprintf(stderr, "Send : %s", buf);
 		if (write(sfd, buf, len) != len) {
 		   fprintf(stderr, "partial/failed write\n");
 		   exit(EXIT_FAILURE);
