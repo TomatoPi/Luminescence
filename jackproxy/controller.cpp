@@ -327,6 +327,25 @@ void register_controls()
     sync_correction->val.u += 10;
     dirty_contorls.emplace_back(sync_correction, false);
   }});
+  for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
+    controls_list.emplace_back(control_t{ 0, "solo:" + std::to_string(i), offset + offsetof(state_t::triggers_t, solo) + i, control_t::BOOL, {0}, 
+    [i](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u val){
+      if (!val.b)
+        return;
+      ctrl->val.b = !ctrl->val.b;
+      auto& solo_enable = controls_by_name["solo_enable"];
+      auto& solo_index = controls_by_name["solo_index"];
+      solo_enable->val.b = ctrl->val.b;
+      solo_index->val.u = i;
+      dirty_contorls.emplace_back(solo_enable, false);
+      dirty_contorls.emplace_back(solo_index, false);
+      for (size_t j=0 ; j<SOLOS_COUNT ; ++j)
+      {
+        auto& ctrl2 = controls_by_name["solo:" + std::to_string(j)];
+        ctrl2->val.b = i == j ? ctrl->val.b : false;
+        dirty_contorls.emplace_back(ctrl2, false);
+      }
+    }});
 
   // palettes
   for (size_t p=0 ; p<PALETTES_COUNT ; ++p)
@@ -349,6 +368,8 @@ void register_controls()
 
   for (size_t i=0 ; i<MAX_RIBBONS_COUNT ; ++i)
     controls_list.emplace_back(control_t{ 0, "ribbons_lengths:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_lengths) + i, control_t::UINT7, {0}, default_callback });
+  for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
+    controls_list.emplace_back(control_t{ 0, "soloribbons_location:" + std::to_string(i), offset + offsetof(state_t::setup_t, soloribbons_location) + i, control_t::UINT7, {0}, default_callback });
 
   // master
   offset = offsetof(state_t, master);
@@ -360,6 +381,13 @@ void register_controls()
 
   controls_list.emplace_back(control_t{ 0, "blur_enable",    offset + offsetof(state_t::master_t, blur_enable),   control_t::BOOL, {0}, toggle_callback});
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "blur_qty",    offset + offsetof(state_t::master_t, blur_qty),   control_t::UINT7, {0}, default_callback});
+  
+  controls_list.emplace_back(control_t{ 0, "solo_enable",    offset + offsetof(state_t::master_t, solo_enable),   control_t::BOOL, {0}, default_callback});
+  controls_list.emplace_back(control_t{ 0, "solo_index",    offset + offsetof(state_t::master_t, solo_index),   control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_weak_dim",    offset + offsetof(state_t::master_t, solo_weak_dim),   control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_strong_dim",    offset + offsetof(state_t::master_t, solo_strong_dim),   control_t::UINT7, {0}, default_callback});
+  
+  controls_list.emplace_back(control_t{ 0, "do_kill_lights",    offset + offsetof(state_t::master_t, do_kill_lights),   control_t::BOOL, {0}, toggle_callback});
 
   // presets
   for (size_t p=0 ; p<PRESETS_COUNT ; ++p)
@@ -392,6 +420,12 @@ void register_controls()
     controls_list.emplace_back(control_t{ 0, "slicer_mergeribbon:" + std::to_string(p), offset + offsetof(state_t::preset_t, slicer_mergeribbon), control_t::BOOL, {0}, default_callback});
 
     controls_list.emplace_back(control_t{ control_t::PHYSICAL, "brightness:" + std::to_string(p), offset + offsetof(state_t::preset_t, brightness), control_t::UINT7, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ 0, "is_active_on_master:" + std::to_string(p), offset + offsetof(state_t::preset_t, is_active_on_master), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ 0, "is_active_on_solo:" + std::to_string(p), offset + offsetof(state_t::preset_t, is_active_on_solo), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ 0, "do_ignore_solo:" + std::to_string(p), offset + offsetof(state_t::preset_t, do_ignore_solo), control_t::BOOL, {0}, default_callback});
+
+    controls_list.emplace_back(control_t{ 0, "do_litmax:" + std::to_string(p), offset + offsetof(state_t::preset_t, do_litmax), control_t::BOOL, {0}, default_callback});
   }
 
   // Generate tables

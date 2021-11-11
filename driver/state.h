@@ -35,6 +35,8 @@ struct state_t {
     uint8_t sync_left;
     uint8_t sync_right;
 
+    uint8_t solo[SOLOS_COUNT];
+
   } triggers;
 
   struct master_t {

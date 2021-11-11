@@ -142,11 +142,18 @@ void register_mappings()
     { {0xb0, 0x0f}, "strobe_speed", uint8_to_str, str_to_uint8},
 
     { {0xb8, 0x13}, "blur_qty", uint8_to_str, str_to_uint8},
+
+    { {0xb8, 0x10}, "solo_weak_dim", uint8_to_str, str_to_uint8},
+    { {0xb8, 0x14}, "solo_strong_dim", uint8_to_str, str_to_uint8},
   };
 
   for (uint8_t o=0 ; o <= 0x10 ; o += 0x10)
   {
     bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), 0x55}, "blur_enable", pad_to_str, str_to_pad});
+    bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), 0x51}, "do_kill_lights", pad_to_str, str_to_pad});
+
+    for (uint8_t i=0 ; i<4 ; ++i)
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), (uint8_t)(0x3e + i)}, "solo:" + std::to_string(i), pad_to_str, str_to_pad});
   }
 
   for (uint8_t p=0 ; p < 8 ; ++p)
@@ -179,6 +186,12 @@ void register_mappings()
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x38}, "feedback_enable:"  + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x39}, "strobe_enable:"    + std::to_string(p), pad_to_str, str_to_pad});
       bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x3d}, "slicer_mergeribbon:"+ std::to_string(p), pad_to_str, str_to_pad});
+
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x32}, "is_active_on_master:"+ std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x31}, "is_active_on_solo:"+ std::to_string(p), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x30}, "do_ignore_solo:"+ std::to_string(p), pad_to_str, str_to_pad});
+
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + p + o), 0x34}, "do_litmax:"+ std::to_string(p), pad_to_str, str_to_pad});
     }
   }
 
