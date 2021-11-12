@@ -6,6 +6,8 @@
 #include <queue>
 #include <cstdint>
 
+#include "thread-queue.hpp"
+
 class JackBridge {
 public :
   JackBridge(const char* name);
@@ -23,9 +25,5 @@ private :
   jack_port_t* midi_in = nullptr;
   jack_port_t* midi_out = nullptr;
 
-  std::queue<std::vector<uint8_t>> from_jack;
-  int fromjack_pipe_fd[2];
-
-  std::queue<std::vector<uint8_t>> to_jack;
-  int tojack_pipe_fd[2];
+  ThreadSafeQueue<std::vector<uint8_t>> from_jack, to_jack;
 };

@@ -1,17 +1,10 @@
-#define _GNU_SOURCE
 #include "jack-bridge.hpp"
+
+#include <exception>
 
 #include <jack/jack.h>
 #include <jack/midiport.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <signal.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-
-#include <exception>
 #include <string.h>
 
 int jack_callback(jack_nframes_t nframes, void* args)
@@ -29,19 +22,11 @@ int jack_callback(jack_nframes_t nframes, void* args)
     {
       if (0 != jack_midi_event_get(&event, in_buffer, i))
         continue;
-
       std::vector<uint8_t> msg;
       msg.reserve(event.size);
-      for (size_t i = 0 ; i < event.size ; ++i)
-      {
-        msg.push_back(event.buffer[i]);
-      }
+      for (size_t i=0 ; i<event.size ; ++i)
+        msg.emplace_back(event.buffer[i]);
       bridge->from_jack.push(std::move(msg));
-    }
-    while (!bridge->from_jack.empty())
-    {
-      auto& msg = bridge->from_jack.front();
-      nwrite = write(bridge->fromjack_pipe_fd[1])
     }
   }
 
@@ -49,15 +34,17 @@ int jack_callback(jack_nframes_t nframes, void* args)
     void* out_buffer = jack_port_get_buffer(bridge->midi_out, nframes);
     jack_midi_clear_buffer(out_buffer);
 
-    fprintf(stderr, "%lu aivailable\n", bridge->to_jack.queue.size());
+    fprintf(stderr, "%lu\n", bridge->to_jack.queue.size());
+
     std::optional<std::vector<uint8_t>> optmsg;
-    while (std::nullopt != (optmsg = bridge->to_jack.front(100)))
+    while (std::nullopt != (optmsg = bridge->to_jack.pop()))
     {
-      auto& msg = optmsg.value();
-      fprintf(stderr, "JACK : %lu %02x %02x %02x\n", msg.size(), msg[0], msg[1], msg[2]);
+      auto msg = optmsg.value();
       void* raw = jack_midi_event_reserve(out_buffer, 0, msg.size());
       memcpy(raw, msg.data(), msg.size());
-      bridge->to_jack.pop();
+      for(int i=0;i<msg.size();++i)
+        fprintf(stderr,"%02X ", (uint8_t)msg[i]);
+      fprintf(stderr,"\n");
     }
   }
 
@@ -81,18 +68,6 @@ JackBridge::JackBridge(const char* name)
 	
 	if (0 != jack_set_process_callback(client, jack_callback, this))
 		throw std::runtime_error("Can't set process callback");
-
-
-	if (pipe2(fromjack_pipe_fd, O_NONBLOCK | O_DIRECT))
-	{
-		perror("pipe2");
-		exit(EXIT_FAILURE);
-	}
-	if (pipe2(tojack_pipe_fd, O_NONBLOCK | O_DIRECT))
-	{
-		perror("pipe2");
-		exit(EXIT_FAILURE);
-	}
 }
 JackBridge::~JackBridge()
 {
@@ -108,12 +83,9 @@ void JackBridge::activate()
 std::vector<std::vector<uint8_t>> JackBridge::incomming_midi()
 {
   std::vector<std::vector<uint8_t>> result;
-  std::optional<std::vector<uint8_t>> optmsg;
-  while (std::nullopt != (optmsg = from_jack.front(10)))
-  {
+	std::optional<std::vector<uint8_t>> optmsg;
+  while (std::nullopt != (optmsg = from_jack.pop()))
     result.push_back(optmsg.value());
-    from_jack.pop();
-  }
   return result;
 }
 void JackBridge::send_midi(std::vector<uint8_t>&& msg)
