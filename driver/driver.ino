@@ -191,7 +191,7 @@ void loop()
 
         if (!is_solo_ribbon && !preset.is_active_on_master)
             continue;
-        if (is_solo_ribbon && !preset.is_active_on_solo)
+        if (global.master.solo_enable && is_solo_ribbon && !preset.is_active_on_solo)
             continue;
         
         if (is_solo_ribbon)
