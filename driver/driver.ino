@@ -11,23 +11,10 @@
 #else // ifdef ARDUINO_SAM_DUE
 #endif // ifdef ARDUINO_SAM_DUE
 
-
-#ifdef ARDUINO_SAM_DUE
-
-  #define SERIAL SerialUSB
-  static constexpr bool is_maindriver = true;
-
-#else // ifdef ARDUINO_SAM_DUE
-
-  #define SERIAL Serial
-  static constexpr bool is_maindriver = false;
-
-#endif // ifdef ARDUINO_SAM_DUE
-
-static constexpr bool is_solodriver = !is_maindriver;
-static size_t solodriver_index = 0;
+#define SERIAL SerialUSB
 
 // WS2811_PORTD: 25,26,27,28,14,15,29,11
+
 // Nano : Leds data : D2 : Index select : D3
 //  Set D3 to ground for solo driver 0, leave it floating for driver 1
 
@@ -81,18 +68,7 @@ void setup()
 {
   SERIAL.begin(115200);
 
-  #ifdef ARDUINO_SAM_DUE
-    FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
-  #else // ifdef ARDUINO_SAM_DUE
-    FastLED.addLeds<NEOPIXEL, 2>(leds, MaxLedsCount);
-  #endif // ifdef ARDUINO_SAM_DUE
-
-  if (is_solodriver)
-  {
-    pinMode(3, INPUT_PULLUP);
-    delay(100);
-    solodriver_index = digitalRead(3);
-  }
+  FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
   
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
@@ -144,6 +120,7 @@ void loop()
     
 
     uint8_t feedback_per_group[3] = { 0 };
+    const uint8_t ribbons_count = global.setup.ribbons_count;
 
     // Firt reset the ribbon according to fade out
     for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
@@ -161,7 +138,7 @@ void loop()
           feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], preset.feedback_qty << 1);
       }
     }
-    for (uint8_t ribbon = 0 ; ribbon < global.setup.ribbons_count ; ++ribbon)
+    for (uint8_t ribbon = 0 ; ribbon < ribbons_count ; ++ribbon)
     {
       uint8_t feedback = feedback_per_group[0];//Global.ribbons[ribbon].group];
       uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon];
@@ -182,17 +159,6 @@ void loop()
       // Skip computation if brightness is 0
       if (!preset.do_litmax && preset.brightness == 0)
         continue;
-
-      if (is_solodriver)
-      {
-        if (!preset.is_active_on_solo)
-          continue;
-      }
-      else
-      {
-        if (!preset.is_active_on_master)
-          continue;
-      }
       
       if (preset.strobe_enable && !strobe_clock.coarse_value)
         continue;
@@ -208,18 +174,42 @@ void loop()
       //const auto& paletteB = global.palettes[(palette_index +1) % 8];
       //const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
 
-      uint8_t ribbons_count = is_maindriver ? global.setup.ribbons_count : 2;
       for (uint8_t ribbon_index = 0 ; ribbon_index < ribbons_count ; ++ribbon_index)
       {
-        if (is_solodriver)
+//        bool is_solodriver = ribbon_index == 7;
+//        if (is_solodriver)
+//        {
+//          if (global.master.solo_enable)
+//            if ((solodriver_index * 2 + ribbon_index) != )
+//              continue;
+//        }
+
+        bool is_solo_ribbon = ribbon_index == 7;
+        
+        uint32_t ribbon_length = 0;
+        CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
+
+        if (!is_solo_ribbon && !preset.is_active_on_master)
+            continue;
+        if (is_solo_ribbon && !preset.is_active_on_solo)
+            continue;
+        
+        if (is_solo_ribbon)
         {
           if (global.master.solo_enable)
-            if ((solodriver_index * 2 + ribbon_index) != global.setup.soloribbons_location[global.master.solo_index])
-              continue;
+          {
+            ribbon_length = 30;
+            ribbon_ptr += global.setup.soloribbons_location[global.master.solo_index] * 30;
+          }
+          else
+          {
+            ribbon_length = 30 * 4;
+          }
         }
-        
-        uint32_t ribbon_length = is_maindriver ? 30 * global.setup.ribbons_lengths[ribbon_index] : 30;
-        CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
+        else
+        {
+          ribbon_length = 30 * global.setup.ribbons_lengths[ribbon_index];
+        }
         const size_t ribbon_byte_size = ribbon_length * sizeof(CRGB);
 
         // Break if ribbon is associated with another group
@@ -292,11 +282,11 @@ void loop()
         };
         
         uint8_t bright = preset.do_litmax ? 255 : dim8_video(preset.brightness << 1);
-        if (is_maindriver && global.master.solo_enable && !preset.do_ignore_solo)
+        if (!is_solo_ribbon && global.master.solo_enable && !preset.do_ignore_solo)
         {
           // a number between 0 and 4 excluded indicating which ribbon is soloing
-          uint8_t soloribbon = global.setup.soloribbons_location[global.master.solo_index];
-          uint8_t soloside = soloribbon / 2;
+          uint8_t soloindex = global.setup.soloribbons_location[global.master.solo_index];
+          uint8_t soloside = soloindex / 2;
           uint8_t ribbonside = ribbon_index < (ribbons_count /2);
 
           bright = scale8_video(bright, dim8_video(ribbonside == soloside ? global.master.solo_weak_dim : global.master.solo_strong_dim));
