@@ -186,7 +186,8 @@ void loop()
 
         bool is_solo_ribbon = ribbon_index == 7;
         
-        uint32_t ribbon_length = 0;
+        uint8_t ribbon_modules_count = 0;
+        uint32_t ribbon_leds_count = 0;
         CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
 
         if (!is_solo_ribbon && !preset.is_active_on_master)
@@ -198,19 +199,22 @@ void loop()
         {
           if (global.master.solo_enable)
           {
-            ribbon_length = 30;
+            ribbon_modules_count = 1;
+            ribbon_leds_count = 30;
             ribbon_ptr += global.setup.soloribbons_location[global.master.solo_index] * 30;
           }
           else
           {
-            ribbon_length = 30 * 4;
+            ribbon_modules_count = 4;
+            ribbon_leds_count = 30 * 4;
           }
         }
         else
         {
-          ribbon_length = 30 * global.setup.ribbons_lengths[ribbon_index];
+          ribbon_modules_count = global.setup.ribbons_lengths[ribbon_index];
+          ribbon_leds_count = 30 * global.setup.ribbons_lengths[ribbon_index];
         }
-        const size_t ribbon_byte_size = ribbon_length * sizeof(CRGB);
+        const size_t ribbon_byte_size = ribbon_leds_count * sizeof(CRGB);
 
         // Break if ribbon is associated with another group
         //if (ribbon.group != preset_group)
@@ -271,7 +275,7 @@ void loop()
           // Ribbons splitting
           Slicer {
             // nslices from 1 to two slices per module
-            1 + scale8(ribbon_length * 4, preset.slicer_nslices << 1),
+            1 + scale8(ribbon_modules_count * 4, preset.slicer_nslices << 1),
             // uneven factor
             preset.slicer_mergeribbon ? 255 : min8(uint8_t(preset.slicer_nuneven << 1), 253),
             // flip even slices
@@ -292,8 +296,8 @@ void loop()
           bright = scale8_video(bright, dim8_video(ribbonside == soloside ? global.master.solo_weak_dim : global.master.solo_strong_dim));
         }
           
-        for (uint32_t i = 0; i < ribbon_length; ++i) {
-          CRGB c = compo.eval(palette, time, i, ribbon_length);
+        for (uint32_t i = 0; i < ribbon_leds_count; ++i) {
+          CRGB c = compo.eval(palette, time, i, ribbon_leds_count);
           CRGB o = ribbon_ptr[i];
           nscale8_video(&c, 1, bright);
          

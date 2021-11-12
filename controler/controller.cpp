@@ -1,6 +1,7 @@
 #include "jack-bridge.hpp"
 #include "mapper.hpp"
 #include "manager.hpp"
+#include "arduino-bridge.hpp"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@ int main(int argc, char* const argv[])
   JackBridge apc_bridge{"APC40-Bridge"};
   Mapper apc_mapper;
   Manager manager(argv[2], argv[1]);
+  ArduinoBridge arduino(argv[3], argv[4]);
 
   apc_bridge.activate();
 
@@ -49,12 +51,7 @@ int main(int argc, char* const argv[])
     if (!input.valid())
     {
       input = std::async([&]() -> std::string {
-        char buffer[512];
-        fgets(buffer, 512, stdin);
-        size_t len = strlen(buffer);
-        if (0 < len && buffer[len-1] == '\n')
-          buffer[len-1] = '\0';
-        return std::string(buffer);
+        return arduino.receive();
       });
     }
     else
@@ -63,6 +60,7 @@ int main(int argc, char* const argv[])
       if (status == std::future_status::ready)
       {
         auto str = input.get();
+        fprintf(stderr, "Recieved from arduino : %s\n", str.c_str());
       }
     }
     auto messages = apc_bridge.incomming_midi();
@@ -82,11 +80,8 @@ int main(int argc, char* const argv[])
               apc_bridge.send_midi(std::move(msg));
             }
           }
-          auto arduino_cmd = ctrl->to_raw_message();
-          fprintf(stderr, "To arduino : ");
-          for (auto byte : arduino_cmd)
-            fprintf(stderr, "%02x ", byte);
-          fprintf(stderr, "\n");
+          arduino.send(ctrl->to_raw_message());
+          usleep(10000);
         }
       }
     }
