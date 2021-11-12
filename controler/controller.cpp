@@ -1,4 +1,5 @@
 #include "jack-bridge.hpp"
+#include "mapper.hpp"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -35,6 +36,8 @@ int main(int argc, char* const argv[])
   }
 
   JackBridge apc_bridge{"APC40-Bridge"};
+  Mapper apc_mapper;
+
   apc_bridge.activate();
 
   std::future<std::string> input;
@@ -58,17 +61,9 @@ int main(int argc, char* const argv[])
       if (status == std::future_status::ready)
       {
         auto str = input.get();
-        int tmp[3];
-        fprintf(stderr, "Read %zd bytes from stdin : %s\n", str.size(), str.c_str());
-        int n = sscanf(str.c_str(), "%02x %02x %02x", &tmp[0], &tmp[1], &tmp[2]);
-        if (n != 3)
-          fprintf(stderr, "Invalid input %d\n", n);
-        else
+        auto messages = apc_mapper.command_to_midimsg(str);
+        for (auto& msg : messages)
         {
-          std::vector<uint8_t> msg;
-          msg.push_back(tmp[0]);
-          msg.push_back(tmp[1]);
-          msg.push_back(tmp[2]);
           apc_bridge.send_midi(std::move(msg));
         }
       }
@@ -77,6 +72,11 @@ int main(int argc, char* const argv[])
     for (auto& msg : messages)
     {
       fprintf(stderr, "recieved %lu bytes : %02x %02x %02x\n", msg.size(), msg[0], msg[1], msg[2]);
+      auto commands = apc_mapper.midimsg_to_command(msg);
+      for (auto& cmd : commands)
+      {
+        fprintf(stderr, "Cmd : %s\n", cmd.c_str());
+      }
     }
   }
 
