@@ -291,12 +291,21 @@ void loop()
           },
         };
         
+        uint8_t bright = preset.do_litmax ? 255 : dim8_video(preset.brightness << 1);
+        if (is_maindriver && global.master.solo_enable && !preset.do_ignore_solo)
+        {
+          // a number between 0 and 4 excluded indicating which ribbon is soloing
+          uint8_t soloribbon = global.setup.soloribbons_location[global.master.solo_index];
+          uint8_t soloside = soloribbon / 2;
+          uint8_t ribbonside = ribbon_index < (ribbons_count /2);
+
+          bright = scale8_video(bright, dim8_video(ribbonside == soloside ? global.master.solo_weak_dim : global.master.solo_strong_dim));
+        }
+          
         for (uint32_t i = 0; i < ribbon_length; ++i) {
           CRGB c = compo.eval(palette, time, i, ribbon_length);
           CRGB o = ribbon_ptr[i];
-          uint8_t bright = dim8_video(preset.brightness << 1);
-          if (!preset.do_litmax)
-            nscale8_video(&c, 1, bright);
+          nscale8_video(&c, 1, bright);
          
           ribbon_ptr[i] = CRGB(max8(c.r, o.r), max8(c.g, o.g), max8(c.b, o.b));
         }
@@ -309,17 +318,6 @@ void loop()
     unsigned long draw_begin = millis();
     // When solowing, all ribbons on the other side than the soloing one are strongly dimmed
     //  All ribbons on the same side are weakly dimmed
-    if (is_maindriver && global.master.solo_enable)
-    {
-      // a number between 0 and 4 excluded indicating which ribbon is soloing
-      uint8_t soloribbon = global.setup.soloribbons_location[global.master.solo_index];
-      uint8_t soloside = soloribbon / 2;
-      uint8_t dimleft = soloside == 0 ? global.master.solo_weak_dim : global.master.solo_strong_dim;
-      uint8_t dimright = soloside == 1 ? global.master.solo_weak_dim : global.master.solo_strong_dim;
-      size_t halfglobalwidth = (MaxLedsPerRibbon / 2) * global.setup.ribbons_count;
-      nscale8_video(leds, halfglobalwidth, dim8_video(dimleft));
-      nscale8_video(leds + halfglobalwidth, halfglobalwidth, dim8_video(dimright));
-    }
     FastLED.show(global.master.do_kill_lights ? 0 : global.master.brightness);
     delay(1);
     unsigned long draw_end = millis();

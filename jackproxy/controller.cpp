@@ -330,9 +330,8 @@ void register_controls()
   for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
     controls_list.emplace_back(control_t{ 0, "solo:" + std::to_string(i), offset + offsetof(state_t::triggers_t, solo) + i, control_t::BOOL, {0}, 
     [i](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u val){
-      if (!val.b)
-        return;
-      ctrl->val.b = !ctrl->val.b;
+      if (val.b)
+        ctrl->val.b = !ctrl->val.b;
       auto& solo_enable = controls_by_name["solo_enable"];
       auto& solo_index = controls_by_name["solo_index"];
       solo_enable->val.b = ctrl->val.b;
