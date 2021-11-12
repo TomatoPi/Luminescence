@@ -386,7 +386,7 @@ void register_controls()
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_weak_dim",    offset + offsetof(state_t::master_t, solo_weak_dim),   control_t::UINT7, {0}, default_callback});
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_strong_dim",    offset + offsetof(state_t::master_t, solo_strong_dim),   control_t::UINT7, {0}, default_callback});
   
-  controls_list.emplace_back(control_t{ 0, "do_kill_lights",    offset + offsetof(state_t::master_t, do_kill_lights),   control_t::BOOL, {0}, toggle_callback});
+  controls_list.emplace_back(control_t{ 0, "do_kill_lights",    offset + offsetof(state_t::master_t, do_kill_lights),   control_t::BOOL, {0}, default_callback});
 
   // presets
   for (size_t p=0 ; p<PRESETS_COUNT ; ++p)

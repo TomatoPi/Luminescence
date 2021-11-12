@@ -153,7 +153,7 @@ void register_mappings()
     bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), 0x51}, "do_kill_lights", pad_to_str, str_to_pad});
 
     for (uint8_t i=0 ; i<4 ; ++i)
-      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), (uint8_t)(0x3e + i)}, "solo:" + std::to_string(i), pad_to_str, str_to_pad});
+      bindings_list.emplace_back(binding_t{{(uint8_t)(0x80 + o), (uint8_t)(0x57 + i)}, "solo:" + std::to_string(i), pad_to_str, str_to_pad});
   }
 
   for (uint8_t p=0 ; p < 8 ; ++p)
