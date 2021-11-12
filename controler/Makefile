@@ -12,11 +12,13 @@ LDXXFLAGS=-ljack -lpthread
 all:
 	make controller
 
-controller: jack-bridge.o mapper.o
+controller: jack-bridge.o mapper.o manager.o
 
 jack-bridge.o: jack-bridge.hpp thread-queue.hpp
 
 mapper.o: mapper.hpp
+
+manager.o: manager.hpp ../driver/state.h
 
 %: %.cpp
 	$(GXX) -o $@ $^ $(CXXFLAGS) $(LDXXFLAGS)

@@ -1,5 +1,6 @@
 #include "jack-bridge.hpp"
 #include "mapper.hpp"
+#include "manager.hpp"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -29,14 +30,15 @@ int main(int argc, char* const argv[])
 	signal(SIGTERM, sighandler);
 	signal(SIGINT, sighandler);
 
-  if (argc != 3)
+  if (argc != 5)
   {
-    fprintf(stderr, "Usage : %s <driver-ip> <driver-port>", argv[0]);
+    fprintf(stderr, "Usage : %s <setup-file> <save-file> <driver-ip> <driver-port>", argv[0]);
     exit(EXIT_FAILURE);
   }
 
   JackBridge apc_bridge{"APC40-Bridge"};
   Mapper apc_mapper;
+  Manager manager(argv[2], argv[1]);
 
   apc_bridge.activate();
 
@@ -61,11 +63,6 @@ int main(int argc, char* const argv[])
       if (status == std::future_status::ready)
       {
         auto str = input.get();
-        auto messages = apc_mapper.command_to_midimsg(str);
-        for (auto& msg : messages)
-        {
-          apc_bridge.send_midi(std::move(msg));
-        }
       }
     }
     auto messages = apc_bridge.incomming_midi();
@@ -74,7 +71,23 @@ int main(int argc, char* const argv[])
       auto commands = apc_mapper.midimsg_to_command(msg);
       for (auto& cmd : commands)
       {
-        fprintf(stderr, "%s\n", cmd.c_str());
+        auto result = manager.process_command(cmd);
+        for (auto& [ctrl, force] : result)
+        {
+          if (force || !(ctrl->flags & control_t::VOLATILE))
+          {
+            auto messages = apc_mapper.command_to_midimsg(ctrl->to_command_string());
+            for (auto& msg : messages)
+            {
+              apc_bridge.send_midi(std::move(msg));
+            }
+          }
+          auto arduino_cmd = ctrl->to_raw_message();
+          fprintf(stderr, "To arduino : ");
+          for (auto byte : arduino_cmd)
+            fprintf(stderr, "%02x ", byte);
+          fprintf(stderr, "\n");
+        }
       }
     }
   }
