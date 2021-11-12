@@ -71,11 +71,10 @@ int main(int argc, char* const argv[])
     auto messages = apc_bridge.incomming_midi();
     for (auto& msg : messages)
     {
-      fprintf(stderr, "recieved %lu bytes : %02x %02x %02x\n", msg.size(), msg[0], msg[1], msg[2]);
       auto commands = apc_mapper.midimsg_to_command(msg);
       for (auto& cmd : commands)
       {
-        fprintf(stderr, "Cmd : %s\n", cmd.c_str());
+        fprintf(stderr, "%s\n", cmd.c_str());
       }
     }
   }
