@@ -113,14 +113,8 @@ dirty_list_t process_cmd(const char* cmdstr)
 
 const char* path_of_save;
 const char* path_of_setup;
-
-const char* path_from_master;
-const char* path_to_master;
-
-const char* path_from_solo_0;
-const char* path_to_solo_0;
-const char* path_from_solo_1;
-const char* path_to_solo_1;
+const char* path_from_arduino;
+const char* path_to_arduino;
 
 std::vector<std::string> presets_list;
 size_t current_preset_index;
@@ -450,23 +444,16 @@ void register_controls()
 
 int main(int argc, char* const argv[])
 {
-  if (argc != 9)
+  if (argc != 5)
   {
-    fprintf(stderr, "Usage : %s <setup-file> <save-file> <from-master> <to-master> <from-solo0> <to-solo0> <from-solo2> <to-solo1>", argv[0]);
+    fprintf(stderr, "Usage : %s <setup-file> <save-file> <rawstream-in> <rawstream-out>", argv[0]);
     exit(EXIT_FAILURE);
   }
 
   path_of_setup = argv[1];
   path_of_save = argv[2];
-
-  path_from_master = argv[3];
-  path_to_master = argv[4];
-
-  path_from_solo_0 = argv[5];
-  path_to_solo_0 = argv[6];
-
-  path_from_solo_1 = argv[7];
-  path_to_solo_1 = argv[8];
+  path_from_arduino = argv[3];
+  path_to_arduino = argv[4];
 
   register_controls();
 
@@ -484,71 +471,30 @@ int main(int argc, char* const argv[])
 
   if (0 == cpid) // Child : read from rawin (arduino)
   {
-    FILE* master = fopen(path_from_master, "r");
-    if (!master)
+    FILE* arduino = fopen(path_from_arduino, "r");
+    if (!arduino)
     {
       perror("fopen from arduino");
       exit(EXIT_FAILURE);
     }
-    FILE* solo0 = fopen(path_from_solo_0, "r");
-    if (!solo0)
-    {
-      perror("fopen from arduino");
-      exit(EXIT_FAILURE);
-    }
-    FILE* solo1 = fopen(path_from_solo_1, "r");
-    if (!solo1)
-    {
-      perror("fopen from arduino");
-      exit(EXIT_FAILURE);
-    }
-    char buffers[3][512];
-    size_t indexes[3] = {0, 0, 0};
-    FILE* files[3] = {master, solo0, solo1};
     while (is_running)
     {
-      for (size_t i=0 ; i<2 ; ++i)
+      char buffer;
+      ssize_t nread = fread(&buffer, 1, 1, arduino);
+      if (-1 == nread)
       {
-        ssize_t nread = fread(&buffers[i][indexes[i]], 1, 1, files[i]);
-        if (-1 == nread)
-        {
-          perror("read from arduino");
-          exit(EXIT_FAILURE);
-        }
-        if (nread == 1)
-        {
-          if (buffers[i][indexes[i]] == '\n' || indexes[i] == 510)
-          {
-            buffers[i][indexes[i]+1] = '\0';
-            fprintf(stderr, "From %lu : %s", i, buffers[i]);
-            indexes[i] = 0;
-          }
-          else
-          {
-            indexes[i] += 1;
-          }
-        }
+        perror("read from arduino");
+        exit(EXIT_FAILURE);
       }
+      fputc(buffer, stderr);
       usleep(10);
     }
   }
   else // 0 != pid : Parent : read from stdin to stdout and arduino
   {
     char buffer[512];
-    FILE* master = fopen(path_to_master, "w");
-    if (!master)
-    {
-      perror("fopen to arduino");
-      exit(EXIT_FAILURE);
-    }
-    FILE* solo0 = fopen(path_to_solo_0, "w");
-    if (!master)
-    {
-      perror("fopen to arduino");
-      exit(EXIT_FAILURE);
-    }
-    FILE* solo1 = fopen(path_to_solo_1, "w");
-    if (!master)
+    FILE* arduino = fopen(path_to_arduino, "w");
+    if (!arduino)
     {
       perror("fopen to arduino");
       exit(EXIT_FAILURE);
@@ -599,20 +545,13 @@ int main(int argc, char* const argv[])
           msglen = 3 + sizeof(float);
           break;
         }
-        fwrite(rawmsg, 1, msglen, master);
-        fwrite(rawmsg, 1, msglen, solo0);
-        fwrite(rawmsg, 1, msglen, solo1);
+        fwrite(rawmsg, 1, msglen, arduino);
       }
       fflush(stdout);
-      fflush(master);
-      fflush(solo0);
-      fflush(solo1);
+      fflush(arduino);
       usleep(10);
     }
     kill(cpid, SIGTERM);
-    fclose(master);
-    fclose(solo0);
-    fclose(solo1);
   }
 
   return 0;

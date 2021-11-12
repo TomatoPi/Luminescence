@@ -144,7 +144,6 @@ void loop()
     
 
     uint8_t feedback_per_group[3] = { 0 };
-    const uint8_t ribbons_count = is_maindriver ? global.setup.ribbons_count : 2;
 
     // Firt reset the ribbon according to fade out
     for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
@@ -162,10 +161,10 @@ void loop()
           feedback_per_group[preset_group] = max8(feedback_per_group[preset_group], preset.feedback_qty << 1);
       }
     }
-    for (uint8_t ribbon = 0 ; ribbon < ribbons_count ; ++ribbon)
+    for (uint8_t ribbon = 0 ; ribbon < global.setup.ribbons_count ; ++ribbon)
     {
       uint8_t feedback = feedback_per_group[0];//Global.ribbons[ribbon].group];
-      uint32_t ribbon_length = is_maindriver ? 30 * global.setup.ribbons_lengths[ribbon] : 30;
+      uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon];
       CRGB* ribbon_ptr = leds + ribbon * MaxLedsPerRibbon;
       
       if (feedback == 0)
@@ -209,6 +208,7 @@ void loop()
       //const auto& paletteB = global.palettes[(palette_index +1) % 8];
       //const auto& palette = lerp_palette(paletteA, paletteB, palette_subindex);
 
+      uint8_t ribbons_count = is_maindriver ? global.setup.ribbons_count : 2;
       for (uint8_t ribbon_index = 0 ; ribbon_index < ribbons_count ; ++ribbon_index)
       {
         if (is_solodriver)

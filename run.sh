@@ -8,10 +8,8 @@ cd ~/Documents/2.0/progs/Optopoulpe/jackproxy
 # xfce4-terminal -T "Ctrl-2-APC40"    -e "cat pipes/apc2j    |  ./jackproxy-from-stdin"                                                 &
 # xfce4-terminal -T "APC40-2-Ctrl"    -e "                      ./jackproxy-to-stdout                               1> pipes/j2apc"     &
 
-xfce4-terminal -T "Controller"      --geometry 80x40
-xfce4-terminal -T "Master-Bridge"   --geometry 50x4
-xfce4-terminal -T "Solo-0-Bridge"   --geometry 50x4
-xfce4-terminal -T "Solo-1-Bridge"   --geometry 50x4
-xfce4-terminal -T "APC40-Mapper"    --geometry 50x4
-xfce4-terminal -T "Ctrl-2-APC40"    --geometry 50x4
-xfce4-terminal -T "APC40-2-Ctrl"    --geometry 50x4
+xfce4-terminal -T "Controller"      --geometry 80x10
+xfce4-terminal -T "Arduino-Bridge"  --geometry 80x10
+xfce4-terminal -T "APC40-Mapper"    --geometry 80x10
+xfce4-terminal -T "Ctrl-2-APC40"    --geometry 80x10
+xfce4-terminal -T "APC40-2-Ctrl"    --geometry 80x10

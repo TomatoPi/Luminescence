@@ -12,6 +12,6 @@ static constexpr uint32_t MaxLedsCount = MaxRibbonsCount * MaxLedsPerRibbon;
 
 static constexpr uint32_t MaxLedsPerRibbon = 30 * 1;
 static constexpr uint32_t MaxRibbonsCount = 2;
-static constexpr uint32_t MaxLedsCount = MaxRibbonsCount * MaxLedsPerRibbon;
+static constexpr uint32_t MaxLedsCount = 1; //MaxRibbonsCount * MaxLedsPerRibbon;
 
 #endif // ifdef ARDUINO_SAM_DUE
