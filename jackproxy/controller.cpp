@@ -33,6 +33,7 @@ struct control_t
     NON_SAVEABLE  = 0x01,
     NON_LOADABLE  = 0x02,
     VOLATILE      = 0x04,
+    SETUP         = 0x80,
     PHYSICAL      = NON_SAVEABLE | NON_LOADABLE | VOLATILE,
     TRIGGER       = NON_SAVEABLE | VOLATILE,
   };
@@ -111,6 +112,7 @@ dirty_list_t process_cmd(const char* cmdstr)
 }
 
 const char* path_of_save;
+const char* path_of_setup;
 const char* path_from_arduino;
 const char* path_to_arduino;
 
@@ -185,7 +187,7 @@ void save(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
   }
   for (auto& ctrl : controls_list)
   {
-    if (ctrl.flags & control_t::NON_SAVEABLE)
+    if (ctrl.flags & (control_t::NON_SAVEABLE | control_t::SETUP))
       continue;
     
     fprintf(file, "%s ", ctrl.name.c_str());
@@ -207,21 +209,14 @@ void save(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
   fprintf(stderr, "Successfully saved : %s\n", presets_list[current_preset_index].c_str());
 }
 
-void load(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
+void load_file(const char* path, dirty_list_t& dirty_controls)
 {
-  load_saves_list();
-  if (presets_list.size() == 0)
-  {
-    fprintf(stderr, "ERROR : Failed to load\n");
-    return;
-  }
-  FILE* file = fopen(presets_list[current_preset_index].c_str(), "r");
+  FILE* file = fopen(path, "r");
   if (!file)
   {
     perror("fopen save");
     exit(EXIT_FAILURE);
   }
-  dirty_controls.clear();
   char buffer[512];
   while (fgets(buffer, 512, file))
   {
@@ -278,6 +273,19 @@ void load(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
   fprintf(stderr, "Successfully Loaded : %s\n", presets_list[current_preset_index].c_str());
 }
 
+void load(control_t*, dirty_list_t& dirty_controls, control_t::value_u)
+{
+  load_saves_list();
+  if (presets_list.size() == 0)
+  {
+    fprintf(stderr, "ERROR : Failed to load\n");
+    return;
+  }
+  dirty_controls.clear();
+  load_file(path_of_setup, dirty_controls);
+  load_file(presets_list[current_preset_index].c_str(), dirty_controls);
+}
+
 void register_controls()
 {
   // Generate controls
@@ -330,8 +338,7 @@ void register_controls()
   for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
     controls_list.emplace_back(control_t{ 0, "solo:" + std::to_string(i), offset + offsetof(state_t::triggers_t, solo) + i, control_t::BOOL, {0}, 
     [i](control_t* ctrl, dirty_list_t& dirty_contorls, control_t::value_u val){
-      if (val.b)
-        ctrl->val.b = !ctrl->val.b;
+      ctrl->val.b = val.b;
       auto& solo_enable = controls_by_name["solo_enable"];
       auto& solo_index = controls_by_name["solo_index"];
       solo_enable->val.b = ctrl->val.b;
@@ -355,20 +362,20 @@ void register_controls()
               + offsetof(state_t::palette_t, params)
               + c * sizeof(state_t::palette_t::params_t);
 
-      controls_list.emplace_back(control_t{ 0, "min_value:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, min_value), control_t::UINT7, {0}, default_callback});
-      controls_list.emplace_back(control_t{ 0, "max_value:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, max_value), control_t::UINT7, {0}, default_callback});
-      controls_list.emplace_back(control_t{ 0, "frequency_times_60:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, frequency_times_60), control_t::UINT7, {0}, default_callback});
-      controls_list.emplace_back(control_t{ 0, "phase:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, phase), control_t::UINT7, {0}, default_callback});
+      controls_list.emplace_back(control_t{ control_t::SETUP, "min_value:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, min_value), control_t::UINT7, {0}, default_callback});
+      controls_list.emplace_back(control_t{ control_t::SETUP, "max_value:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, max_value), control_t::UINT7, {0}, default_callback});
+      controls_list.emplace_back(control_t{ control_t::SETUP, "frequency_times_60:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, frequency_times_60), control_t::UINT7, {0}, default_callback});
+      controls_list.emplace_back(control_t{ control_t::SETUP, "phase:" + std::to_string(p) + ":" + std::to_string(c), offset + offsetof(state_t::palette_t::params_t, phase), control_t::UINT7, {0}, default_callback});
     }
   
   // setup
   offset = offsetof(state_t, setup);
-  controls_list.emplace_back(control_t{ 0, "ribbons_count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::SETUP, "ribbons_count", offset + offsetof(state_t::setup_t, ribbons_count), control_t::UINT7, {0}, default_callback});
 
   for (size_t i=0 ; i<MAX_RIBBONS_COUNT ; ++i)
-    controls_list.emplace_back(control_t{ 0, "ribbons_lengths:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_lengths) + i, control_t::UINT7, {0}, default_callback });
+    controls_list.emplace_back(control_t{ control_t::SETUP, "ribbons_lengths:" + std::to_string(i), offset + offsetof(state_t::setup_t, ribbons_lengths) + i, control_t::UINT7, {0}, default_callback });
   for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
-    controls_list.emplace_back(control_t{ 0, "soloribbons_location:" + std::to_string(i), offset + offsetof(state_t::setup_t, soloribbons_location) + i, control_t::UINT7, {0}, default_callback });
+    controls_list.emplace_back(control_t{ control_t::SETUP, "soloribbons_location:" + std::to_string(i), offset + offsetof(state_t::setup_t, soloribbons_location) + i, control_t::UINT7, {0}, default_callback });
 
   // master
   offset = offsetof(state_t, master);
@@ -437,15 +444,16 @@ void register_controls()
 
 int main(int argc, char* const argv[])
 {
-  if (argc != 4)
+  if (argc != 5)
   {
-    fprintf(stderr, "Usage : %s <save-file> <rawstream-in> <rawstream-out>", argv[0]);
+    fprintf(stderr, "Usage : %s <setup-file> <save-file> <rawstream-in> <rawstream-out>", argv[0]);
     exit(EXIT_FAILURE);
   }
 
-  path_of_save = argv[1];
-  path_from_arduino = argv[2];
-  path_to_arduino = argv[3];
+  path_of_setup = argv[1];
+  path_of_save = argv[2];
+  path_from_arduino = argv[3];
+  path_to_arduino = argv[4];
 
   register_controls();
 
