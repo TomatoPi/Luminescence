@@ -34,17 +34,12 @@ int jack_callback(jack_nframes_t nframes, void* args)
     void* out_buffer = jack_port_get_buffer(bridge->midi_out, nframes);
     jack_midi_clear_buffer(out_buffer);
 
-    fprintf(stderr, "%lu\n", bridge->to_jack.queue.size());
-
     std::optional<std::vector<uint8_t>> optmsg;
     while (std::nullopt != (optmsg = bridge->to_jack.pop()))
     {
       auto msg = optmsg.value();
       void* raw = jack_midi_event_reserve(out_buffer, 0, msg.size());
       memcpy(raw, msg.data(), msg.size());
-      for(int i=0;i<msg.size();++i)
-        fprintf(stderr,"%02X ", (uint8_t)msg[i]);
-      fprintf(stderr,"\n");
     }
   }
 

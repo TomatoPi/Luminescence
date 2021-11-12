@@ -7,6 +7,10 @@
 
 #include <signal.h>
 
+#include <thread>
+#include <future>
+#include <string>
+
 volatile int is_running = 1;
 void sighandler(int sig)
 {
@@ -33,47 +37,48 @@ int main(int argc, char* const argv[])
   JackBridge apc_bridge{"APC40-Bridge"};
   apc_bridge.activate();
 
-  pid_t cpid = fork();
-  if (-1 == cpid)
-  {
-    perror("fork");
-    exit(EXIT_FAILURE);
-  }
+  std::future<std::string> input;
 
-  if (0 == cpid) // Child : read from stdin
+  while (is_running)
   {
-    char buff[512];
-    while (is_running && fgets(buff, 512, stdin))
+    if (!input.valid())
     {
-      int tmp[3];
-      ssize_t len = 0, nread=strlen(buff);
-      fprintf(stderr, "Read %zd bytes from stdin : %s\n", nread, buff);
-      int n = sscanf(buff, "%02x %02x %02x", &tmp[0], &tmp[1], &tmp[2]);
-      if (n != 3)
-        fprintf(stderr, "Invalid input %d\n", n);
-      else
+      input = std::async([&]() -> std::string {
+        char buffer[512];
+        fgets(buffer, 512, stdin);
+        size_t len = strlen(buffer);
+        if (0 < len && buffer[len-1] == '\n')
+          buffer[len-1] = '\0';
+        return std::string(buffer);
+      });
+    }
+    else
+    {
+      std::future_status status = input.wait_for(std::chrono::microseconds(100));
+      if (status == std::future_status::ready)
       {
-        std::vector<uint8_t> msg;
-        msg.push_back(tmp[0]);
-        msg.push_back(tmp[1]);
-        msg.push_back(tmp[2]);
-        apc_bridge.send_midi(std::move(msg));
+        auto str = input.get();
+        int tmp[3];
+        fprintf(stderr, "Read %zd bytes from stdin : %s\n", str.size(), str.c_str());
+        int n = sscanf(str.c_str(), "%02x %02x %02x", &tmp[0], &tmp[1], &tmp[2]);
+        if (n != 3)
+          fprintf(stderr, "Invalid input %d\n", n);
+        else
+        {
+          std::vector<uint8_t> msg;
+          msg.push_back(tmp[0]);
+          msg.push_back(tmp[1]);
+          msg.push_back(tmp[2]);
+          apc_bridge.send_midi(std::move(msg));
+        }
       }
     }
-  }
-  else
-  {
-    while (is_running)
+    auto messages = apc_bridge.incomming_midi();
+    for (auto& msg : messages)
     {
-      auto messages = apc_bridge.incomming_midi();
-      for (auto& msg : messages)
-      {
-        fprintf(stderr, "recieved %lu bytes : %02x %02x %02x\n", msg.size(), msg[0], msg[1], msg[2]);
-      }
+      fprintf(stderr, "recieved %lu bytes : %02x %02x %02x\n", msg.size(), msg[0], msg[1], msg[2]);
     }
-    kill(cpid, SIGKILL);
   }
-
 
   return 0;
 }
