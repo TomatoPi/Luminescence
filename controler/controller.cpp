@@ -80,11 +80,11 @@ int main(int argc, char* const argv[])
               apc_bridge.send_midi(std::move(msg));
             }
           }
-          arduino.send(ctrl->to_raw_message());
-          usleep(15000);
+          arduino.send(ctrl->addr_offset, ctrl->to_raw_message());
         }
       }
     }
+    usleep(100);
   }
 
   return 0;

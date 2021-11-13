@@ -1,4 +1,5 @@
 #include "arduino-bridge.hpp"
+#include "thread-queue.hpp"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -13,6 +14,7 @@
 #include <string.h>
 
 #include <stdexcept>
+#include <unordered_map>
 
 ArduinoBridge::ArduinoBridge(const char* host, const char* port)
 {
@@ -57,27 +59,50 @@ ArduinoBridge::ArduinoBridge(const char* host, const char* port)
 
 	freeaddrinfo(result); /* No longer needed */
 
+  sending_thread = std::thread([](ArduinoBridge* bridge){
+    std::unordered_map<size_t, packet_t> pending_objects;
+    while (1)
+    {
+      std::optional<pending_obj_t> optobj;
+      while (std::nullopt != (optobj = bridge->sending_queue.pop()))
+      {
+        auto [addr, obj] = optobj.value();
+        pending_objects.insert_or_assign(addr, obj);
+      }
+      if (!pending_objects.empty())
+      {
+        auto itr = pending_objects.begin();
+        auto [_, packet] = *itr;
+        if (write(bridge->socket_fd, packet.data(), packet.size()) != packet.size())
+        {
+          if (errno == EAGAIN || errno == EWOULDBLOCK)
+          {
+            usleep(100);
+            continue;
+          }
+          else
+          {
+            perror("Partial / failed write\n");
+            throw std::runtime_error("Err");
+          }
+        }
+        // Sleep after object send to avoid network congestion
+        pending_objects.erase(itr);
+        usleep(15000);
+      }
+      else
+      	usleep(100);
+    }
+  }, this);
 }
 ArduinoBridge::~ArduinoBridge()
 {
   close(socket_fd);
 }
 
-void ArduinoBridge::send(const std::vector<uint8_t>& packet)
+void ArduinoBridge::send(size_t addr, const packet_t& packet)
 {
-  while (write(socket_fd, packet.data(), packet.size()) != packet.size())
-  {
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
-    {
-      usleep(100);
-      continue;
-    }
-    else
-    {
-      perror("Partial / failed write\n");
-      throw std::runtime_error("Err");
-    }
-  }
+  sending_queue.push(pending_obj_t(addr, packet));
 }
 std::string ArduinoBridge::receive()
 {
