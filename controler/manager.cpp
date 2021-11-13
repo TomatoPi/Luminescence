@@ -57,13 +57,13 @@ std::vector<uint8_t> control_t::to_raw_message() const
 void default_callback(control_t* ctrl, dirty_list_t& dirty_controls, control_t::value_u val)
 {
   ctrl->val = val;
-  dirty_controls.emplace_back(ctrl, false);
+  dirty_controls.insert_or_assign(ctrl, false);
 }
 void toggle_callback(control_t* ctrl, dirty_list_t& dirty_controls, control_t::value_u val)
 {
   if (val.b)
     ctrl->val.b = !ctrl->val.b;
-  dirty_controls.emplace_back(ctrl, false);
+  dirty_controls.insert_or_assign(ctrl, false);
 }
 
 Manager::Manager(const char* save_path, const char* setup_path) :
@@ -98,25 +98,25 @@ Manager::Manager(const char* save_path, const char* setup_path) :
   [this](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& bpm = controls_by_name["bpm"];
     bpm->val.f = 1200.0f;
-    dirty_contorls.emplace_back(bpm, false);
+    dirty_contorls.insert_or_assign(bpm, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "correct_bpm", offset + offsetof(state_t::triggers_t, correct_bpm), control_t::BOOL, {0}, 
   [this](control_t*, dirty_list_t& dirty_contorls, control_t::value_u val){
     auto& bpm = controls_by_name["bpm"];
     bpm->val.f *= val.b ? 1.01f : 0.99f;
-    dirty_contorls.emplace_back(bpm, false);
+    dirty_contorls.insert_or_assign(bpm, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "sync_left", offset + offsetof(state_t::triggers_t, sync_left), control_t::BOOL, {0}, 
   [this](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& sync_correction = controls_by_name["sync_correction"];
     sync_correction->val.u -= 10;
-    dirty_contorls.emplace_back(sync_correction, false);
+    dirty_contorls.insert_or_assign(sync_correction, false);
   }});
   controls_list.emplace_back(control_t{ control_t::TRIGGER, "sync_right", offset + offsetof(state_t::triggers_t, sync_right), control_t::BOOL, {0}, 
   [this](control_t*, dirty_list_t& dirty_contorls, control_t::value_u){
     auto& sync_correction = controls_by_name["sync_correction"];
     sync_correction->val.u += 10;
-    dirty_contorls.emplace_back(sync_correction, false);
+    dirty_contorls.insert_or_assign(sync_correction, false);
   }});
   for (size_t i=0 ; i<SOLOS_COUNT ; ++i)
     controls_list.emplace_back(control_t{ 0, "solo:" + std::to_string(i), offset + offsetof(state_t::triggers_t, solo) + i, control_t::BOOL, {0}, 
@@ -126,13 +126,13 @@ Manager::Manager(const char* save_path, const char* setup_path) :
       auto& solo_index = controls_by_name["solo_index"];
       solo_enable->val.b = ctrl->val.b;
       solo_index->val.u = i;
-      dirty_contorls.emplace_back(solo_enable, false);
-      dirty_contorls.emplace_back(solo_index, false);
+      dirty_contorls.insert_or_assign(solo_enable, false);
+      dirty_contorls.insert_or_assign(solo_index, false);
       for (size_t j=0 ; j<SOLOS_COUNT ; ++j)
       {
         auto& ctrl2 = controls_by_name["solo:" + std::to_string(j)];
         ctrl2->val.b = i == j ? ctrl->val.b : false;
-        dirty_contorls.emplace_back(ctrl2, false);
+        dirty_contorls.insert_or_assign(ctrl2, false);
       }
     }});
 
@@ -176,7 +176,7 @@ Manager::Manager(const char* save_path, const char* setup_path) :
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_weak_dim",    offset + offsetof(state_t::master_t, solo_weak_dim),   control_t::UINT7, {0}, default_callback});
   controls_list.emplace_back(control_t{ control_t::VOLATILE, "solo_strong_dim",    offset + offsetof(state_t::master_t, solo_strong_dim),   control_t::UINT7, {0}, default_callback});
   
-  controls_list.emplace_back(control_t{ 0, "do_kill_lights",    offset + offsetof(state_t::master_t, do_kill_lights),   control_t::BOOL, {0}, default_callback});
+  controls_list.emplace_back(control_t{ control_t::VOLATILE, "do_kill_lights",    offset + offsetof(state_t::master_t, do_kill_lights),   control_t::BOOL, {0}, default_callback});
 
   // presets
   for (size_t p=0 ; p<PRESETS_COUNT ; ++p)
@@ -214,7 +214,7 @@ Manager::Manager(const char* save_path, const char* setup_path) :
     controls_list.emplace_back(control_t{ 0, "is_active_on_solo:" + std::to_string(p), offset + offsetof(state_t::preset_t, is_active_on_solo), control_t::BOOL, {0}, default_callback});
     controls_list.emplace_back(control_t{ 0, "do_ignore_solo:" + std::to_string(p), offset + offsetof(state_t::preset_t, do_ignore_solo), control_t::BOOL, {0}, default_callback});
 
-    controls_list.emplace_back(control_t{ 0, "do_litmax:" + std::to_string(p), offset + offsetof(state_t::preset_t, do_litmax), control_t::BOOL, {0}, default_callback});
+    controls_list.emplace_back(control_t{ control_t::VOLATILE, "do_litmax:" + std::to_string(p), offset + offsetof(state_t::preset_t, do_litmax), control_t::BOOL, {0}, default_callback});
   }
 
   // Generate tables
@@ -376,7 +376,7 @@ FILE* file = fopen(path, "r");
         ctrl->val.f = vf;
         break;
       }
-      dirty_controls.emplace_back(ctrl, true);
+      dirty_controls.insert_or_assign(ctrl, true);
     }
   }
   fclose(file);

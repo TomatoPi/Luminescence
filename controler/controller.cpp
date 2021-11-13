@@ -81,7 +81,7 @@ int main(int argc, char* const argv[])
             }
           }
           arduino.send(ctrl->to_raw_message());
-          usleep(10000);
+          usleep(15000);
         }
       }
     }

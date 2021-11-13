@@ -8,8 +8,8 @@ blur_enable n
 blur_qty 127
 solo_enable n
 solo_index 0
-solo_weak_dim 85
-solo_strong_dim 32
+solo_weak_dim 95
+solo_strong_dim 43
 do_kill_lights n
 palette:0 22
 colormod_enable:0 y
@@ -30,7 +30,7 @@ strobe_enable:0 n
 speed_scale:0 0
 slicer_mergeribbon:0 n
 is_active_on_master:0 y
-is_active_on_solo:0 n
+is_active_on_solo:0 y
 do_ignore_solo:0 n
 do_litmax:0 n
 palette:1 50
@@ -44,7 +44,7 @@ maskmod_width:1 38
 maskmod_move:1 y
 slicer_nslices:1 0
 slicer_useuneven:1 n
-slicer_nuneven:1 64
+slicer_nuneven:1 101
 slicer_useflip:1 n
 feedback_enable:1 y
 feedback_qty:1 81

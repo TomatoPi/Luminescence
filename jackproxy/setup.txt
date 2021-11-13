@@ -103,7 +103,7 @@ ribbons_lengths:4 0
 ribbons_lengths:5 0
 ribbons_lengths:6 0
 ribbons_lengths:7 4
-soloribbons_location:0 0
-soloribbons_location:1 1
-soloribbons_location:2 2
-soloribbons_location:3 3
+soloribbons_location:0 3
+soloribbons_location:1 2
+soloribbons_location:2 1
+soloribbons_location:3 0

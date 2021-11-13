@@ -17,7 +17,7 @@ colormod_osc:0 56
 colormod_width:0 78
 colormod_move:0 y
 maskmod_enable:0 y
-maskmod_osc:0 78
+maskmod_osc:0 77
 maskmod_width:0 18
 maskmod_move:0 y
 slicer_nslices:0 127
@@ -99,9 +99,9 @@ is_active_on_master:3 y
 is_active_on_solo:3 n
 do_ignore_solo:3 n
 do_litmax:3 n
-palette:4 0
+palette:4 45
 colormod_enable:4 n
-colormod_osc:4 13
+colormod_osc:4 92
 colormod_width:4 127
 colormod_move:4 n
 maskmod_enable:4 n
@@ -136,7 +136,7 @@ slicer_nuneven:5 0
 slicer_useflip:5 n
 feedback_enable:5 y
 feedback_qty:5 107
-strobe_enable:5 n
+strobe_enable:5 y
 speed_scale:5 68
 slicer_mergeribbon:5 n
 is_active_on_master:5 y

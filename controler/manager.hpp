@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 struct control_t;
-using dirty_list_t = std::vector<std::pair<const control_t*, bool>>; // (ctrl, force update)
+using dirty_list_t = std::unordered_map<const control_t*, bool>; // (ctrl, force update)
 
 struct control_t
 {
