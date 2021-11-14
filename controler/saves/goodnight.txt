@@ -70,8 +70,8 @@ slicer_nuneven:2 0
 slicer_useflip:2 n
 feedback_enable:2 y
 feedback_qty:2 93
-strobe_enable:2 n
-speed_scale:2 108
+strobe_enable:2 y
+speed_scale:2 127
 slicer_mergeribbon:2 n
 is_active_on_master:2 y
 is_active_on_solo:2 y

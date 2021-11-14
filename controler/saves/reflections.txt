@@ -40,7 +40,7 @@ colormod_width:1 0
 colormod_move:1 n
 maskmod_enable:1 y
 maskmod_osc:1 123
-maskmod_width:1 50
+maskmod_width:1 36
 maskmod_move:1 y
 slicer_nslices:1 0
 slicer_useuneven:1 y
@@ -157,7 +157,7 @@ slicer_useuneven:6 n
 slicer_nuneven:6 122
 slicer_useflip:6 n
 feedback_enable:6 y
-feedback_qty:6 74
+feedback_qty:6 45
 strobe_enable:6 y
 speed_scale:6 127
 slicer_mergeribbon:6 n

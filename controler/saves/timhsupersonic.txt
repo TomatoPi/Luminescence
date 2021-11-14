@@ -7,7 +7,7 @@ sync_correction 134
 blur_enable n
 blur_qty 127
 solo_enable n
-solo_index 3
+solo_index 2
 solo_weak_dim 76
 solo_strong_dim 109
 do_kill_lights n
@@ -18,7 +18,7 @@ colormod_width:0 42
 colormod_move:0 n
 maskmod_enable:0 y
 maskmod_osc:0 127
-maskmod_width:0 26
+maskmod_width:0 37
 maskmod_move:0 y
 slicer_nslices:0 0
 slicer_useuneven:0 y
@@ -93,7 +93,7 @@ slicer_useflip:3 y
 feedback_enable:3 y
 feedback_qty:3 108
 strobe_enable:3 y
-speed_scale:3 38
+speed_scale:3 8
 slicer_mergeribbon:3 n
 is_active_on_master:3 y
 is_active_on_solo:3 y
@@ -171,9 +171,9 @@ colormod_osc:7 37
 colormod_width:7 0
 colormod_move:7 n
 maskmod_enable:7 n
-maskmod_osc:7 0
-maskmod_width:7 0
-maskmod_move:7 n
+maskmod_osc:7 124
+maskmod_width:7 87
+maskmod_move:7 y
 slicer_nslices:7 0
 slicer_useuneven:7 n
 slicer_nuneven:7 0
@@ -181,8 +181,8 @@ slicer_useflip:7 n
 feedback_enable:7 n
 feedback_qty:7 107
 strobe_enable:7 y
-speed_scale:7 62
-slicer_mergeribbon:7 n
+speed_scale:7 66
+slicer_mergeribbon:7 y
 is_active_on_master:7 y
 is_active_on_solo:7 y
 do_ignore_solo:7 y
