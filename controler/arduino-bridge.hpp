@@ -13,9 +13,11 @@ class ArduinoBridge {
   using packet_t = std::vector<uint8_t>;
   using pending_obj_t = std::pair<size_t, packet_t>;
 
-  int socket_fd;
   ThreadSafeQueue<pending_obj_t> sending_queue;
   std::thread sending_thread;
+
+  int socket_fd;
+  const char* host, *port;
 
 public:
   ArduinoBridge(const char* host, const char* port);

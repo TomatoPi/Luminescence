@@ -79,8 +79,8 @@ do_ignore_solo:2 y
 do_litmax:2 n
 palette:3 44
 colormod_enable:3 n
-colormod_osc:3 68
-colormod_width:3 75
+colormod_osc:3 127
+colormod_width:3 127
 colormod_move:3 y
 maskmod_enable:3 y
 maskmod_osc:3 90
@@ -143,9 +143,9 @@ is_active_on_master:5 y
 is_active_on_solo:5 n
 do_ignore_solo:5 n
 do_litmax:5 n
-palette:6 51
+palette:6 75
 colormod_enable:6 n
-colormod_osc:6 100
+colormod_osc:6 0
 colormod_width:6 0
 colormod_move:6 n
 maskmod_enable:6 n
@@ -165,9 +165,9 @@ is_active_on_master:6 y
 is_active_on_solo:6 n
 do_ignore_solo:6 n
 do_litmax:6 n
-palette:7 2
+palette:7 26
 colormod_enable:7 n
-colormod_osc:7 109
+colormod_osc:7 36
 colormod_width:7 0
 colormod_move:7 n
 maskmod_enable:7 n
