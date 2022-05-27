@@ -18,17 +18,27 @@ struct binding_t
 
 struct Mapper {
 
-  std::vector<binding_t>                                  bindings_list;
   std::unordered_multimap<int16_t, const binding_t*>      midi_to_command_map;
   std::unordered_multimap<std::string, const binding_t*>  command_to_midi_map;
 
-  Mapper();
+  static const std::vector<binding_t>& APC40_mappings();
+
+  Mapper(const std::vector<binding_t>& bindings_list);
   
   std::vector<std::string> midimsg_to_command(const std::vector<uint8_t>& msg);
   std::vector<std::vector<std::uint8_t>> command_to_midimsg(const std::string& cmd);
 };
 
+
+
+
 namespace mycelium {
+
+  template <class event_t, class table_t, class traits_t>
+  auto remap(const event_t& event, const table_t& table, const traits_t& traits)
+  {
+    return traits.unpack(event) | traits.match(table) | traits.remap();
+  }
 
   template <
     typename event_t,

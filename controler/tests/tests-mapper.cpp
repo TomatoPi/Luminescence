@@ -4,7 +4,7 @@
 
 int main(int argc, char * const argv[])
 {
-    Mapper mapper{};
+    Mapper mapper{Mapper::APC40_mappings()};
 
     auto [midi, trace] = mycelium::map_event<
         std::string, 
