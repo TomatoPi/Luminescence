@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 #include <functional>
 #include <unordered_map>
 
@@ -29,61 +30,77 @@ struct Mapper {
 
 namespace mycelium {
 
-  template <typename event_t, typename result_t, typename map_t, typename traits>
-  std::pair<std::vector<result_t>, typename traits::trace>
-  map_event(const event_t& event, const map_t& map)
+  template <
+    typename event_t,
+    typename map_t,
+    typename traits
+    >
+  auto map_event(const event_t& event, const map_t& map)
   {
-    auto [event_key, event_args] = traits::unpack_event(event);
-    if (!traits::is_valid_event(event_key))
-      return std::make_pair(std::vector<result_t>{}, traits::invalid_event(event));
+    auto unpacked_event = traits::unpack(event);
+    if (!traits::is_valid(unpacked_event))
+      return traits::invalid(event);
 
-    auto [begin, end] = traits::match(event_key, map);
-    if (begin == end)
-      return std::make_pair(std::vector<result_t>{}, traits::unbound_event(event));
+    auto matches = traits::match(unpacked_event, map);
+    if (traits::is_empty(matches))
+      return traits::unbound(unpacked_event);
     
-    std::vector<result_t> result;
-    for (auto itr = begin; itr != end; ++itr)
-      result.emplace_back(traits::remap_event(itr, event_args));
-
-    return std::make_pair(result, traits::success(event));
+    return traits::remap(matches, unpacked_event);
   }
 
   struct optopoulpe_map_traits {
 
-    using trace = std::string;
+    using event_t = std::string;
+    using map_t = std::unordered_multimap<event_t, const binding_t*>;
 
-    static std::pair<std::string, std::string> unpack_event(const std::string& cmd) noexcept
+    using key_args_t = std::pair<std::string, std::string>;
+    using unpacked_event_t = std::optional<key_args_t>;
+    using matches_t = std::pair<map_t::const_iterator, map_t::const_iterator>;
+
+    using midi_t = std::vector<uint8_t>;
+    using midiv_t = std::vector<midi_t>;
+    using result_t = std::pair<midiv_t, std::string>;
+
+    static unpacked_event_t unpack(const std::string& cmd) noexcept
     {
       char cmdkey[64], arg[64];
       if (sscanf(cmd.c_str(), "%s %s", cmdkey, arg) != 2)
-        return {};
+        return std::nullopt;
       else
-        return std::make_pair(cmdkey, arg);
+        return std::make_optional(std::make_pair(cmdkey, arg));
     }
-    static bool is_valid_event(const std::string& key) noexcept {
-      return key.size() != 0;
+    static bool is_valid(const unpacked_event_t& event) noexcept {
+      return event.has_value();
     }
-    static trace invalid_event(const std::string& cmd) noexcept {
-      return "Invalid Event : " + cmd + "\n";
-    }
-
-    static constexpr auto match = [](const std::string& key, const std::unordered_multimap<std::string, const binding_t*>& map)
-      -> decltype(map.equal_range(key)) { return map.equal_range(key); };
-
-    static trace unbound_event(const std::string& cmd) noexcept {
-      return "Unbound Event : " + cmd + "\n";
+    static result_t invalid(const event_t& event) noexcept {
+      return {{}, "Invalid Event : " + event + "\n"};
     }
 
-    static std::vector<uint8_t> remap_event(const std::unordered_multimap<std::string, const binding_t*>::const_iterator& itr, const std::string& args)
+    static constexpr auto match = [](const unpacked_event_t& event, const auto& map)
+      -> decltype(map.equal_range(event.value().first)) { return map.equal_range(event.value().first); };
+
+    static bool is_empty(const matches_t& range) noexcept {
+      return range.first == range.second;
+    }
+
+    static result_t unbound(const unpacked_event_t& event) noexcept {
+      return {{}, "Unbound Event : " + event.value().first + "\n"};
+    }
+
+    static result_t remap(const matches_t& range, const unpacked_event_t& event)
     {
-      auto& [_, binding] = *itr;
-      uint8_t raw[3];
-      binding->str_to_midival(binding, args.c_str(), raw);
-      return {raw[0], raw[1], raw[2]};
+      auto remap_item = [](const auto& itr, const auto& args) {
+        auto& [_, binding] = *itr;
+        uint8_t raw[3];
+        binding->str_to_midival(binding, args.c_str(), raw);
+        return midi_t{raw[0], raw[1], raw[2]};
+      };
+      
+      midiv_t result;
+      for (auto itr = range.first; itr != range.second; ++itr)
+        result.emplace_back(remap_item(itr, event.value().second));
+      return {result, "Success"};
     }
 
-    static trace success(const std::string& cmd) noexcept {
-      return "Success";
-    }
   };
 }
