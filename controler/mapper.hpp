@@ -29,9 +29,6 @@ struct Mapper {
   std::vector<std::vector<std::uint8_t>> command_to_midimsg(const std::string& cmd);
 };
 
-
-
-
 namespace mycelium {
 
   template <class event_t, class table_t, class traits_t>
