@@ -2,7 +2,7 @@ solo:0 n
 solo:1 n
 solo:2 n
 solo:3 n
-bpm 1576
+bpm 1482
 sync_correction 134
 blur_enable n
 blur_qty 127
@@ -31,7 +31,7 @@ speed_scale:0 78
 slicer_mergeribbon:0 n
 is_active_on_master:0 y
 is_active_on_solo:0 y
-do_ignore_solo:0 n
+do_ignore_solo:0 y
 do_litmax:0 n
 palette:1 94
 colormod_enable:1 n
@@ -53,9 +53,9 @@ speed_scale:1 125
 slicer_mergeribbon:1 n
 is_active_on_master:1 y
 is_active_on_solo:1 y
-do_ignore_solo:1 n
+do_ignore_solo:1 y
 do_litmax:1 n
-palette:2 27
+palette:2 28
 colormod_enable:2 y
 colormod_osc:2 92
 colormod_width:2 37
@@ -75,7 +75,7 @@ speed_scale:2 107
 slicer_mergeribbon:2 n
 is_active_on_master:2 y
 is_active_on_solo:2 y
-do_ignore_solo:2 n
+do_ignore_solo:2 y
 do_litmax:2 n
 palette:3 23
 colormod_enable:3 n
@@ -97,9 +97,9 @@ speed_scale:3 91
 slicer_mergeribbon:3 n
 is_active_on_master:3 y
 is_active_on_solo:3 y
-do_ignore_solo:3 n
+do_ignore_solo:3 y
 do_litmax:3 n
-palette:4 73
+palette:4 55
 colormod_enable:4 y
 colormod_osc:4 126
 colormod_width:4 82
@@ -119,7 +119,7 @@ speed_scale:4 63
 slicer_mergeribbon:4 y
 is_active_on_master:4 y
 is_active_on_solo:4 y
-do_ignore_solo:4 n
+do_ignore_solo:4 y
 do_litmax:4 n
 palette:5 58
 colormod_enable:5 y
@@ -139,9 +139,9 @@ feedback_qty:5 112
 strobe_enable:5 n
 speed_scale:5 25
 slicer_mergeribbon:5 n
-is_active_on_master:5 n
+is_active_on_master:5 y
 is_active_on_solo:5 y
-do_ignore_solo:5 n
+do_ignore_solo:5 y
 do_litmax:5 n
 palette:6 72
 colormod_enable:6 n
@@ -158,12 +158,12 @@ slicer_nuneven:6 0
 slicer_useflip:6 y
 feedback_enable:6 y
 feedback_qty:6 112
-strobe_enable:6 n
+strobe_enable:6 y
 speed_scale:6 70
 slicer_mergeribbon:6 n
 is_active_on_master:6 y
 is_active_on_solo:6 y
-do_ignore_solo:6 n
+do_ignore_solo:6 y
 do_litmax:6 n
 palette:7 73
 colormod_enable:7 n
@@ -185,5 +185,5 @@ speed_scale:7 81
 slicer_mergeribbon:7 n
 is_active_on_master:7 y
 is_active_on_solo:7 y
-do_ignore_solo:7 n
+do_ignore_solo:7 y
 do_litmax:7 n

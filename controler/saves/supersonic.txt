@@ -97,7 +97,7 @@ speed_scale:3 127
 slicer_mergeribbon:3 n
 is_active_on_master:3 y
 is_active_on_solo:3 y
-do_ignore_solo:3 n
+do_ignore_solo:3 y
 do_litmax:3 n
 palette:4 40
 colormod_enable:4 y
@@ -118,8 +118,8 @@ strobe_enable:4 n
 speed_scale:4 22
 slicer_mergeribbon:4 y
 is_active_on_master:4 y
-is_active_on_solo:4 n
-do_ignore_solo:4 n
+is_active_on_solo:4 y
+do_ignore_solo:4 y
 do_litmax:4 n
 palette:5 43
 colormod_enable:5 n
@@ -150,7 +150,7 @@ colormod_width:6 96
 colormod_move:6 n
 maskmod_enable:6 y
 maskmod_osc:6 84
-maskmod_width:6 30
+maskmod_width:6 14
 maskmod_move:6 y
 slicer_nslices:6 9
 slicer_useuneven:6 n
@@ -163,7 +163,7 @@ speed_scale:6 108
 slicer_mergeribbon:6 n
 is_active_on_master:6 y
 is_active_on_solo:6 y
-do_ignore_solo:6 n
+do_ignore_solo:6 y
 do_litmax:6 n
 palette:7 37
 colormod_enable:7 n
@@ -172,7 +172,7 @@ colormod_width:7 98
 colormod_move:7 n
 maskmod_enable:7 y
 maskmod_osc:7 85
-maskmod_width:7 21
+maskmod_width:7 14
 maskmod_move:7 y
 slicer_nslices:7 13
 slicer_useuneven:7 y
@@ -181,9 +181,9 @@ slicer_useflip:7 n
 feedback_enable:7 y
 feedback_qty:7 96
 strobe_enable:7 n
-speed_scale:7 36
+speed_scale:7 25
 slicer_mergeribbon:7 n
 is_active_on_master:7 y
 is_active_on_solo:7 y
-do_ignore_solo:7 n
+do_ignore_solo:7 y
 do_litmax:7 n
