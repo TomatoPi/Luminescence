@@ -36,10 +36,14 @@ void str_to_pad(const binding_t* bnd, const char* str, uint8_t val[3])
   val[2] = 0x7F;
 }
 
-Mapper::Mapper()
+const std::vector<binding_t>& Mapper::APC40_mappings()
 {
+  static bool once = true;
+  if (!once) throw 0;
+  once = false;
+  
   // Generate bindings
-  bindings_list = {
+  static std::vector<binding_t> bindings_list = {
     { {0x90, 0x5b}, "load", bool_to_str, str_to_bool},
     { {0x90, 0x5d}, "save", bool_to_str, str_to_bool},
     { {0x90, 0x61}, "prev_preset", bool_to_str, str_to_bool},
@@ -107,6 +111,11 @@ Mapper::Mapper()
     }
   }
 
+  return bindings_list;
+}
+
+Mapper::Mapper(const std::vector<binding_t>& bindings_list)
+{
   // Generate tables
   for (const auto& binding : bindings_list)
   {

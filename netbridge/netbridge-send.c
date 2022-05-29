@@ -25,8 +25,8 @@ int main(int argc, const char* argv[])
 	ssize_t nread;
 	char buf[BUF_SIZE];
 
-	if (argc < 3) {
-		fprintf(stderr, "Usage: %s host port msg...\n", argv[0]);
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s host port...\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -75,10 +75,19 @@ int main(int argc, const char* argv[])
 		len = strlen(buf) + 1;
 		/* +1 for terminating null byte */
     fprintf(stderr, "Send : %s", buf);
-		if (write(sfd, buf, len) != len) {
+		while (write(sfd, buf, len) != len) {
+                   if (errno == EPIPE || 1)
+                   {
+                     fprintf(stderr, "WARNING : Write failed, unconnected read end\n");
+                     perror("write");
+                     continue;
+                     usleep(1000);
+                   }
+                   perror("write");
 		   fprintf(stderr, "partial/failed write\n");
 		   exit(EXIT_FAILURE);
 		}
+                usleep(1000);
 	}
 
 	return 0;
