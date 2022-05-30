@@ -2,7 +2,9 @@
 
 Optopoulpe est un système de lumières de scène basé sur les leds adressables [WS2812B](https://www.digikey.fr/en/datasheets/parallaxinc/parallax-inc-28085-ws2812b-rgb-led-datasheet) et la librairie [FastLed](http://fastled.io/).
 
-# Hardware
+# Contenu du Git
+
+## Hardware
 
 Côté hardware le système est composé de cinq appareils :
 
@@ -13,8 +15,6 @@ Côté hardware le système est composé de cinq appareils :
 - Un contrôleur MIDI APC40 [(doc)](https://www.akaipro.com/apc40)
 
 Ils forment ensemble une chaîne transformant des évènements MIDI en commandes envoyées au générateur d'images manipulant les leds.
-
-# Contenu du Git
 
 ## Driver
 
@@ -27,3 +27,11 @@ Programme tournant sur le laptop, il fait le lien entre le contrôleur MIDI et l
 ## JackProxy
 
 Programme tournant sur le raspberry faisant le pont entre le laptop et l'arduino. Il a été rajouté pour insérer une liaison TCP entre le contrôleur et le driver, pour répondre aux contraintes de distance entre la régie et le plateau.
+
+## Images 
+
+Contiens quelques images prises d'installations faites avec Optopoulpe.
+
+## legacy
+
+Des bouts de code d'anciennes versions et expérimentations diverses.
