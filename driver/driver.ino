@@ -1,8 +1,6 @@
 #include "color_palette.h"
 #include "clock.h"
-#include "range.h"
 #include <FastLED.h>
-#include "apply_modulation.h"
 #include "math.h"
 #include "Composition.h"
 #include "state.h"

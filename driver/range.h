@@ -1,3 +1,6 @@
+/*
+* Unused file
+*/
 #pragma once
 
 template <typename index_t, typename coef_t>

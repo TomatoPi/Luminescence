@@ -10,8 +10,8 @@
 
 class JackBridge {
 public :
-  JackBridge(const char* name);
-  ~JackBridge();
+  explicit JackBridge(const char* name);
+  ~JackBridge() noexcept;
 
   void activate();
 
