@@ -49,11 +49,7 @@ int main(int argc, char* const argv[])
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-<<<<<<< HEAD
 	hints.ai_socktype = SOCK_STREAM; /* Datagram socket */
-=======
-	hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
->>>>>>> e2e193f837d56a0bb56e7017e85f04a55ab86ea4
 	hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
 	hints.ai_protocol = 0;          /* Any protocol */
 	hints.ai_canonname = NULL;
@@ -92,15 +88,12 @@ int main(int argc, char* const argv[])
 
 	freeaddrinfo(result); /* No longer needed */
 
-<<<<<<< HEAD
 	if (-1 == listen(sfd, 10))
 	{
 		perror("Failed to listen on port");
 		exit(EXIT_FAILURE);
 	}
 
-=======
->>>>>>> e2e193f837d56a0bb56e7017e85f04a55ab86ea4
   int serialfd = serialport_init(argv[2], B115200);
   if (serialfd < 0)
   {
@@ -155,7 +148,6 @@ int main(int argc, char* const argv[])
     int client_fd = accept(sfd, (struct sockaddr *) &peer_addr, &peer_addr_len);
     while (is_running)
     {
-<<<<<<< HEAD
       nread = read(client_fd, buffer, 4096);
       if (nread == -1)
       {
@@ -163,19 +155,6 @@ int main(int argc, char* const argv[])
         continue;               /* Ignore failed request */
       }
 
-=======
-      peer_addr_len = sizeof(struct sockaddr_storage);
-      nread = recvfrom(sfd, buffer, 512, 0,
-            (struct sockaddr *) &peer_addr, &peer_addr_len);
-      if (nread == -1)
-        continue;               /* Ignore failed request */
-
-      char host[NI_MAXHOST], service[NI_MAXSERV];
-
-      s = getnameinfo((struct sockaddr *) &peer_addr,
-              peer_addr_len, host, NI_MAXHOST,
-              service, NI_MAXSERV, NI_NUMERICSERV);
->>>>>>> e2e193f837d56a0bb56e7017e85f04a55ab86ea4
       if (s == 0)
       {
         if (write(serialfd, buffer, nread) != nread)
@@ -189,12 +168,8 @@ int main(int argc, char* const argv[])
       }
       else
         fprintf(stderr, "getnameinfo: %s\n", gai_strerror(s));
-<<<<<<< HEAD
-=======
-
->>>>>>> e2e193f837d56a0bb56e7017e85f04a55ab86ea4
     }
-//    kill(cpid, SIGTERM);
+    kill(cpid, SIGTERM);
   }
 
   return 0;

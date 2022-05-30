@@ -7,6 +7,7 @@
 #include <thread>
 #include <utility>
 #include <optional>
+#include <atomic>
 
 class ArduinoBridge {
 
@@ -19,10 +20,19 @@ class ArduinoBridge {
   int socket_fd;
   const char* host, *port;
 
+  std::atomic_flag is_active;
+  std::atomic_flag shutdown;
+
+  bool connect();
+
+  static void callback(ArduinoBridge* bridge);
+
 public:
   ArduinoBridge(const char* host, const char* port);
   ~ArduinoBridge();
 
   void send(size_t addr, const packet_t& packet);
-  std::string receive();
+  std::optional<std::string> receive();
+
+  void kill();
 };

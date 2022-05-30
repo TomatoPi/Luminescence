@@ -13,6 +13,7 @@
 #include <thread>
 #include <future>
 #include <string>
+#include <iostream>
 
 volatile int is_running = 1;
 void sighandler(int sig)
@@ -33,24 +34,25 @@ int main(int argc, char* const argv[])
 
   if (argc != 5)
   {
-    fprintf(stderr, "Usage : %s <setup-file> <save-file> <driver-ip> <driver-port>", argv[0]);
+    fprintf(stderr, "Usage : %s <setup-file> <save-file> <driver-ip> <driver-port>\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
   JackBridge apc_bridge{"APC40-Bridge"};
-  Mapper apc_mapper;
+  Mapper apc_mapper{Mapper::APC40_mappings()};
   Manager manager(argv[2], argv[1]);
   ArduinoBridge arduino(argv[3], argv[4]);
 
   apc_bridge.activate();
 
-  std::future<std::string> input;
+  std::future<std::optional<std::string>> input;
 
   while (is_running)
   {
     if (!input.valid())
     {
-      input = std::async([&]() -> std::string {
+      input = std::async(std::launch::async, [&]() {
+        std::cout << "Wait for arduino message" << '\n';
         return arduino.receive();
       });
     }
@@ -60,7 +62,10 @@ int main(int argc, char* const argv[])
       if (status == std::future_status::ready)
       {
         auto str = input.get();
-        fprintf(stderr, "Recieved from arduino : %s\n", str.c_str());
+        if (!str.has_value())
+          std::cerr << "Failed retrieve value" << '\n';
+        else
+          fprintf(stderr, "Recieved from arduino : %s\n", str.value().c_str());
       }
     }
     auto messages = apc_bridge.incomming_midi();
@@ -86,6 +91,9 @@ int main(int argc, char* const argv[])
     }
     usleep(100);
   }
+  std::cout << "Shuting down program" << std::endl;
+  arduino.kill();
+
 
   return 0;
 }
