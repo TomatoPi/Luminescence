@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "color_palette.h"
 #include "clock.h"
 #include <FastLED.h>
