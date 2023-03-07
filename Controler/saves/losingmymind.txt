@@ -91,7 +91,7 @@ slicer_useuneven:3 n
 slicer_nuneven:3 39
 slicer_useflip:3 y
 feedback_enable:3 y
-feedback_qty:3 102
+feedback_qty:3 84
 strobe_enable:3 y
 speed_scale:3 127
 slicer_mergeribbon:3 n

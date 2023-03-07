@@ -1,6 +1,6 @@
 #include "manager.hpp"
 
-#include "../driver/state.h"
+#include "../Driver/state.h"
 
 #include <stddef.h>
 #include <stdio.h>

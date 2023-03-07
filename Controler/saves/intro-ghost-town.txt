@@ -11,7 +11,7 @@ solo_index 0
 solo_weak_dim 95
 solo_strong_dim 43
 do_kill_lights n
-palette:0 0
+palette:0 3
 colormod_enable:0 n
 colormod_osc:0 76
 colormod_width:0 50
@@ -113,10 +113,10 @@ slicer_useuneven:4 n
 slicer_nuneven:4 51
 slicer_useflip:4 y
 feedback_enable:4 y
-feedback_qty:4 0
+feedback_qty:4 119
 strobe_enable:4 n
-speed_scale:4 83
-slicer_mergeribbon:4 y
+speed_scale:4 71
+slicer_mergeribbon:4 n
 is_active_on_master:4 y
 is_active_on_solo:4 y
 do_ignore_solo:4 y
@@ -159,7 +159,7 @@ slicer_useflip:6 n
 feedback_enable:6 y
 feedback_qty:6 121
 strobe_enable:6 y
-speed_scale:6 81
+speed_scale:6 111
 slicer_mergeribbon:6 n
 is_active_on_master:6 y
 is_active_on_solo:6 y

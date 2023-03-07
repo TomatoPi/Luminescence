@@ -46,6 +46,7 @@ int main(int argc, char* const argv[])
   apc_bridge.activate();
 
   std::future<std::optional<std::string>> input;
+    usleep(1'000'000);
 
   while (is_running)
   {
@@ -68,8 +69,19 @@ int main(int argc, char* const argv[])
           fprintf(stderr, "Recieved from arduino : %s\n", str.value().c_str());
       }
     }
+    
     auto messages = apc_bridge.incomming_midi();
-    for (auto& msg : messages)
+/*
+    static bool once = true;
+    if (false && once)
+    {
+        once = false;
+        messages.emplace_back(std::vector<uint8_t>({0x90, 0x5B, 0x7F}));
+        messages.emplace_back(std::vector<uint8_t>({0xB0, 0x0E, 0x7F}));
+        messages.emplace_back(std::vector<uint8_t>({0xB0, 0x07, 0x7F}));
+    }
+*/  
+  for (auto& msg : messages)
     {
       auto commands = apc_mapper.midimsg_to_command(msg);
       for (auto& cmd : commands)
@@ -89,7 +101,7 @@ int main(int argc, char* const argv[])
         }
       }
     }
-    usleep(100);
+    //m usleep(1'000'000);
   }
   std::cout << "Shuting down program" << std::endl;
   arduino.kill();

@@ -11,7 +11,7 @@ solo_index 2
 solo_weak_dim 76
 solo_strong_dim 109
 do_kill_lights n
-palette:0 0
+palette:0 6
 colormod_enable:0 y
 colormod_osc:0 13
 colormod_width:0 127
@@ -74,7 +74,7 @@ strobe_enable:2 n
 speed_scale:2 72
 slicer_mergeribbon:2 n
 is_active_on_master:2 y
-is_active_on_solo:2 n
+is_active_on_solo:2 y
 do_ignore_solo:2 y
 do_litmax:2 n
 palette:3 88
@@ -118,8 +118,8 @@ strobe_enable:4 n
 speed_scale:4 63
 slicer_mergeribbon:4 n
 is_active_on_master:4 y
-is_active_on_solo:4 n
-do_ignore_solo:4 n
+is_active_on_solo:4 y
+do_ignore_solo:4 y
 do_litmax:4 n
 palette:5 102
 colormod_enable:5 n
@@ -141,7 +141,7 @@ speed_scale:5 64
 slicer_mergeribbon:5 n
 is_active_on_master:5 y
 is_active_on_solo:5 y
-do_ignore_solo:5 n
+do_ignore_solo:5 y
 do_litmax:5 n
 palette:6 85
 colormod_enable:6 n
@@ -161,7 +161,7 @@ feedback_qty:6 0
 strobe_enable:6 n
 speed_scale:6 127
 slicer_mergeribbon:6 n
-is_active_on_master:6 n
+is_active_on_master:6 y
 is_active_on_solo:6 y
 do_ignore_solo:6 y
 do_litmax:6 n
@@ -183,7 +183,7 @@ feedback_qty:7 74
 strobe_enable:7 y
 speed_scale:7 66
 slicer_mergeribbon:7 y
-is_active_on_master:7 n
+is_active_on_master:7 y
 is_active_on_solo:7 y
-do_ignore_solo:7 n
+do_ignore_solo:7 y
 do_litmax:7 n

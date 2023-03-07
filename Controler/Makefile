@@ -18,7 +18,7 @@ jack-bridge.o: jack-bridge.hpp thread-queue.hpp
 
 mapper.o: mapper.hpp
 
-manager.o: manager.hpp ../driver/state.h
+manager.o: manager.hpp ../Driver/state.h
 
 arduino-bridge.o: arduino-bridge.hpp
 

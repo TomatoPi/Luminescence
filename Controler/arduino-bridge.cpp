@@ -33,7 +33,7 @@ ArduinoBridge::~ArduinoBridge()
 void ArduinoBridge::callback(ArduinoBridge* bridge)
 {
   std::cout << "Starting Arduino Bridge" << std::endl;
-  while (bridge->shutdown.test())
+  while (bridge->shutdown.test_and_set())
   {
     try {
 
@@ -45,7 +45,7 @@ void ArduinoBridge::callback(ArduinoBridge* bridge)
       std::cout << '\b' << "Connection accepted" << '\n';
 
       std::unordered_map<size_t, packet_t> pending_objects;
-      while (bridge->shutdown.test())
+      while (bridge->shutdown.test_and_set())
       {
         // std::cout << "Connection Loop Begin" << '\n';
         std::optional<pending_obj_t> optobj;
@@ -154,7 +154,7 @@ void ArduinoBridge::send(size_t addr, const packet_t& packet)
 }
 std::optional<std::string> ArduinoBridge::receive()
 {
-  if (!is_active.test())
+  if (!is_active.test_and_set())
     return std::nullopt;
 
   char buffer[512];

@@ -139,8 +139,8 @@ feedback_qty:5 90
 strobe_enable:5 n
 speed_scale:5 64
 slicer_mergeribbon:5 y
-is_active_on_master:5 n
-is_active_on_solo:5 n
+is_active_on_master:5 y
+is_active_on_solo:5 y
 do_ignore_solo:5 y
 do_litmax:5 n
 palette:6 99
@@ -183,7 +183,7 @@ feedback_qty:7 93
 strobe_enable:7 n
 speed_scale:7 109
 slicer_mergeribbon:7 n
-is_active_on_master:7 n
+is_active_on_master:7 y
 is_active_on_solo:7 y
-do_ignore_solo:7 n
+do_ignore_solo:7 y
 do_litmax:7 n
