@@ -6,41 +6,56 @@
 #include <vector>
 #include <cstdint>
 #include <optional>
+
 #include <future>
 #include <mutex>
 #include <queue>
 #include <thread>
 
-namespace bridge
-{
-  struct address {
-    std::string host;
-    std::string port;
-  };
+#include <variant>
 
+/// @brief Namespace holding all objects related to communication
+///   with display devices
+namespace transport
+{
+  /// @brief Common object representing packets sent to devices
   struct packet {
     enum class status {
       Failed, Sent, Skipped
     };
       
-    uint64_t address;
+    uint64_t uuid;
     std::vector<uint8_t> payload;
   };
 
+  /// @brief Common object representing a reply from a device
   struct reply {
     std::string content;
   };
 
-  class bridge {
+  /// @brief Interface for objects holding a connection to a device
+  class transport {
   public:
 
+    /// @brief Send a packet to the connected device
+    /// @param p the packet to send
+    /// @return The future packet status, which will be determined
+    ///   when the bridge has processed given packet
     virtual std::future<packet::status> send(const packet& p) = 0;
+
+    /// @brief Look for incomming transmition from the device
+    /// @return A message from the device if available
     virtual std::optional<reply> receive() = 0;
 
+    /// @brief Must stop communication with the device
+    /// @param async if true, this call is non-blocking
     virtual void kill(bool async = false) = 0;
+
+    /// @brief Check for device availability
+    /// @return true if the device is available for communication
     virtual bool alive() const noexcept = 0;
     
-    virtual ~bridge() = default;
+    virtual ~transport() = default;
   };
 
   class async_bridge : bridge {
@@ -67,6 +82,17 @@ namespace bridge
     async_bridge(Args&&... args)
       : _to_device(), _from_device(), _sending_thread(std::forward<Args>(args)...)
       {}
+
+    async_bridge(const async_bridge&) = delete;
+    async_bridge& operator= (const async_bridge&) = delete;
+
+    async_bridge(async_bridge&& o) 
+    : _to_device(std::move(o._to_device)),
+    _from_device(std::move(o._from_device)),
+    _sending_thread(std::move(o._sending_thread))
+    {}
+
+    ~async_bridge() = default;
 
     // Interface with derived classes
 
@@ -102,7 +128,132 @@ namespace bridge
     bool alive() const noexcept override { return !_sending_thread.get_stop_token().stop_requested(); }
   };
 
+  template <
+    typename T,
+    typename Signature = typename T::signature_type
+    >
+  class persistant_bridge_adaptor : public bridge {
+  public :
+    enum class status {
+      Dead, Active, Pending
+    };
 
+    using impl_type = T;
+    using impl_signature_type = Signature;
+
+  private:
+    using future_impl_type = std::future<impl_type>;
+    using dead_impl_type = int; /// Placeholder object
+    using opt_impl_type = std::variant<impl_type, future_impl_type, dead_impl_type>;
+
+    template<class... Ts> struct visitor : Ts... { using Ts::operator()...; };
+
+    impl_signature_type _sig;
+    opt_impl_type       _impl;
+    bool                _killed;
+
+    static opt_impl_type open(const impl_signature_type& sig)
+    {
+      return std::async([](const impl_signature_type& sig) -> impl_type {
+        return impl_type(sig);
+      }, sig);
+    }
+
+    void try_relaunch()
+    { if (!_killed) _impl = open(_sig); }
+
+    bool enforce_state()
+    {
+      if (_killed)
+        return false;
+      
+      switch (this->get_status())
+      {
+      case status::Dead :
+        this->try_relaunch();
+        return false;
+      case status::Active :
+        return true;
+      case status::Pending :
+      {
+        auto& f = std::get<future_impl_type>(_impl);
+        if (f.wait_for(std::chrono::seconds(0)) != std::future_status::timeout)
+        {
+          auto tmp = f.get();
+          _impl = std::move(tmp);
+          return true;
+        }
+        else
+          return false;
+      }
+      }
+    }
+
+  public:
+    
+    persistant_bridge_adaptor(auto&& ...args)
+    : _sig(std::forward<decltype(args)>(args)...), _impl(open(_sig)), _killed(false)
+    {}
+
+    status get_status() const noexcept
+    {
+      return std::visit(visitor{
+        [](impl_type& impl) { return impl.alive() ? status::Active : status::Dead; },
+        [](future_impl_type& future) { return future.valid() ? status::Pending : status::Dead; },
+        [](dead_impl_type) { return status::Dead; }
+      }, _impl);
+    }
+
+    std::future<packet::status> send(const packet& p) override
+    {
+      if (!enforce_state())
+        return std::async(std::launch::deferred, [](){ return packet::status::Failed; });
+
+      try {
+
+      }
+      catch (std::exception& e)
+      {
+
+      }
+    }
+
+    std::optional<reply> receive() override
+    {
+      if (!enforce_state())
+        return std::nullopt;
+
+      try {
+
+      }
+      catch (std::exception& e)
+      {
+
+      }
+    }
+
+    void kill(bool async = false) override
+    {
+      _killed = true;
+      if (_impl.index() == 0)
+        std::get<0>(_impl).kill(async);
+      
+      if (!async) // kill now -> destroy the current _impl
+        _impl = dead_impl_type();
+    }
+
+    bool alive() const noexcept override
+    {
+      return !_killed
+        && impl_type::validate(_sig)
+        && !_impl.valueless_by_exception()
+        && std::visit(visitor{
+          [](impl_type& impl) { return impl.alive(); },
+          [](future_impl_type& future) { return future.valid(); },
+          [](dead_impl_type) { return false; }
+          }, _impl);
+    }
+  };
 
   // enum class status {
   //   Dead, Ok

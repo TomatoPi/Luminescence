@@ -8,6 +8,16 @@
 namespace bridge {
 namespace tcp {
 
+struct address {
+  std::string host;
+  std::string port;
+};
+
+struct config {
+  std::chrono::milliseconds send_slewrate = std::chrono::milliseconds(10);
+  size_t buffer_size = 1024;
+};
+
 class socket {
 public :
 
@@ -37,20 +47,34 @@ private :
   int _fd;
 };
 
-struct config {
-  std::chrono::milliseconds send_slewrate = std::chrono::milliseconds(10);
-  size_t buffer_size = 1024;
-};
-
 class tcp_bridge : public async_bridge {
 public:
 
+  using signature_type = std::tuple<address, config>;
   using config_proxy = utils::locked<config>::proxy;
+
+  static bool validate(const signature_type& sig) noexcept
+  {
+    return 0 < std::get<0>(sig).host.size()
+      && 0 < std::get<0>(sig).port.size()
+      && 0 < std::get<1>(sig).buffer_size
+      ;
+  }
 
   tcp_bridge(const address& address, const config& cfg = config())
   : async_bridge(&tcp_bridge::threadfn, this, socket::open(address)),
   _cfg(std::mutex(), cfg)
   {}
+
+  tcp_bridge(const signature_type& sig)
+  : tcp_bridge(std::get<0>(sig), std::get<1>(sig))
+  {}
+
+  tcp_bridge(const tcp_bridge&) = delete;
+  tcp_bridge& operator= (const tcp_bridge&) = delete;
+
+  tcp_bridge(tcp_bridge&& o) : ;
+  tcp_bridge& operator= (tcp_bridge&& o) = delete;
 
   const config& get_config() const noexcept { return _cfg._obj; }
   config_proxy set_config() noexcept { return _cfg.lock(); }

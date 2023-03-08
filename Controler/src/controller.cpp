@@ -134,10 +134,10 @@ int main(int argc, char * const argv[])
   }
   {
     using namespace bridge::tcp;
-    tcp_bridge tbridge(bridge::address{"192.168.0.177", "8000"});
+    tcp_bridge tbridge(bridge::tcp::address{"192.168.0.177", "8000"});
     std::this_thread::sleep_for(1000ms);
 
-    for (int i=0 ; i<10 ; ++i)
+    for (unsigned int i=0 ; i<10 ; ++i)
     {
       std::cout << "Try send bytes to arduino\n";
       auto f = tbridge.send(bridge::packet{i, {(uint8_t)i, 'H', 'R', 'u', '\n', '\n'}});
@@ -155,6 +155,15 @@ int main(int argc, char * const argv[])
     }
 
     std::cout << "Close the connection\n";
+  }
+
+  {
+    using persistant_tcp_bridge = bridge::persistant_bridge_adaptor<bridge::tcp::tcp_bridge>;
+
+    bridge::tcp::address address{"192.168.0.177", "8000"};
+    bridge::tcp::config config;
+
+    persistant_tcp_bridge pbridge(std::make_tuple(address, config));
   }
 
   return 0;
