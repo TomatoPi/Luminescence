@@ -146,8 +146,6 @@ namespace transport
     using dead_impl_type = int; /// Placeholder object
     using opt_impl_type = std::variant<impl_type, future_impl_type, dead_impl_type>;
 
-    template<class... Ts> struct visitor : Ts... { using Ts::operator()...; };
-
     impl_signature_type _sig;
     opt_impl_type       _impl;
     bool                _killed;
