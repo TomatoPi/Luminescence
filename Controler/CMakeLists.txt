@@ -4,16 +4,16 @@ project(Controller VERSION 0.0.1)
 include(FindPkgConfig)
 
 set(HEADERS
-  src/transport.h
-  src/transports/tcp.h
-  src/transports/serial.h
+  src/transport/transport.h
+  src/transport/transports/tcp.h
+  src/transport/transports/serial.h
   )
   
   set(SOURCES
   src/main.cpp
   
-  src/transports/tcp.cpp
-  src/transports/serial.cpp
+  src/transport/transports/tcp.cpp
+  src/transport/transports/serial.cpp
 )
 
 add_executable(Controller ${HEADER} ${SOURCES})

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "utils/visitor.h"
-
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -9,7 +7,7 @@
 
 /// @brief Namespace holding all objects related to communication
 ///   with display devices
-namespace transport
+namespace opto::inline transport
 {
   /* *** To Device Communication objects *** */
 

@@ -71,17 +71,17 @@ int main(int argc, char* const argv[])
     }
     
     auto messages = apc_bridge.incomming_midi();
-/*
-    static bool once = true;
-    if (false && once)
-    {
-        once = false;
-        messages.emplace_back(std::vector<uint8_t>({0x90, 0x5B, 0x7F}));
-        messages.emplace_back(std::vector<uint8_t>({0xB0, 0x0E, 0x7F}));
-        messages.emplace_back(std::vector<uint8_t>({0xB0, 0x07, 0x7F}));
-    }
-*/  
-  for (auto& msg : messages)
+    /*
+        static bool once = true;
+        if (false && once)
+        {
+            once = false;
+            messages.emplace_back(std::vector<uint8_t>({0x90, 0x5B, 0x7F}));
+            messages.emplace_back(std::vector<uint8_t>({0xB0, 0x0E, 0x7F}));
+            messages.emplace_back(std::vector<uint8_t>({0xB0, 0x07, 0x7F}));
+        }
+    */  
+    for (auto& msg : messages)
     {
       auto commands = apc_mapper.midimsg_to_command(msg);
       for (auto& cmd : commands)

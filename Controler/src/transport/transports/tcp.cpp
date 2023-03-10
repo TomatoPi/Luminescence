@@ -20,7 +20,7 @@
 
 #include <stdexcept>
 
-namespace transport {
+namespace opto:: inline transport {
 namespace tcp {
 
 packet_status socket::vsend(const packet_payload& p)
