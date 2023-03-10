@@ -4,15 +4,14 @@ project(Controller VERSION 0.0.1)
 include(FindPkgConfig)
 
 set(HEADERS
-  src/bridge.h
-  src/bridges/tcp.h
-  src/utils/lock.h
+  src/transport.h
+  src/transports/tcp.h
   )
   
 set(SOURCES
-  src/bridge.cpp
-  src/bridges/tcp.cpp
-  src/controller.cpp
+  src/main.cpp
+
+  src/transports/tcp.cpp
 )
 
 add_executable(Controller ${HEADER} ${SOURCES})
