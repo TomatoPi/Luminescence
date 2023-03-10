@@ -6,12 +6,14 @@ include(FindPkgConfig)
 set(HEADERS
   src/transport.h
   src/transports/tcp.h
+  src/transports/serial.h
   )
   
-set(SOURCES
+  set(SOURCES
   src/main.cpp
-
+  
   src/transports/tcp.cpp
+  src/transports/serial.cpp
 )
 
 add_executable(Controller ${HEADER} ${SOURCES})
