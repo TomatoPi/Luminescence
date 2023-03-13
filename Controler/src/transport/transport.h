@@ -32,7 +32,7 @@ namespace opto::inline transport
   /// @brief Exception raised when the method send or receive is called
   ///   on a transport which alive() method returns false
   struct bad_transport : std::exception {};
-
+  
   /* *** Transport public interface *** */
 
   /// @brief Interface for objects holding a connection to a device

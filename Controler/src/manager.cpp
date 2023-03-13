@@ -1,6 +1,6 @@
 #include "manager.hpp"
 
-#include "../Driver/state.h"
+#include "state.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -27,24 +27,25 @@ std::vector<uint8_t> control_t::to_raw_message() const
 {
   char rawmsg[512];
   size_t msglen = 0;
-  rawmsg[0] = (addr_offset & 0xFF00) >> 8;
-  rawmsg[1] = addr_offset & 0xFF;
+  rawmsg[0] = 0xFF;
+  rawmsg[1] = (addr_offset & 0xFF00) >> 8;
+  rawmsg[2] = addr_offset & 0xFF;
   switch (type)
   {
   case control_t::UINT7:
-    rawmsg[2] = 1;
-    rawmsg[3] = val.u;
-    msglen = 4;
+    rawmsg[3] = 1;
+    rawmsg[4] = val.u;
+    msglen = 5;
     break;
   case control_t::BOOL:
-    rawmsg[2] = 1;
-    rawmsg[3] = val.b ? 0x7F : 0x00;
-    msglen = 4;
+    rawmsg[3] = 1;
+    rawmsg[4] = val.b ? 0x7F : 0x00;
+    msglen = 5;
     break;
   case control_t::FLOAT:
-    rawmsg[2] = sizeof(float);
-    memcpy(rawmsg+3, &val.f, sizeof(float));
-    msglen = 3 + sizeof(float);
+    rawmsg[3] = sizeof(float);
+    memcpy(rawmsg+4, &val.f, sizeof(float));
+    msglen = 4 + sizeof(float);
     break;
   }
   std::vector<uint8_t> msg;

@@ -7,13 +7,23 @@ set(HEADERS
   src/transport/transport.h
   src/transport/transports/tcp.h
   src/transport/transports/serial.h
+
+  src/device.h
+
+  src/jack-bridge.hpp
+  src/manager.hpp
+  src/mapper.hpp
   )
   
   set(SOURCES
-  src/main.cpp
+  src/controller.cpp
   
   src/transport/transports/tcp.cpp
   src/transport/transports/serial.cpp
+
+  src/jack-bridge.cpp
+  src/manager.cpp
+  src/mapper.cpp
 )
 
 add_executable(Controller ${HEADER} ${SOURCES})

@@ -1,170 +1,219 @@
+#include "jack-bridge.hpp"
+#include "mapper.hpp"
+#include "manager.hpp"
 
-#include "bridge.h"
-#include "bridges/tcp.h"
+#include "device.h"
 
-#include <iostream>
-#include <cassert>
-#include <chrono>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <signal.h>
+
 #include <thread>
+#include <future>
+#include <string>
+#include <iostream>
 
-namespace bridge {
-  class dummy_bridge : public bridge {
-  public :
+#include <unordered_map>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 
-    std::future<packet::status> send(const packet& p) override
-    { 
-      std::cout << "sent " << p.payload.size() << " bytes to "
-        << p.address << std::endl;
-      auto& prm = tasks.emplace_back();
-      return tasks.back().get_future();
-    }
-
-    std::optional<reply> receive() override
-    {
-      if (tasks.size() != 0)
-        return std::make_optional<reply>(std::to_string(tasks.size()) + " Objects pending");
-      else
-        return std::nullopt;
-    }
-
-    void flush() { for (auto& t : tasks) t.set_value(packet::status::Sent); }
-    void kill(bool async = false) override {}
-    bool alive() const noexcept override { return true; }
-
-    ~dummy_bridge() = default;
-
-  private :
-    std::vector<std::promise<packet::status>> tasks;
-  };
-
-  class dummy_async_bridge : public async_bridge {
-  public :
-    dummy_async_bridge() : async_bridge(std::jthread(
-        [](std::stop_token stoken, dummy_async_bridge* bridge) -> void {
-          while (!stoken.stop_requested())
-          {
-            {
-              auto proxy = bridge->to_device();
-              if (proxy._obj.empty())
-                continue;
-              std::cout << "Objects pending : " << proxy._obj.size() << "\n";
-              auto& msg = proxy._obj.front();
-              {
-                auto rproxy = bridge->from_device();
-                rproxy._obj.emplace(std::string("Sending object to ")
-                  + std::to_string(msg.second.address) + " : "
-                  + std::to_string(msg.second.payload.size()));
-              }
-              msg.first.set_value(packet::status::Sent);
-              proxy._obj.pop();
-              if (!proxy._obj.empty())
-                continue;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
-          }
-      }, this)) 
-      {}
-
-    ~dummy_async_bridge() {
-      kill();
-    }
-  private :
-  };
+volatile int is_running = 1;
+void sighandler(int sig)
+{
+	switch(sig)
+	{
+	case SIGTERM:
+	case SIGINT:
+		is_running = 0;
+		break;
+	}
 }
 
-int main(int argc, char * const argv[])
+std::vector<opto::device> parse_drivers(const std::filesystem::path& path)
 {
-  using namespace std::chrono_literals;
-  {
-    bridge::dummy_bridge bridge;
-    assert(bridge.alive());
+  std::cout << "Read devices from : " << path << '\n';
+  std::vector<opto::device> devices;
+  std::ifstream stream(path);
+  for (std::array<char, 256> buff; stream.getline(&buff[0], 256, '\n');)
+  try {
+    if (buff[0] == '#')
+      continue;
 
-    auto f = bridge.send(bridge::packet{19, {0, 1, 2, 0xFF}});
-    assert(f.valid());
+    std::cout << "Parsing new device : " << &buff[0] << '\n';
 
-    auto r = bridge.receive();
-    assert(r.has_value());
-    std::cout << "Received : " << r.value().content << std::endl;
+    std::istringstream input(&buff[0]);
+    auto getline = [&](){
+      std::array<char, 256> tmp;
+      if (!input.getline(&tmp[0], 256, ' '))
+        throw std::string("Ill formed line : '") + std::string(&buff[0]);
+      return std::string(&tmp[0]);
+    };
+
+    opto::device_config cfg{getline()};
+    std::cout << "  Device name : " << cfg.name << '\n';
+
+    auto protocol_signature = [&]()
+    -> opto::transport_signature_type {
+      std::string protocol{getline()};
+      if (protocol.compare("TCP") == 0)
+      {
+        std::cout << "  TCP Protocol : " << cfg.name << '\n';
+
+        std::string host{getline()};
+        std::string port{getline()};
+
+        opto::tcp::address addr{host, port};
+        std::cout << "    Host=" << addr.host << " Port=" << addr.port << '\n';
+
+        opto::tcp::keepalive_config kcfg;
+        input >> kcfg.counter;
+        input >> kcfg.interval;
+        std::cout << "    KeepAlive : Counter=" << kcfg.counter << " Interval=" << kcfg.interval << '\n';
+
+        opto::tcp::socket_config socket_config{addr, kcfg};
+
+        opto::tcp::runtime_config rcfg;
+        input >> rcfg.buffer_size;
+        std::cout << "    Receive : Buffersize=" << rcfg.buffer_size << '\n';
+
+        return opto::tcp::socket_signature{socket_config, rcfg};
+      }
+      else if (protocol.compare("SERIAL") == 0)
+      {
+        std::cout << "  Serial Protocol : " << cfg.name << '\n';
+
+        std::string port{getline()};
+        int baudrate;
+        input >> baudrate;
+
+        opto::serial::address addr{port, baudrate};
+        std::cout << "    Port=" << addr.port << " Speed=" << addr.baudrate << '\n';
+
+        opto::serial::serial_config serial_config{addr};
+
+        opto::serial::runtime_config rcfg;
+        input >> rcfg.buffer_size;
+        std::cout << "    Receive : Buffersize=" << rcfg.buffer_size << '\n';
+
+        return opto::serial::serial_signature{serial_config, rcfg};
+      }
+      else
+        throw std::string("Invalid protocol : ") + protocol;
+    }();
+
+    std::cout << "  Openning device ...\n";
+    opto::device_signature device_signature{cfg, protocol_signature};
+    opto::device newdevice(device_signature);
     
-    assert(f.wait_for(0s) == std::future_status::timeout);
-    bridge.flush();
-    assert(f.wait_for(0s) == std::future_status::ready);
-    assert(f.get() == bridge::packet::status::Sent);
+    devices.emplace_back(std::move(newdevice));
+    std::cout << "Done !\n";
   }
+  catch (std::string what)
   {
-    bridge::dummy_async_bridge abridge;
-    assert(abridge.alive());
-
-    std::vector<std::future<bridge::packet::status>> pendings;
-    auto sender = std::async([&]() -> void {
-      for (size_t i=0 ; i<10 ; ++i)
-      {
-        assert(abridge.alive());
-        auto f = abridge.send(bridge::packet{i, {}});
-        assert(f.valid());
-        pendings.emplace_back(std::move(f));
-        std::this_thread::sleep_for(15ms);
-      }
-    });
-
-    auto receiver = std::async([&]() -> void {
-      size_t index = 0;
-      for (size_t i=0 ; i<20 ; ++i)
-      {
-        auto rsp = abridge.receive();
-        if (rsp.has_value())
-        {
-          assert(pendings[index].valid());
-          assert(pendings[index].wait_for(0s) == std::future_status::ready);
-          std::cout << "Received : " << rsp.value().content << "\n";
-          index += 1;
-        }
-        else
-        {
-          // may not pass on bad chance
-          if (index < pendings.size())
-            assert(pendings[index].wait_for(0s) == std::future_status::timeout);
-        }
-        std::this_thread::sleep_for(52ms);
-      }
-    });
-
-    sender.wait();
-    receiver.wait();
+    std::cerr << what << '\n';
+    continue;
   }
-  {
-    using namespace bridge::tcp;
-    tcp_bridge tbridge(bridge::tcp::address{"192.168.0.177", "8000"});
-    std::this_thread::sleep_for(1000ms);
+  return devices;
+}
 
-    for (unsigned int i=0 ; i<10 ; ++i)
+int main(int argc, char* const argv[])
+{
+	signal(SIGTERM, sighandler);
+	signal(SIGINT, sighandler);
+
+  // if (argc != 4)
+  // {
+  //   fprintf(stderr, "Usage : %s <setup-file> <save-file> <drivers-file>\n", argv[0]);
+  //   exit(EXIT_FAILURE);
+  // }
+
+  JackBridge apc_bridge{"APC40-Bridge"};
+  Mapper apc_mapper{Mapper::APC40_mappings()};
+  Manager manager(
+    "/home/sfxd/Documents/2.0/progs/Optopoulpe/config/save.txt", 
+    "/home/sfxd/Documents/2.0/progs/Optopoulpe/config/setup.txt"); // (argv[2], argv[1]);
+  auto devices{parse_drivers(
+    "/home/sfxd/Documents/2.0/progs/Optopoulpe/config/devices.txt")}; // argv[3])};
+
+  if (devices.size() == 0)
+  {
+    std::cerr << "No devices binded ... Exit\n";
+    exit(EXIT_FAILURE);
+  }
+
+  apc_bridge.activate();
+
+  usleep(1'000'000);
+
+  std::cout << "Controller initialised, entering main loop\n";
+  while (is_running)
+  {
+    for (auto& device : devices)
     {
-      std::cout << "Try send bytes to arduino\n";
-      auto f = tbridge.send(bridge::packet{i, {(uint8_t)i, 'H', 'R', 'u', '\n', '\n'}});
-      assert(f.valid());
-      std::this_thread::sleep_for(500ms);
-      assert(f.wait_for(0s) == std::future_status::ready);
+      if (!device.alive())
+      {
+        // std::cerr << "[" << device.config().name << "] - Read : " << "Bad device\n";
+        continue;
+      }
+        
+      auto input = device.receive();
+      if (!input.has_value())
+        continue;
+      std::cout << "[" << device.config().name << "] - " << input.value().content << '\n';
+    }
+    
+    std::unordered_map<size_t, std::vector<uint8_t>> bulk;
+
+    auto messages = apc_bridge.incomming_midi();
+    for (auto& msg : messages)
+    {
+      auto commands = apc_mapper.midimsg_to_command(msg);
+      for (auto& cmd : commands)
+      {
+        auto result = manager.process_command(cmd);
+        for (auto& [ctrl, force] : result)
+        {
+          if (force || !(ctrl->flags & control_t::VOLATILE))
+          {
+            auto messages = apc_mapper.command_to_midimsg(ctrl->to_command_string());
+            for (auto& msg : messages)
+            {
+              apc_bridge.send_midi(std::move(msg));
+            }
+          }
+          bulk.emplace(ctrl->addr_offset, ctrl->to_raw_message());
+        }
+      }
     }
 
-    for (int i=0 ; i<50 ; ++i)
+    for (auto& [addr, payload] : bulk)
     {
-      auto rsp = tbridge.receive();
-      if (rsp.has_value())
-        std::cout << "Received from arduino : \n" << rsp.value().content << "\n";
-      std::this_thread::sleep_for(100ms);
+      for (auto& device : devices)
+      {
+        if (!device.alive())
+        {
+          // std::cerr << "[" << device.config().name << "] - Write : " << "Bad device\n";
+          continue;
+        }
+
+        switch (device.send(payload))
+        {
+          case opto::packet_status::Sent :
+            std::this_thread::sleep_for(std::chrono::microseconds(1000));
+            continue;
+          case opto::packet_status::Failed :
+            std::cerr << "[" << device.config().name << "] - Failed send Packet to addr " << addr << '\n';
+            continue;
+        }
+      }
     }
-
-    std::cout << "Close the connection\n";
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
-
-  {
-    using persistant_tcp_bridge = bridge::persistant_bridge_adaptor<bridge::tcp::tcp_bridge>;
-
-    bridge::tcp::address address{"192.168.0.177", "8000"};
-    bridge::tcp::config config;
-
-    persistant_tcp_bridge pbridge(std::make_tuple(address, config));
-  }
+  std::cout << "Shuting down program" << std::endl;
 
   return 0;
 }

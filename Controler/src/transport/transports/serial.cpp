@@ -58,7 +58,8 @@ opt_reply serial::vreceive()
 /// @return opened socket's file descriptor on success, throw on failure
 int serial::open(const serial_config& cfg)
 {
-  int fd = open(cfg.port.c_str(), O_RDWR | O_NONBLOCK );
+  auto addr = std::get<address>(cfg);
+  int fd = ::open(addr.port.c_str(), O_RDWR | O_NONBLOCK );
   
   if (fd == -1)
   {
@@ -77,7 +78,7 @@ int serial::open(const serial_config& cfg)
     throw std::runtime_error("serialport open : tcgetattr : " + std::string(strerror(err)));
   }
 
-  speed_t brate = cfg.baudrate;
+  speed_t brate = addr.baudrate;
   cfsetispeed(&toptions, brate);
   cfsetospeed(&toptions, brate);
 
@@ -113,7 +114,7 @@ int serial::open(const serial_config& cfg)
 }
 
 /// @brief Close the holded file descriptor if exists, throw on failure
-void socket::close(int fd)
+void serial::close(int fd)
 {
   if (fd != 0)
     ::close(fd);

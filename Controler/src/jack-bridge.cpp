@@ -73,6 +73,29 @@ void JackBridge::activate()
 {
 	if (0 != jack_activate(client))
 		throw std::runtime_error("Can't activvate client");
+
+	const char **ports = jack_get_ports (client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsPhysical|JackPortIsOutput);
+	if (ports == NULL)
+		throw std::runtime_error("no physical capture ports");
+
+  for (const char** p = ports; *p != nullptr; ++p)
+    if (strcmp(*p, jack_port_name(midi_in)) && jack_connect (client, *p, jack_port_name (midi_in)))
+      throw std::runtime_error("cannot connect input ports" 
+          + std::string(*p)
+          + " : " + std::string(jack_port_name (midi_out)));
+	free (ports);
+	
+	ports = jack_get_ports (client, NULL, JACK_DEFAULT_MIDI_TYPE, JackPortIsPhysical|JackPortIsInput);
+	if (ports == NULL)
+		throw std::runtime_error("no physical playback ports");
+
+  for (const char** p = ports; *p != nullptr; ++p)
+    if (strcmp(*p, jack_port_name(midi_out)) && jack_connect (client, jack_port_name(midi_out), *p))
+        throw std::runtime_error("cannot connect output ports : " 
+          + std::string(jack_port_name (midi_out)) 
+          + " : " + std::string(*p));
+
+	free (ports);
 }
 
 std::vector<std::vector<uint8_t>> JackBridge::incomming_midi()

@@ -1,3 +1,7 @@
+// #define OPTOPOULPE_MAXIMATOR
+#define OPTOPOULPE_SATELITE
+// #define OPTOPOULPE_MIRRORS
+
 #include <Arduino.h>
 #include "color_palette.h"
 #include "clock.h"
@@ -5,12 +9,28 @@
 #include "math.h"
 #include "Composition.h"
 #include "state.h"
+#include <Ethernet.h>
 
-#ifdef ARDUINO_SAM_DUE
-#else // ifdef ARDUINO_SAM_DUE
-#endif // ifdef ARDUINO_SAM_DUE
+// #define SERIAL SerialUSB
+#define SERIAL Serial
 
-#define SERIAL SerialUSB
+#ifdef OPTOPOULPE_MAXIMATOR
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 0, 200);
+EthernetServer server(8000);
+#endif
+
+#ifdef OPTOPOULPE_SATELITE
+byte mac[] = { 0xDE, 0xAD, 0xEF, 0xBE, 0xED, 0xFE };
+IPAddress ip(192, 168, 0, 210);
+EthernetServer server(8000);
+#endif
+
+#ifdef OPTOPOULPE_MIRRORS
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 0, 220);
+EthernetServer server(8000);
+#endif
 
 // WS2811_PORTD: 25,26,27,28,14,15,29,11
 
@@ -59,16 +79,35 @@ uint8_t holded_values[PRESETS_COUNT][MaxRibbonsCount][2];
 FastClock strobe_clock;
 uint8_t coarse_framerate;
 
-bool connection_lost = false;
-
 state_t global;
 
 void setup()
 {
   SERIAL.begin(115200);
 
+  Ethernet.begin(mac, ip);
+  if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+    Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+    // BAIL CRITICAL ERROR
+  }
+
+  while (Ethernet.linkStatus() == LinkOFF) {
+    Serial.println("Ethernet cable is not connected.");
+    delay(100);
+    // BAIL SEVERE ERROR
+  }
+
+#ifdef OPTOPOULPE_MAXIMATOR
   FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
-  
+#endif
+#ifdef OPTOPOULPE_SATELITE
+  FastLED.addLeds<WS2812B, 3, RGB>(leds, MaxLedsPerRibbon);
+  FastLED.addLeds<WS2812B, 5, RGB>(leds + MaxLedsPerRibbon, MaxLedsPerRibbon);
+#endif
+#ifdef OPTOPOULPE_MIRRORS
+  FastLED.addLeds<P9813, 3, 13, RGB>(leds, MaxLedsCount);
+#endif
+
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
   FastLED.setMaxRefreshRate(50);
 
@@ -78,6 +117,10 @@ void setup()
   }
 
   FastLED.delay(1000);
+
+  server.begin();
+  Serial.print("server is ready at ");
+  Serial.println(Ethernet.localIP());
 }
 
 void update_clocks()
@@ -119,7 +162,7 @@ void loop()
     
 
     uint8_t feedback_per_group[3] = { 0 };
-    const uint8_t ribbons_count = global.setup.ribbons_count;
+    const uint8_t ribbons_count = min(global.setup.ribbons_count, MaxRibbonsCount);
 
     // Firt reset the ribbon according to fade out
     for (uint8_t preset_index = 0 ; preset_index < 8 ; ++preset_index)
@@ -140,7 +183,7 @@ void loop()
     for (uint8_t ribbon = 0 ; ribbon < ribbons_count ; ++ribbon)
     {
       uint8_t feedback = feedback_per_group[0];//Global.ribbons[ribbon].group];
-      uint32_t ribbon_length = 30 * global.setup.ribbons_lengths[ribbon];
+      uint32_t ribbon_length = min(30 * global.setup.ribbons_lengths[ribbon], MaxLedsPerRibbon);
       CRGB* ribbon_ptr = leds + ribbon * MaxLedsPerRibbon;
       
       if (feedback == 0)
@@ -183,37 +226,11 @@ void loop()
 //              continue;
 //        }
 
-        bool is_solo_ribbon = ribbon_index == 7;
+        bool is_solo_ribbon = false; // ribbon_index == 7;
         
-        uint8_t ribbon_modules_count = 0;
-        uint32_t ribbon_leds_count = 0;
+        uint32_t ribbon_leds_count = min(30 * global.setup.ribbons_lengths[ribbon_index], MaxLedsPerRibbon);
+        uint8_t ribbon_modules_count = ribbon_leds_count / 30;
         CRGB* ribbon_ptr = leds + ribbon_index * MaxLedsPerRibbon;
-
-        if (!is_solo_ribbon && !preset.is_active_on_master)
-            continue;
-        if (global.master.solo_enable && is_solo_ribbon && !preset.is_active_on_solo)
-            continue;
-        
-        if (is_solo_ribbon)
-        {
-          if (global.master.solo_enable)
-          {
-            ribbon_modules_count = 1;
-            ribbon_leds_count = 30;
-            ribbon_ptr += global.setup.soloribbons_location[global.master.solo_index] * 30;
-          }
-          else
-          {
-            ribbon_modules_count = 4;
-            ribbon_leds_count = 30 * 4;
-          }
-        }
-        else
-        {
-          ribbon_modules_count = global.setup.ribbons_lengths[ribbon_index];
-          ribbon_leds_count = 30 * global.setup.ribbons_lengths[ribbon_index];
-        }
-        const size_t ribbon_byte_size = ribbon_leds_count * sizeof(CRGB);
 
         // Break if ribbon is associated with another group
         //if (ribbon.group != preset_group)
@@ -330,6 +347,9 @@ void loop()
       float fps = float(frame_cptr) * 1000.f / fps_accumulator;
       coarse_framerate = (uint8_t)fps;
       
+      static uint64_t cptr = 0;
+      SERIAL.print((unsigned long int) cptr++);
+      SERIAL.print(" - ");
       SERIAL.print("Avg FPS : ");
       SERIAL.print(fps);
       SERIAL.print(" : SerialUSB : ");
@@ -356,41 +376,73 @@ void loop()
 
 int read_from_controller() {
 
-  static uint8_t serial_buffer[512];
+  static uint8_t serial_buffer[256];
   static size_t serial_index = 0;
   static size_t data_address = 0;
   static size_t data_size = 0;
 
   unsigned long timeout_timestamp = millis();
-  while (SERIAL.available() <= 0)
+  EthernetClient client = server.available();
+
+  if (!client || !client.connected())
   {
-    if (SerialUSB_MESSAGE_TIMEOUT < millis() - timeout_timestamp)
-    {
+    // if (client)
+    // {
+    //   client.stop();
+    //   SERIAL.println("Killing dead client");
+    // }
+
+    // client = server.accept();
+    // if (!client)
+    // {
+      // SERIAL.println("SEVERE : No client available");
       return 0;
-    }
-    delayMicroseconds(100);
+    // }
+
   }
-  while (0 < SERIAL.available())
+  // SERIAL.println("New client accepted");
+  // client.setConnectionTimeout(10000);
+
+  while (client.connected() && 0 < client.available())
   {
-    int in = SERIAL.read();
+    int in = client.read();
     if (in < 0)
       continue;
       
     serial_buffer[serial_index++] = in;
     
-    if (serial_index == 2)
+    if (serial_index == 1)
     {
-      data_address = ((uint16_t)serial_buffer[0]) << 8 | serial_buffer[1];
+      // FIX device not responding due to desynchronisation of programs
+      if (serial_buffer[0] != 0xFF)
+      {
+        client.println("Invalid packet received");
+        SERIAL.println("Invalid packet received");
+        serial_index = 0;
+        continue;
+      }
     }
     else if (serial_index == 3)
     {
-      data_size = serial_buffer[2];
+      data_address = ((uint16_t)serial_buffer[1]) << 8 | serial_buffer[2];
     }
-    else if (serial_index == 3 + data_size)
+    else if (serial_index == 4)
     {
-      memcpy(((uint8_t*)&global) + data_address, serial_buffer + 3, data_size);
-      SERIAL.print("Written "); SERIAL.print(data_size); SERIAL.print(" bytes at addr ");
-      SERIAL.print(data_address); SERIAL.println();
+      data_size = serial_buffer[3];
+    }
+    else if (serial_index == 4 + data_size)
+    {
+      // FIX random crashes occuring on bad transferts
+      if (sizeof(state_t) < data_address + data_size)
+      {
+        SERIAL.println("Invalid packet received");
+        client.println("Invalid packet received");
+        serial_index = 0;
+        continue;
+      }
+      memcpy(((uint8_t*)&global) + data_address, serial_buffer + 4, data_size);
+      client.print("Wrote "); client.print(data_size); client.print(" bytes at addr ");
+      client.print(data_address); client.println();
       serial_index = 0;
     }
   }

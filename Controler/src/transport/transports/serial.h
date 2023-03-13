@@ -3,6 +3,7 @@
 #include "transport/transport.h"
 
 #include <string>
+#include <tuple>
 
 namespace opto:: inline transport {
 /// @brief Namespace holding Serial transport related objects

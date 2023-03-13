@@ -53,6 +53,9 @@ opt_reply socket::vreceive()
   }
   buffer.resize(nread);
 
+  if (buffer.size() == 0)
+    throw std::runtime_error("Read failure");
+
   return std::make_optional<reply>(std::move(buffer));
 }
 
@@ -105,7 +108,7 @@ int socket::open(const socket_config& cfg)
   freeaddrinfo(result); /* No longer needed */
 
   if (rp == NULL) {               /* No address succeeded */
-    throw std::runtime_error("Failed connect to arduino");
+    throw std::runtime_error("No address succeeded");
   }
 
   /// Set the socket in Non-Blocking mode
@@ -120,14 +123,14 @@ int socket::open(const socket_config& cfg)
   int keepcnt = kcfg.counter;
   if (-1 == setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(int))) {
     int err = errno;
-    throw std::runtime_error(strerror(err));
+    throw std::runtime_error(std::string("tcp open : stdsockopt(TCP_KEEPCNT) : " + std::string(strerror(err))));
   }
 
   /// Configure TCP Keep Alive to probe the connection every 120 seconds
   int keepintl = kcfg.interval;
   if (-1 == setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepintl, sizeof(int))) {
     int err = errno;
-    throw std::runtime_error(strerror(err));
+    throw std::runtime_error(std::string("tcp open : stdsockopt(TCP_KEEPINTVL) : " + std::string(strerror(err))));
   }
 
   return socket_fd;
