@@ -1,65 +1,25 @@
 #pragma once
 
-#include "transport/transport.h"
-
-#include <string>
-#include <tuple>
-
 namespace transport {
-/// @brief Namespace holding Serial transport related objects
-namespace serial {
 
-  /* *** Serial Connection Properties *** */
-
-  struct address {
-    std::string port;
-    int baudrate;
-  };
-
-  using serial_config = std::tuple<address>;
-
-  /* *** Runtime Serial Transport Properties *** */
-
-  struct runtime_config {
-    size_t buffer_size;
-  };
-
-  /* *** Serial Transport Implementation *** */
-
-  using serial_signature = std::tuple<serial_config, runtime_config>;
-
-  class serial : public transport {
+  template <
+    typename Sig,
+    typename Opener, Opener open,
+    typename Closer, Closer close
+    >
+  class fd_proxy : public transport {
   public :
-
-    /* *** Serial Connection Properties *** */
-    
-    /// @brief Represents a serial port like /dev/ttyACM0 with an associated baudrate
-    struct address {
-      std::string port;
-      int baudrate;
-    };
-    
-    /// @brief Holds configuration for reading and writing to the device
-    struct runtime_config {
-      size_t buffer_size;
-    };
-
-    /// @brief Holds all parameters required to build a valid connection
-    struct signature {
-      address           addr;
-      runtime_config    rcfg;
-    };
 
     /* *** Constructors *** */
 
     /// @brief tries to construct a valid socket object, throw on failure
-    explicit serial(const signature& sig)
-    : serial(sig, open(std::get<serial_config>(sig)))
+    explicit fd_proxy(const Sig& sig)
+    : fd_proxy(sig, open(sig))
     {}
 
     /// @brief construct an unbound socket
     constexpr serial() noexcept
-    : serial(runtime_config(), 0)
+    : serial(Sig(), 0)
     {}
 
     ~serial() { close(_fd); }
@@ -92,7 +52,7 @@ namespace serial {
     constexpr bool alive() const noexcept override
     { return static_cast<bool>(*this); }
 
-protected: 
+  protected: 
 
     /// @brief Try to sent given packet over the tcp socket
     /// @param p packet to send
@@ -113,17 +73,7 @@ protected:
     : _cfg{cfg}, _fd{fd}
     {}
 
-    /// @brief takes the string name of the serial port (e.g. "/dev/tty.usbserial","COM1")
-    ///   and a baud rate (bps) and connects to that port at that speed and 8N1.
-    ///   opens the port in fully raw mode so you can send binary data.
-    /// @return a valid file descriptor, throws on failure
-    static int open(const serial_config& addr);
-
-    /// @brief Close the holded file descriptor if exists, throw on failure
-    static void close(int fd);
-
-    runtime_config _cfg;
+    Sig _cfg;
     int _fd;
   };
-}
 }

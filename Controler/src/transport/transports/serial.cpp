@@ -15,7 +15,7 @@
 
 #include <stdexcept>
 
-namespace opto:: inline transport {
+namespace transport {
 namespace serial {
 
 packet_status serial::vsend(const packet_payload& p)

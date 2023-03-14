@@ -5,51 +5,52 @@
 #include <string>
 #include <tuple>
 
-namespace opto:: inline transport {
+namespace transport {
 /// @brief Namespace holding TCP transport related objects
 namespace tcp {
 
-  /* *** Linux Socket Properties *** */
-
-  /// @brief Represents an IPv4 address using dotted notation
-  struct address {
-    std::string host;
-    std::string port;
-  };
-
-  /// @brief Holds configuration for the linux socket
-  struct keepalive_config {
-    int counter = 100;
-    int interval = 1;
-  };
-
-  using socket_config = std::tuple<address, keepalive_config>;
-
-  /* *** Runtime TCP Transport Properties *** */
-
-  struct runtime_config {
-    size_t buffer_size;
-  };
-
   /* *** TCP transport implementation *** */
-
-  using socket_signature = std::tuple<socket_config, runtime_config>;
 
   /// @brief Represent an opened tcp socket
   class socket : public transport {
   public :
+  
+    /* *** TCP Socket Properties *** */
+
+    /// @brief Represents an IPv4 address using dotted notation
+    struct address {
+      std::string host;
+      std::string port;
+    };
+
+    /// @brief Holds configuration for the linux socket
+    struct keepalive_config {
+      int counter = 100;
+      int interval = 1;
+    };
+    
+    /// @brief Holds configuration for reading and writing to the socket
+    struct runtime_config {
+      size_t buffer_size;
+    };
+
+    /// @brief Holds all parameters required to build a valid socket
+    struct signature {
+      address           addr;
+      keepalive_config  kcfg;
+      runtime_config    rcfg;
+    };
 
     /* *** Constructors *** */
 
     /// @brief tries to construct a valid socket object, throw on failure
-    template <typename Sig = socket_signature>
-    explicit socket(const Sig& sig)
-    : socket(std::get<runtime_config>(sig), open(std::get<socket_config>(sig)))
+    explicit socket(const signature& sig)
+    : socket(sig, open(sig.addr, sig.kcfg))
     {}
 
     /// @brief construct an unbound socket
     constexpr socket() noexcept
-    : socket(runtime_config(), 0)
+    : socket(signature(), 0)
     {}
 
     ~socket() { close(_fd); }
@@ -98,20 +99,21 @@ protected:
     opt_reply vreceive() override;
 
   private :
+
     /// @brief delegated constructor 
-    explicit constexpr socket(runtime_config cfg, int fd)
+    explicit constexpr socket(const signature& cfg, int fd)
     : _cfg{cfg}, _fd{fd}
     {}
 
     /// @brief Try to open a linux tcp non blocking connection to given host
     /// @param addr address of the server to connect to
     /// @return opened socket's file descriptor on success, throw on failure
-    static int open(const socket_config& addr);
+    static int open(const address& addr, const keepalive_config& kcfg);
 
     /// @brief Close the holded file descriptor if exists, throw on failure
     static void close(int fd);
 
-    runtime_config _cfg;
+    signature _cfg;
     int _fd;
   };
 }

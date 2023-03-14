@@ -7,7 +7,7 @@
 
 /// @brief Namespace holding all objects related to communication
 ///   with display devices
-namespace opto::inline transport
+namespace transport
 {
   /* *** To Device Communication objects *** */
 

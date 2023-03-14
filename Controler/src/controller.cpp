@@ -1,4 +1,8 @@
-#include "jack-bridge.hpp"
+/// @file MAIN
+
+#include "midi/bridges/jack-bridge.h"
+#include "midi/bridges/dummy.h"
+
 #include "mapper.hpp"
 #include "manager.hpp"
 
@@ -131,7 +135,12 @@ int main(int argc, char* const argv[])
   //   exit(EXIT_FAILURE);
   // }
 
+  #ifdef __unix__
   JackBridge apc_bridge{"APC40-Bridge"};
+  #else
+  midi::dummy_bridge apc_bridge;
+  #endif
+
   Mapper apc_mapper{Mapper::APC40_mappings()};
   Manager manager(
     "/home/sfxd/Documents/2.0/progs/Optopoulpe/config/save.txt", 

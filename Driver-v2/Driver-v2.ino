@@ -76,6 +76,33 @@ namespace opto {
     static CRGB leds[MaxLedsCount];
   }
 
+  namespace log {
+
+    enum mode {
+      Debug   = 0,
+      Info    = 1,
+      Warning = 2,
+      Severe  = 3,
+      Critical= 4,
+    };
+
+    static mode level = mode::Debug;
+  }
+
+  /* *** Log utilities *** */
+  
+  template <log::mode Mode, typename ...Args>
+  void print(Args ...args)
+  {
+    if (Mode < log::level)
+      return;
+    
+    PRINT(Ethernet.localIP());
+    PRINT(" - ");
+    (PRINT(args)...);
+    PRINTLN('');
+  }
+
   /* *** Ethernet Receive Callback *** */
 
   bool read_from_ethernet () {
@@ -99,17 +126,17 @@ namespace opto {
 
     if (client && !client.connected())
     {
-      Serial.println("Kill dead client ...");
+      print<log::Info, char*>(, "Kill dead client ...");
       client.stop();
     }
 
     if (!client)
     {
-      client = ethernet::server.available();
+      client = ethernet::server.accept();
       if (!client)
         return false;
       _index = 0;
-      Serial.println("New client accepted");
+      print<log::Info, char*>("New client accepted");
     }
 
     while (client && client.connected() && 0 < client.available())
@@ -118,10 +145,8 @@ namespace opto {
       if (in < 0)
         continue;
 
-      PRINT("Index : ");
-      PRINT(_index);
-      PRINT(" RCV : ");
-      PRINTLN(in);
+      print<log::Debug, char*, size_t, char*, int>
+        ("Index : ", _index, " RCV : ", in);
 
       if (_index < sizeof(serial_buffer))
       {
@@ -130,9 +155,8 @@ namespace opto {
           static const char validation[4] = {'O', 'p', 't', 'o'};
           if (_buffer.raw[_index] != validation[_index])
           {
-            PRINT("Bad Packet Header : '");
-            PRINT(_buffer.header);
-            PRINTLN("'");
+            print<log::Debug, char*, char*, char*>
+              ("Bad packet Header : '", _buffer.header, "'");
             _index = 0;
             continue;
           }
@@ -143,22 +167,18 @@ namespace opto {
 
       const size_t data_index = _index - sizeof(serial_buffer);
       const size_t led_index = _buffer.address + (data_index / 3);
-      PRINT("ADDRESS=");
-      PRINT(_buffer.address);
-      PRINT(" SIZE=");
-      PRINTLN(_buffer.size);
+
+      print<log::Debug, char*, int, char*, int>
+        ("ADDRESS=", _buffer.address, "SIZE=", _buffer.size);
 
       if (data_index < _buffer.size && led_index < leds::MaxLedsCount)
       {
-        leds::leds[led_index].raw[data_index % 3] = (uint8_t)in; 
-        _index += 1 % (sizeof(serial_buffer) + _buffer.size);
+        leds::leds[led_index].raw[data_index % 3] = (uint8_t)in;
+        // Loop to zero on the last byte
+        _index = (_index + 1) % (sizeof(serial_buffer) + _buffer.size);
         continue;
       }
 
-      PRINT("Wrote ");
-      PRINT(_index);
-      PRINTLN(" Bytes");
-      
       // Message end
       _index = 0;
     }
@@ -186,8 +206,8 @@ void setup()
   }
 
   opto::ethernet::server.begin();
-  Serial.print("server is ready at ");
-  Serial.println(Ethernet.localIP());
+  opto::print<opto::log::Info, char*, decltype(Ethernet.localIP())>
+    ("Server is ready at ", Ethernet.localIP());
 
   #ifdef OPTOPOULPE_MAXIMATOR
     FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(opto::leds::leds, MaxLedsPerRibbon);
@@ -238,16 +258,8 @@ void loop()
     float fps = float(frame_cptr) * 1000.f / fps_accumulator;
     
     static uint64_t cptr = 0;
-    PRINT(Ethernet.localIP());
-    PRINT(" - ");
-    PRINT((unsigned long int) cptr++);
-    PRINT(" - ");
-    PRINT("Avg FPS : ");
-    PRINT(fps);
-    PRINT(" : Ethernet : ");
-    PRINT(update_end - update_begin);
-    PRINT(" : Draw : ");
-    PRINTLN(draw_end - draw_begin);
+    opto::print<opto::log::Info, unsigned long int, char*, float, char*, unsigned long, char*, unsigned long>
+      (cptr++, " - Avg FPS : ", fps, " : Ethernet : ", update_end - update_begin, " : Draw : ", draw_end - draw_begin);
 
     fps_accumulator = 0;
     frame_cptr = 0;

@@ -20,7 +20,7 @@
 
 #include <stdexcept>
 
-namespace opto:: inline transport {
+namespace transport {
 namespace tcp {
 
 packet_status socket::vsend(const packet_payload& p)
@@ -40,10 +40,10 @@ packet_status socket::vsend(const packet_payload& p)
 opt_reply socket::vreceive()
 {
   std::string buffer;
-  buffer.resize(_cfg.buffer_size);
+  buffer.resize(_cfg.rcfg.buffer_size);
 
   ssize_t nread;
-  if (-1 == (nread = read(_fd, buffer.data(), _cfg.buffer_size)))
+  if (-1 == (nread = read(_fd, buffer.data(), _cfg.rcfg.buffer_size)))
   {
     int err = errno;
     if (err == EAGAIN || err == EWOULDBLOCK)
@@ -64,7 +64,7 @@ opt_reply socket::vreceive()
 /// @brief Try to open a linux tcp non blocking connection to given host
 /// @param addr address of the server to connect to
 /// @return opened socket's file descriptor on success, throw on failure
-int socket::open(const socket_config& cfg)
+int socket::open(const address& addr, const keepalive_config& kcfg)
 {
   struct addrinfo hints;
   struct addrinfo *result, *rp;
@@ -76,8 +76,6 @@ int socket::open(const socket_config& cfg)
   hints.ai_socktype = SOCK_STREAM;  /* TCP Connection */
   hints.ai_flags = 0;
   hints.ai_protocol = 0;            /* Any protocol */
-
-  auto addr = std::get<address>(cfg);
 
   s = getaddrinfo(addr.host.c_str(), addr.port.c_str(), &hints, &result);
   if (s != 0) {
@@ -117,8 +115,6 @@ int socket::open(const socket_config& cfg)
     throw std::runtime_error(strerror(err));
   }
 
-  auto kcfg = std::get<keepalive_config>(cfg);
-
   /// Configure TCP Keep Alive to sent 50 messages before killing the connection
   int keepcnt = kcfg.counter;
   if (-1 == setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(int))) {
@@ -146,8 +142,11 @@ void socket::close(int fd)
 #else // __unix __
 #ifdef __WIN32__
 
-int socket::open(const socket_config&) { return 0; }
-void socket::close(int fd) {}
+int socket::open(const address& addr, const keepalive_config& kcfg)
+{ return 0; }
+
+void socket::close(int fd)
+{}
 
 #endif // __WIN32__
 #endif

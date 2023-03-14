@@ -1,4 +1,5 @@
-#include "jack-bridge.hpp"
+#include "jack-bridge.h"
+#ifdef __unix__
 
 #include <exception>
 
@@ -6,6 +7,8 @@
 #include <jack/midiport.h>
 
 #include <string.h>
+
+namespace opto::midi::jack {
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
@@ -98,15 +101,19 @@ void JackBridge::activate()
 	free (ports);
 }
 
-std::vector<std::vector<uint8_t>> JackBridge::incomming_midi()
+std::vector<raw_message> JackBridge::incomming_midi()
 {
-  std::vector<std::vector<uint8_t>> result;
-	std::optional<std::vector<uint8_t>> optmsg;
+  std::vector<raw_message> result;
+	std::optional<raw_message> optmsg;
   while (std::nullopt != (optmsg = from_jack.pop()))
     result.push_back(optmsg.value());
   return result;
 }
-void JackBridge::send_midi(std::vector<uint8_t>&& msg)
+void JackBridge::send_midi(const raw_message& msg)
 {
-  to_jack.push(std::forward<std::vector<uint8_t>>(msg));
+  to_jack.push(msg);
 }
+
+}
+
+#endif // #ifdef __unix__
