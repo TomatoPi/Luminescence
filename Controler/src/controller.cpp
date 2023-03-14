@@ -190,6 +190,7 @@ int main(int argc, char* const argv[])
       }
     }
 
+    // bulk.emplace(0, std::vector<uint8_t>({'O', 'p', 't', 'o', 0, 0, 0, 3, 255, 255, 255}));
     for (auto& [addr, payload] : bulk)
     {
       for (auto& device : devices)
@@ -211,7 +212,7 @@ int main(int argc, char* const argv[])
         }
       }
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100));
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
   std::cout << "Shuting down program" << std::endl;
 

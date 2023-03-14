@@ -127,7 +127,7 @@ namespace opto {
 
             if (!ptr->alive())
               throw std::runtime_error("Bad device opened");
-            if (opto::packet_status::Sent != ptr->send({0}))
+            if (opto::packet_status::Sent != ptr->send({'O', 'p', 't', 'o', 0, 0, 3, 0, 255, 255, 255}))
               throw std::runtime_error("Failed to Bang Open connection");
             std::cout << "[" << _cfg.name << "] - " << "Realoading device : " <<  "Port successfully connected\n";
 

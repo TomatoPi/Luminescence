@@ -1,3 +1,3 @@
 
-Optopoulpe-Main TCP 192.168.0.200 8000 64 1 1024
-Optopoulpe-Satelite TCP 192.168.0.210 8000 64 1 1024
+# Optopoulpe-Main TCP 192.168.0.200 8000 64 1 1024
+Optopoulpe-Satelite TCP 192.168.0.176 6454 64 1 1024
