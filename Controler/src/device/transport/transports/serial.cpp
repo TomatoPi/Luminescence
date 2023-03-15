@@ -18,45 +18,12 @@
 namespace transport {
 namespace serial {
 
-packet_status serial::vsend(const packet_payload& p)
-{
-  if (write(_fd, p.data(), p.size()) != p.size())
-  {
-    int err = errno;
-    if (err == EAGAIN || err == EWOULDBLOCK)
-      return packet_status::Failed;
-    else
-      throw std::runtime_error(strerror(err));
-  }
-  else
-    return packet_status::Sent;
-}
-
-opt_reply serial::vreceive()
-{
-  std::string buffer;
-  buffer.resize(_cfg.buffer_size);
-
-  ssize_t nread;
-  if (-1 == (nread = read(_fd, buffer.data(), _cfg.buffer_size)))
-  {
-    int err = errno;
-    if (err == EAGAIN || err == EWOULDBLOCK)
-      return std::nullopt;
-    else
-      throw std::runtime_error(strerror(err));
-  }
-  buffer.resize(nread);
-
-  return std::make_optional<reply>(std::move(buffer));
-}
-
 #ifdef __unix__
 
 /// @brief Try to open a linux tcp non blocking connection to given host
 /// @param addr address of the server to connect to
 /// @return opened socket's file descriptor on success, throw on failure
-int serial::open(const serial_config& cfg)
+int open_serial(const signature& cfg)
 {
   auto addr = std::get<address>(cfg);
   int fd = ::open(addr.port.c_str(), O_RDWR | O_NONBLOCK );
@@ -114,7 +81,7 @@ int serial::open(const serial_config& cfg)
 }
 
 /// @brief Close the holded file descriptor if exists, throw on failure
-void serial::close(int fd)
+void close_serial(int fd)
 {
   if (fd != 0)
     ::close(fd);
@@ -123,8 +90,8 @@ void serial::close(int fd)
 #else // __unix __
 #ifdef __WIN32__
 
-int serial::open(const serial_config&) { return 0; }
-void serial::close(int fd) {}
+int open_serial(const signature&) { return 0; }
+void close_serial(int fd) {}
 
 #endif // __WIN32__
 #endif

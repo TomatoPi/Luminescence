@@ -6,7 +6,7 @@
 #include "mapper.hpp"
 #include "manager.hpp"
 
-#include "device.h"
+#include "device/device.h"
 
 #include <stdio.h>
 #include <unistd.h>

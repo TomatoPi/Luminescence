@@ -16,10 +16,11 @@
 
 /// @brief Main namespace for optopoulpe top objects
 namespace opto {
+namespace device {
 
   using transport_signature_type = std::variant<
-    tcp::socket_signature,
-    serial::serial_signature
+    tcp::signature,
+    serial::signature
     >;
 
   struct device_config {
@@ -183,4 +184,5 @@ namespace opto {
     maybe_transport           _transport;
   };
 
+}
 }
