@@ -1,28 +1,30 @@
 #pragma once
 
 #include "device.h"
-#include "transport/transport/factory.h"
+#include "transport/transports/factory.h"
 
 #include <json/json.h>
 
 #include <variant>
+#include <future>
+#include <optional>
+#include <queue>
 
 namespace opto {
 namespace device {
 
+  using pending_device = std::future<class device>;
+  using maybe_device = std::variant<class device, pending_device, signature>;
+  using opt_device = std::optional<class device>;
+
   class factory {
   public :
-
-    using transport_ptr = transport::factory::transport_ptr;
-    using pending_transport = transport::factory::pending_transport;
-
-    using maybe_device = std::variant<
-      device::device,
-      
-      >;
-
-  private :
     
+
+
+    void push(const signature& sig) = 0;
+    opt_device pull() = 0;
+
   };
 
 }

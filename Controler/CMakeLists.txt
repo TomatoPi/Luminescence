@@ -11,6 +11,7 @@ set(HEADERS
       src/device/transport/transports/fd-proxy.h
       src/device/transport/transports/tcp.h
       src/device/transport/transports/serial.h
+      src/device/transport/transports/factory.h
   
 
   src/midi/bridge.h
@@ -31,6 +32,7 @@ set(HEADERS
     src/device/transport/transports/tcp.cpp
     src/device/transport/transports/serial.cpp
     src/device/transport/transports/fd-proxy.cpp
+    src/device/transport/transports/factory.cpp
   
   src/midi/bridges/jack-bridge.cpp
 

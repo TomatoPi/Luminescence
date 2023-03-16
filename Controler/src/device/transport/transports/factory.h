@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-namespace device {
+namespace transport {
 /// @brief Namespace holding methods to build proper transport
 namespace factory {
 

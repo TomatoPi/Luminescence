@@ -2,6 +2,8 @@
 
 #include "transport/transport.h"
 
+#include "transport/transports/factory.h"
+
 #include <tuple>
 #include <utility>
 #include <variant>
