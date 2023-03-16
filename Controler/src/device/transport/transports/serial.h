@@ -18,7 +18,7 @@ namespace serial {
   };
 
   /// @brief Holds all parameters required to build a valid connection
-  using signature = std::tuple<address, fd::read_buffer_size>;
+  using signature = std::tuple<address>;
 
   /* *** Serial transport implementation *** */
 

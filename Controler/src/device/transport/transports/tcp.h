@@ -24,7 +24,7 @@ namespace tcp {
   };
 
   /// @brief Holds all parameters required to build a valid socket
-  using signature = std::tuple<address, keepalive_config, fd::read_buffer_size>;
+  using signature = std::tuple<address, keepalive_config>;
 
   /* *** TCP transport implementation *** */
 

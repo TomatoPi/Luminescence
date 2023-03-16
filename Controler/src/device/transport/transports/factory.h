@@ -1,6 +1,10 @@
 #pragma once
 
-#include "transport.h"
+#include "../transport.h"
+
+#include "fd-proxy.h"
+#include "tcp.h"
+#include "serial.h"
 
 #include <json/json.h>
 
@@ -11,7 +15,7 @@
 
 #include <iostream>
 
-namespace transport {
+namespace device {
 /// @brief Namespace holding methods to build proper transport
 namespace factory {
 
@@ -22,12 +26,19 @@ namespace factory {
   using transport_ptr     = std::unique_ptr<transport_type>;
   using pending_transport = std::future<transport_ptr>;
 
+  using transport_signature_type = std::variant<
+    tcp::signature,
+    serial::signature
+    >;
+
   /* *** Exceptions *** */
 
   struct bad_json { std::string what; };
 
   /* *** Factory Functions *** */
 
-  pending_transport open(const Json::Value& sig);
+  transport_signature_type parse_signature(const Json::Value& sig);
+  pending_transport open(const transport_signature_type& sig);
+
 }
 }
