@@ -23,9 +23,9 @@ namespace serial {
 /// @brief Try to open a linux tcp non blocking connection to given host
 /// @param addr address of the server to connect to
 /// @return opened socket's file descriptor on success, throw on failure
-int open_serial(const signature& cfg)
+int open_serial(const std::tuple<address, fd::read_buffer_size>& sig)
 {
-  auto addr = std::get<address>(cfg);
+  auto addr = std::get<address>(sig);
   int fd = ::open(addr.port.c_str(), O_RDWR | O_NONBLOCK );
   
   if (fd == -1)
@@ -90,7 +90,7 @@ void close_serial(int fd)
 #else // __unix __
 #ifdef __WIN32__
 
-int open_serial(const signature&) { return 0; }
+int open_serial(const std::tuple<address, fd::read_buffer_size>&) { return 0; }
 void close_serial(int fd) {}
 
 #endif // __WIN32__

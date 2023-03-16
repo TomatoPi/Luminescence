@@ -28,7 +28,7 @@ namespace tcp {
 /// @brief Try to open a linux tcp non blocking connection to given host
 /// @param addr address of the server to connect to
 /// @return opened socket's file descriptor on success, throw on failure
-int open_socket(const signature& cfg)
+int open_socket(const std::tuple<address, keepalive_config, fd::read_buffer_size>& sig)
 {
   struct addrinfo hints;
   struct addrinfo *result, *rp;
@@ -41,7 +41,7 @@ int open_socket(const signature& cfg)
   hints.ai_flags = 0;
   hints.ai_protocol = 0;            /* Any protocol */
 
-  auto addr = std::get<address>(cfg);
+  auto addr = std::get<address>(sig);
   s = getaddrinfo(addr.host.c_str(), addr.port.c_str(), &hints, &result);
   if (s != 0) {
     throw std::runtime_error("tcp open : getaddrinfo : " 
@@ -83,7 +83,7 @@ int open_socket(const signature& cfg)
   /* *** KEEP ALIVE *** */
 
   /// Configure TCP Keep Alive to sent 50 messages before killing the connection
-  auto kcfg = std::get<keepalive_config>(cfg);
+  auto kcfg = std::get<keepalive_config>(sig);
   int keepcnt = kcfg.counter;
   if (-1 == setsockopt(socket_fd, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(int))) {
     int err = errno;
@@ -110,7 +110,7 @@ void close_socket(int fd)
 #endif // __unix __
 #ifdef __WIN32__
 
-int open_socket(const signature& cfg)
+int open_socket(const std::tuple<address, keepalive_config, fd::read_buffer_size>& sig)
 { return 0; }
 
 void close_socket(int fd)

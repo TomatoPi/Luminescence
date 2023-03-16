@@ -9,11 +9,9 @@
 #include <json/json.h>
 
 #include <memory>
-#include <future>
 #include <variant>
 #include <stdexcept>
-
-#include <iostream>
+#include <type_traits>
 
 namespace transport {
 /// @brief Namespace holding methods to build proper transport
@@ -21,24 +19,33 @@ namespace factory {
 
   /* *** Convenient aliases typedefs *** */
 
-  using transport_type = struct ::transport::transport;
-
-  using transport_ptr     = std::unique_ptr<transport_type>;
-  using pending_transport = std::future<transport_ptr>;
-
-  using transport_signature_type = std::variant<
-    tcp::signature,
+  using proto_transport_signature = std::variant<
+    tcp::signature, 
     serial::signature
     >;
 
+  using transport_signature_type = std::variant<
+    std::decay_t<decltype(std::declval<tcp::socket>().signature())>,
+    std::decay_t<decltype(std::declval<serial::serial>().signature())>
+    >;
+
+  using transport_type = struct ::transport::transport;
+  using transport_ptr     = std::unique_ptr<transport_type>;
+
   /* *** Exceptions *** */
 
-  struct bad_json { std::string what; };
+  /// @brief thrown if an ill-formed json is passed to parse_signature
+  struct bad_json : std::runtime_error {
+    explicit bad_json(const std::string& str)
+    : std::runtime_error(str)
+    {}
+  };
 
   /* *** Factory Functions *** */
 
   transport_signature_type parse_signature(const Json::Value& sig);
-  pending_transport open(const transport_signature_type& sig);
+
+  transport_ptr open(const transport_signature_type& sig);
 
 }
 }

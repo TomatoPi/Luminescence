@@ -27,7 +27,7 @@ namespace factory {
 
   /* *** TCP Parser *** */
 
-  transport_signature_type parse_tcp(const Json::Value& sig)
+  tcp::signature parse_tcp(const Json::Value& sig)
   {
     if (!sig)
       throw bad_json("Missing 'args' keys");
@@ -47,7 +47,7 @@ namespace factory {
 
   /* *** Serial Parser *** */
 
-  transport_signature_type parse_serial(const Json::Value& sig)
+  serial::signature parse_serial(const Json::Value& sig)
   {
     if (!sig)
       throw bad_json("Missing 'args' keys");
@@ -64,35 +64,37 @@ namespace factory {
 
   transport_signature_type parse_signature(const Json::Value& sig)
   {
-    std::string protocol = get<Json::String>(sig, "protocol");
+    std::string protocol_code = get<Json::String>(sig, "protocol");
+    auto protocol_sig = [](const std::string& code, const Json::Value& args)
+    -> proto_transport_signature {
+      if (code.compare("TCP") == 0)
+        return parse_tcp(args);
+      else if (code.compare("SERIAL") == 0)
+        return parse_serial(args);
+      else
+        throw bad_json("Invalid protocol : '" + code + "'");
+    }(protocol_code, get<const Json::Value& >(sig, "args"));
     
-    if (protocol.compare("TCP") == 0)
-      return parse_tcp(get<const Json::Value& >(sig, "args"));
-    else if (protocol.compare("SERIAL") == 0)
-      return parse_serial(get<const Json::Value& >(sig, "args"));
-    else
-      throw bad_json("Invalid protocol : '" + protocol + "'");
+    fd::read_buffer_size fd_cfg{
+      .value = get<Json::UInt64>(sig, "read_buffer_size")
+    };
+    
+    return std::visit([fd_cfg](auto psig) -> auto {
+      return std::tuple_cat(psig, std::make_tuple(fd_cfg));
+    }, protocol_sig);
   }
 
-  pending_transport open(const transport_signature_type& sig)
+  transport_ptr open(const transport_signature_type& sig)
   {
     return std::visit(utils::visitor{
-      [](const tcp::signature& s)
-        -> pending_transport
-        { 
-          return std::async(std::launch::async, [](const tcp::signature& s)
-            -> transport_ptr
-            { return std::make_unique<tcp::socket>(s); }, s);
-        }
+        [](const tcp::socket::signature_type& s)
+        -> transport_ptr
+        { return std::make_unique<tcp::socket>(s); }
         ,
-      [](const serial::signature& s)
-        -> pending_transport
-        {
-          return std::async(std::launch::async, [](const serial::signature& s)
-            -> transport_ptr 
-            { return std::make_unique<serial::serial>(s); }, s);
-        }
-    }, sig);
+        [](const serial::serial::signature_type& s)
+        -> transport_ptr
+        { return std::make_unique<serial::serial>(s); }
+      }, sig);
   }
 }
 }

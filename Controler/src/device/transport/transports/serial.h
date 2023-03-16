@@ -26,7 +26,7 @@ namespace serial {
   ///   and a baud rate (bps) and connects to that port at that speed and 8N1.
   ///   opens the port in fully raw mode so you can send binary data.
   /// @return a valid file descriptor, throws on failure
-  int open_serial(const signature& addr);
+  int open_serial(const std::tuple<address, fd::read_buffer_size>& sig);
 
   /// @brief Close the holded file descriptor if exists, throw on failure
   void close_serial(int fd);

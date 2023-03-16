@@ -46,7 +46,7 @@ namespace fd {
     /* *** Constructors *** */
 
     /// @brief tries to construct a valid fd object, throw on failure
-    explicit proxy(const Signature& sig, read_buffer_size rcfg)
+    explicit proxy(const signature_type& sig)
     : proxy(sig, open(sig))
     {}
 

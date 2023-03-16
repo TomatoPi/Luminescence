@@ -20,7 +20,7 @@ namespace device {
   namespace meta {
     
     struct name { std::string value; };
-    using transport = transport::factory::transport_signature_type;
+    using transport = ::transport::factory::transport_signature_type;
   }
 
   using signature = std::tuple<meta::name, meta::transport>;
@@ -28,10 +28,7 @@ namespace device {
   class device {
   public :
 
-    using transport_ptr = transport::factory::transport_ptr;
-    using pending_transport = transport::factory::pending_transport;
-
-    using maybe_transport = std::variant<transport_ptr, pending_transport>;
+    using transport_ptr = ::transport::factory::transport_ptr;
 
     device() = default;
     ~device() = default;
@@ -50,29 +47,27 @@ namespace device {
     { return _cfg; }
 
     bool alive() noexcept
-    { return is_available(); }
+    { return _transport && _transport->alive(); }
 
     void kill()
     { _transport = nullptr; }
 
+    transport::packet_status send(const transport::packet_payload& p)
+    { return _transport->send(p); }
 
-    bool is_available() const noexcept;
-    bool make_available();
-
-    transport::packet_status send(const transport::packet_payload& p);
-
-    transport::opt_reply receive();
+    transport::opt_reply receive()
+    { return _transport->receive(); }
 
   private :
 
-    device(const signature& sig, maybe_transport&& tr)
+    device(const signature& sig, transport_ptr&& tr)
     : _cfg(sig), _transport(std::forward<decltype(tr)>(tr))
     {}
 
-    static maybe_transport open(const meta::transport& sig);
+    // static maybe_transport open(const meta::transport& sig);
 
-    signature       _cfg;
-    maybe_transport _transport;
+    signature     _cfg;
+    transport_ptr _transport;
   };
 
 }
