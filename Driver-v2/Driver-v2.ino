@@ -20,7 +20,7 @@
 
   #define DEVICE_UID 0xA0
   #define DEVICE_RIBBONS_COUNT 8
-  #define DEVICE_RIBBON_SIZE   (1 * 5) /* 10 modules */
+  #define DEVICE_RIBBON_SIZE   (1 * 32) /* 10 modules */
 
 #endif
 
@@ -104,7 +104,7 @@ namespace opto {
 
     struct internal {};
 
-    static mode level = mode::Debug;
+    static mode level = mode::Info;
   }
 
   /* *** Log utilities *** */

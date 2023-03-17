@@ -85,7 +85,7 @@ int main(int argc, char * const argv[])
               {
                 case transport::packet_status::Sent :
                   std::this_thread::sleep_for(std::chrono::microseconds(1000));
-                  std::cout << "Packet sent\n";
+                  // std::cout << "Packet sent\n";
                   break;
                 case transport::packet_status::Failed :
                   std::cerr << "[" << std::get<meta::name>(static_cast<signature>(d)).value 
@@ -109,11 +109,20 @@ int main(int argc, char * const argv[])
           if (!dev.alive())
             throw std::runtime_error("Bad device running");
 
-          switch (dev.send(std::vector<uint8_t>({'O', 'p', 't', 'o', 1, 0, 3, 0, 0, 0, 255})))
+          size_t N = ;
+          std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, N*3, 0};
+          for (size_t i=0 ; i<N ; ++i)
+          {
+            bulk.emplace_back(0);
+            bulk.emplace_back(0);
+            bulk.emplace_back(i*4);
+          }
+
+          switch (dev.send(bulk))
           {
             case transport::packet_status::Sent :
-              std::this_thread::sleep_for(std::chrono::microseconds(1000));
-              std::cout << "Packet sent\n";
+              std::this_thread::sleep_for(std::chrono::microseconds(100));
+              // std::cout << "Packet sent\n";
               break;
             case transport::packet_status::Failed :
               std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
@@ -128,8 +137,8 @@ int main(int argc, char * const argv[])
                       << "] - Received : " << opt.value().content << '\n';
           }
 
-          std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
-                    << "] - Done !\n";
+          // std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+          //           << "] - Done !\n";
           itr++;
           continue;
         }
@@ -142,8 +151,8 @@ int main(int argc, char * const argv[])
           itr = devices.erase(itr);
         }
 
-        std::cout << "Nothing pending\n";
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        // std::cout << "Nothing pending\n";
+        std::this_thread::sleep_for(std::chrono::milliseconds(40));
 
       } while (true);
     }
