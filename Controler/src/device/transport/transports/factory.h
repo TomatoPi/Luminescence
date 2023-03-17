@@ -5,6 +5,7 @@
 #include "fd-proxy.h"
 #include "tcp.h"
 #include "serial.h"
+#include "dummy.h"
 
 #include <json/json.h>
 
@@ -18,12 +19,13 @@ namespace factory {
 
   /* *** Convenient aliases typedefs *** */
 
-  using proto_transport_signature = std::variant<tcp::signature, serial::signature>;
+  using proto_transport_signature = std::variant<tcp::signature, serial::signature, dummy::signature_type>;
 
   using tcp_signature = std::decay_t<decltype(std::declval<tcp::socket>().signature())>;
   using serial_signature = std::decay_t<decltype(std::declval<serial::serial>().signature())>;
+  using dummy_signature = dummy::signature_type;
 
-  using transport_signature_type = std::variant<tcp_signature, serial_signature>;
+  using transport_signature_type = std::variant<tcp_signature, serial_signature, dummy_signature>;
 
   using transport_type = struct ::transport::transport;
   using transport_ptr     = std::unique_ptr<transport_type>;

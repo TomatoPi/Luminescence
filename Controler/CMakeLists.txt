@@ -8,11 +8,11 @@ set(DEVICE_HEADERS
   src/device/device.h
   src/device/factory.h
     src/device/transport/transport.h
+      src/device/transport/transports/dummy.h
       src/device/transport/transports/fd-proxy.h
       src/device/transport/transports/tcp.h
       src/device/transport/transports/serial.h
       src/device/transport/transports/factory.h
-  
 
   
   )

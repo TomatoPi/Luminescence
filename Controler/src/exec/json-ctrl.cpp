@@ -47,6 +47,18 @@ int main(int argc, char * const argv[])
     output << std::endl;
     // return 0;
   }
+  output << ",\n";
+  {
+    output << "\"DUMMY\" : ";
+    signature def{
+      meta::name{},
+      meta::transport{transport::dummy::signature_type{}}};
+    /***!< default constructed signature */
+    auto root = make_json(def);
+    output << root;
+    output << std::endl;
+    // return 0;
+  }
   output << "}\n}";
   std::string device_json = output.str();
   std::cout << device_json << '\n';
@@ -61,7 +73,7 @@ int main(int argc, char * const argv[])
     // for (auto dev : devices_codes)
     {
       // std::string dev = "SERIAL";
-      std::string dev = "TCP";
+      std::string dev = "DUMMY";
       auto sig = opto::device::parse_signature(root["devices"][dev]);
       factory builder;
 
@@ -109,8 +121,8 @@ int main(int argc, char * const argv[])
           if (!dev.alive())
             throw std::runtime_error("Bad device running");
 
-          size_t N = ;
-          std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, N*3, 0};
+          size_t N = 1;
+          std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, (uint8_t)(N*3), 0};
           for (size_t i=0 ; i<N ; ++i)
           {
             bulk.emplace_back(0);
@@ -152,7 +164,7 @@ int main(int argc, char * const argv[])
         }
 
         // std::cout << "Nothing pending\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
       } while (true);
     }

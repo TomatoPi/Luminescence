@@ -73,6 +73,18 @@ namespace factory {
     return root;
   }
 
+  dummy::signature_type parse_dummy(const Json::Value& sig)
+  { return dummy::signature_type(); }
+  
+  Json::Value make_json(const dummy_signature& sig)
+  {
+    Json::Value root;
+    root["protocol"] = Json::String("DUMMY");
+    root["args"] = Json::Value();
+
+    return root;
+  }
+
   /* *** Root Parser *** */
 
   transport_signature_type parse_signature(const Json::Value& sig)
@@ -84,17 +96,29 @@ namespace factory {
         return parse_tcp(args);
       else if (code.compare("SERIAL") == 0)
         return parse_serial(args);
+      else if (code.compare("DUMMY") == 0)
+        return parse_dummy(args);
       else
         throw bad_json("Invalid protocol : '" + code + "'");
     }(protocol_code, get<const Json::Value& >(sig, "args"));
     
-    fd::read_buffer_size fd_cfg{
-      .value = get<Json::UInt64>(sig, "read_buffer_size")
-    };
-    
     return std::visit(visitor{
-      [fd_cfg](const tcp::signature& s) -> transport_signature_type { return std::tuple_cat(s, std::make_tuple(fd_cfg)); },
-      [fd_cfg](const serial::signature& s) -> transport_signature_type { return std::tuple_cat(s, std::make_tuple(fd_cfg)); }
+      [sig](const tcp::signature& s) -> transport_signature_type
+      {        
+        fd::read_buffer_size fd_cfg{
+          .value = get<Json::UInt64>(sig, "read_buffer_size")
+        };
+        return std::tuple_cat(s, std::make_tuple(fd_cfg)); 
+      },
+      [sig](const serial::signature& s) -> transport_signature_type
+      {
+        fd::read_buffer_size fd_cfg{
+          .value = get<Json::UInt64>(sig, "read_buffer_size")
+        };
+        return std::tuple_cat(s, std::make_tuple(fd_cfg));
+      },
+      [](const dummy::signature_type& s) -> transport_signature_type
+      { return s; }
     }, protocol_sig);
   }
 
@@ -102,7 +126,8 @@ namespace factory {
   {
     return std::visit(visitor{
       [](const tcp_signature& s) -> auto { return make_json(s); },
-      [](const serial_signature& s) -> auto { return make_json(s); }
+      [](const serial_signature& s) -> auto { return make_json(s); },
+      [](const dummy_signature& s) -> auto { return make_json(s); }
     }, sig);
   }
 
@@ -116,6 +141,10 @@ namespace factory {
         [](const serial::serial::signature_type& s)
         -> transport_ptr
         { return std::make_unique<serial::serial>(s); }
+        ,
+        [](const dummy::signature_type& s)
+        -> transport_ptr
+        { return std::make_unique<dummy>(s); }
       }, sig);
   }
 }
