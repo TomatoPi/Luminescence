@@ -1,4 +1,4 @@
-#include "device/factory.h"
+#include "device/manager.h"
 
 #include <json/json.h>
 #include <utils/json.h>
@@ -26,7 +26,7 @@ int main(int argc, char * const argv[])
   {
     output << "\"TCP\" : ";
     signature def{
-      meta::name{},
+      meta::name{"default-tcp-device"},
       meta::transport{tcp_signature{}}};
     /***!< default constructed signature */
     auto root = make_json(def);
@@ -39,7 +39,7 @@ int main(int argc, char * const argv[])
   {
     output << "\"SERIAL\" : ";
     signature def{
-      meta::name{},
+      meta::name{"default-serial-device"},
       meta::transport{serial_signature{}}};
     /***!< default constructed signature */
     auto root = make_json(def);
@@ -51,7 +51,7 @@ int main(int argc, char * const argv[])
   {
     output << "\"DUMMY\" : ";
     signature def{
-      meta::name{},
+      meta::name{"default-dummy-device"},
       meta::transport{transport::dummy::signature_type{}}};
     /***!< default constructed signature */
     auto root = make_json(def);
@@ -68,59 +68,27 @@ int main(int argc, char * const argv[])
     Json::Value root;
     stream >> root;
 
-    // std::vector<std::string> devices_codes = {"TCP", "SERIAL"};
-    std::list<device> devices;
-    // for (auto dev : devices_codes)
+    std::vector<std::string> devices_codes = {"TCP", "SERIAL", "DUMMY"};
+    std::vector<signature> devices_sigs;
+    for (auto code : devices_codes)
+      devices_sigs.emplace_back(opto::device::parse_signature(root["devices"][code]));
+
+    manager devices_manager;
+    for (auto sig : devices_sigs)
+      devices_manager.register_device(sig);
+
+    while (true)
     {
-      // std::string dev = "SERIAL";
-      std::string dev = "DUMMY";
-      auto sig = opto::device::parse_signature(root["devices"][dev]);
-      factory builder;
-
-      builder.push(sig);
-      do {
-
-        try {
-          builder.update();
-          
-          auto newdevices = builder.pull();
-          if (0 < newdevices.size())
-          {
-            for (auto& d : newdevices)
-            {
-              std::cout << "Successfully created new device : " << make_json(static_cast<signature>(d));
-              
-              if (!d.alive())
-                throw std::runtime_error("Bad device returned");
-
-              switch (d.send(std::vector<uint8_t>({'O', 'p', 't', 'o', 0, 0, 3, 0, 255, 255, 255})))
-              {
-                case transport::packet_status::Sent :
-                  std::this_thread::sleep_for(std::chrono::microseconds(1000));
-                  // std::cout << "Packet sent\n";
-                  break;
-                case transport::packet_status::Failed :
-                  std::cerr << "[" << std::get<meta::name>(static_cast<signature>(d)).value 
-                    << "] - Failed send Packet to addr " << 0 << '\n';
-                  break;
-              }
-            }
-            devices.splice(devices.end(), std::move(newdevices));
-
+      devices_manager.update();
+      devices_manager.foreach_device([](class device& dev) -> void {
+          auto opt = dev.receive();
+          if (opt.has_value())
+          { 
+            std::cout << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+                      << "] - Received : " << opt.value().content << '\n';
           }
-        }
-        catch (std::runtime_error& e)
-        {
-          std::cout << "Failure : " << e.what() << '\n';
-          continue;
-        }
-
-        for (auto itr = devices.begin(); itr != devices.end() ;)
-        try {
-          auto& dev = *itr;
-          if (!dev.alive())
-            throw std::runtime_error("Bad device running");
-
+      });
+      devices_manager.foreach_device([](class device& dev) -> void {
           size_t N = 1;
           std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, (uint8_t)(N*3), 0};
           for (size_t i=0 ; i<N ; ++i)
@@ -141,34 +109,110 @@ int main(int argc, char * const argv[])
                 << "] - Failed send Packet to addr " << 0 << '\n';
               break;
           }
-
-          auto opt = dev.receive();
-          if (opt.has_value())
-          { 
-            std::cout << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
-                      << "] - Received : " << opt.value().content << '\n';
-          }
-
-          // std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
-          //           << "] - Done !\n";
-          itr++;
-          continue;
-        }
-        catch (std::runtime_error& e)
-        {
-          std::cerr << "[" << std::get<meta::name>(static_cast<signature>(*itr)).value 
-                    << "] - Failure on device : " << e.what() << '\n';
-          std::cerr << "Reload device ...\n";
-          builder.push(static_cast<signature>(*itr));
-          itr = devices.erase(itr);
-        }
-
-        // std::cout << "Nothing pending\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-      } while (true);
+      });
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
-    // try {
+    /* *** While true - end *** */
+
+    // // std::list<device> devices;
+    // {
+    //   // std::string dev = "SERIAL";
+    //   // std::string dev = "DUMMY";
+
+    //   factory builder;
+
+    //   builder.push(sig);
+    //   do {
+
+    //     try {
+    //       builder.update();
+          
+    //       auto newdevices = builder.pull();
+    //       if (0 < newdevices.size())
+    //       {
+    //         for (auto& d : newdevices)
+    //         {
+    //           std::cout << "Successfully created new device : " << make_json(static_cast<signature>(d));
+              
+    //           if (!d.alive())
+    //             throw std::runtime_error("Bad device returned");
+
+    //           switch (d.send(std::vector<uint8_t>({'O', 'p', 't', 'o', 0, 0, 3, 0, 255, 255, 255})))
+    //           {
+    //             case transport::packet_status::Sent :
+    //               std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    //               // std::cout << "Packet sent\n";
+    //               break;
+    //             case transport::packet_status::Failed :
+    //               std::cerr << "[" << std::get<meta::name>(static_cast<signature>(d)).value 
+    //                 << "] - Failed send Packet to addr " << 0 << '\n';
+    //               break;
+    //           }
+    //         }
+    //         devices.splice(devices.end(), std::move(newdevices));
+
+    //       }
+    //     }
+    //     catch (std::runtime_error& e)
+    //     {
+    //       std::cout << "Failure : " << e.what() << '\n';
+    //       continue;
+    //     }
+
+    //     for (auto itr = devices.begin(); itr != devices.end() ;)
+    //     try {
+    //       auto& dev = *itr;
+    //       if (!dev.alive())
+    //         throw std::runtime_error("Bad device running");
+
+    //       size_t N = 1;
+    //       std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, (uint8_t)(N*3), 0};
+    //       for (size_t i=0 ; i<N ; ++i)
+    //       {
+    //         bulk.emplace_back(0);
+    //         bulk.emplace_back(0);
+    //         bulk.emplace_back(i*4);
+    //       }
+
+    //       switch (dev.send(bulk))
+    //       {
+    //         case transport::packet_status::Sent :
+    //           std::this_thread::sleep_for(std::chrono::microseconds(100));
+    //           // std::cout << "Packet sent\n";
+    //           break;
+    //         case transport::packet_status::Failed :
+    //           std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+    //             << "] - Failed send Packet to addr " << 0 << '\n';
+    //           break;
+    //       }
+
+    //       auto opt = dev.receive();
+    //       if (opt.has_value())
+    //       { 
+    //         std::cout << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+    //                   << "] - Received : " << opt.value().content << '\n';
+    //       }
+
+    //       // std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+    //       //           << "] - Done !\n";
+    //       itr++;
+    //       continue;
+    //     }
+    //     catch (std::runtime_error& e)
+    //     {
+    //       std::cerr << "[" << std::get<meta::name>(static_cast<signature>(*itr)).value 
+    //                 << "] - Failure on device : " << e.what() << '\n';
+    //       std::cerr << "Reload device ...\n";
+    //       builder.push(static_cast<signature>(*itr));
+    //       itr = devices.erase(itr);
+    //     }
+
+    //     // std::cout << "Nothing pending\n";
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    //   } while (true);
+    // }
+    // // try {
     // }
     // catch (utils::bad_json& e)
     // {

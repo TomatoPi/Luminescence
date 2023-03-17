@@ -18,8 +18,10 @@ namespace device {
   using opt_device = std::optional<class device>;
 
   struct build_failure : std::runtime_error {
-    build_failure(const std::string& str) 
-    : std::runtime_error(str) {}
+    build_failure(const std::string& name, const std::string& str) 
+    : std::runtime_error(str), dev_name(name) {}
+
+    std::string dev_name;
   };
 
   signature parse_signature(const Json::Value& root);
@@ -30,7 +32,7 @@ namespace device {
   public :
 
     void push(const signature& sig);
-    [[nodiscard]] std::list<device> pull();
+    [[nodiscard]] std::list<device> pull() noexcept;
     
     void update();  
 

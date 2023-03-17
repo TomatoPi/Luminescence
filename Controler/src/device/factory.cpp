@@ -42,7 +42,7 @@ namespace device {
         , sig)
       );
   }
-  [[nodiscard]] std::list<device> factory::pull()
+  [[nodiscard]] std::list<device> factory::pull() noexcept
   {
     return std::move(_ready_list);
   }
@@ -68,7 +68,7 @@ namespace device {
     }
     catch (std::runtime_error& e)
     {
-      throw build_failure(std::get<meta::name>(itr->first).value + " : " + e.what());
+      throw build_failure(std::get<meta::name>(itr->first).value, e.what());
     }
   }
 }
