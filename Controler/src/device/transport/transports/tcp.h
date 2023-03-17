@@ -13,8 +13,8 @@ namespace tcp {
 
   /// @brief Represents an IPv4 address using dotted notation
   struct address {
-    std::string host;
-    std::string port;
+    std::string host = "192.168.0.160";
+    std::string port = "6454";
   };
 
   /// @brief Holds configuration for the linux socket

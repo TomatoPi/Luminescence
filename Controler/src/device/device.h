@@ -19,7 +19,7 @@ namespace device {
 
   namespace meta {
     
-    struct name { std::string value; };
+    struct name { std::string value = "default-device"; };
     using transport = ::transport::factory::transport_signature_type;
   }
 
@@ -36,8 +36,14 @@ namespace device {
     device(const device&) = delete;
     device& operator= (const device&) = delete;
 
-    device(device&&) = default;
-    device& operator= (device&&) = default;
+    device(device&& d) : device(std::move(d._cfg), std::move(d._transport)) { d._transport = nullptr; }
+    device& operator= (device&& s)
+    { 
+      _cfg = std::move(s._cfg);
+      _transport = std::move(s._transport);
+      s._transport = nullptr;
+      return *this;
+    }
 
     explicit device(const signature& sig)
     : device(sig, transport::factory::open(std::get<meta::transport>(sig)))

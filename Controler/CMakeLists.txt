@@ -3,7 +3,7 @@ project(Controller VERSION 0.0.1)
 
 include(FindPkgConfig)
 
-set(HEADERS
+set(DEVICE_HEADERS
     
   src/device/device.h
   src/device/factory.h
@@ -14,18 +14,11 @@ set(HEADERS
       src/device/transport/transports/factory.h
   
 
-  src/midi/bridge.h
-  src/midi/bridges/jack-bridge.h
   
-  src/device.h
-  
-  src/jack-bridge.hpp
-  src/manager.hpp
-  src/mapper.hpp
   )
   
-  set(SOURCES
-  src/controller.cpp
+  set(DEVICE_SOURCES
+  
   
   src/device/device.cpp
   src/device/factory.cpp
@@ -33,13 +26,32 @@ set(HEADERS
     src/device/transport/transports/serial.cpp
     src/device/transport/transports/fd-proxy.cpp
     src/device/transport/transports/factory.cpp
-  
-  src/midi/bridges/jack-bridge.cpp
+    )
+    
+add_executable(Controller
+    ${DEVICE_HEADERS} ${DEVICE_SOURCES}
+    src/controller.cpp
+    
+  src/midi/bridge.h
+  src/midi/bridges/jack-bridge.h
+    src/midi/bridges/jack-bridge.cpp
+    src/midi/bridges/jack-bridge.h
+    src/manager.hpp
 
-  src/manager.cpp
-  src/mapper.cpp
-)
+    src/manager.cpp
 
-add_executable(Controller ${HEADER} ${SOURCES})
+    src/mapper.hpp
+    src/mapper.cpp
+  )
 target_include_directories(Controller PUBLIC src)
 target_link_libraries(Controller jack jsoncpp)
+
+
+add_executable(JsonCtrl)
+
+target_sources(JsonCtrl
+  PRIVATE ${DEVICE_HEADERS} ${DEVICE_SOURCES}
+  PRIVATE src/exec/json-ctrl.cpp
+  )
+target_include_directories(JsonCtrl PUBLIC src)
+target_link_libraries(JsonCtrl jsoncpp)

@@ -23,12 +23,14 @@ namespace device {
   };
 
   signature parse_signature(const Json::Value& root);
+  
+  Json::Value make_json(const signature& sig);
 
   class factory {
   public :
 
     void push(const signature& sig);
-    [[nodiscard]] opt_device pull();
+    [[nodiscard]] std::list<device> pull();
     
     void update();  
 

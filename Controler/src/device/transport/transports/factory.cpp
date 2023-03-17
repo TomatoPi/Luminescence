@@ -3,61 +3,74 @@
 #include <json/json.h>
 
 #include <utils/visitor.h>
+#include <utils/json.h>
 
 namespace transport {
 namespace factory {
 
-  /* *** Helpers Functions *** */
-
-  template <typename T>
-  T get(const Json::Value& root, const std::string& key)
-  {
-    if (!root.isMember(key))
-      throw bad_json("Missing key : '" + key + "'");
-    return root[key].as<T>();
-  }
-
-  template <>
-  const Json::Value& get<const Json::Value& >(const Json::Value& root, const std::string& key)
-  {
-    if (!root.isMember(key))
-      throw bad_json("Missing key : '" + key + "'");
-    return root[key];
-  }
+  using namespace utils;
 
   /* *** TCP Parser *** */
 
-  tcp::signature parse_tcp(const Json::Value& sig)
+  tcp::signature parse_tcp(const Json::Value& root)
   {
-    if (!sig)
-      throw bad_json("Missing 'args' keys");
-
     tcp::address addr{
-      .host = get<Json::String>(sig, "host"),
-      .port = get<Json::String>(sig, "port")
+      .host = get<Json::String>(root, "host"),
+      .port = get<Json::String>(root, "port")
     };
 
     tcp::keepalive_config kcfg{
-      .counter = get<Json::Int>(sig, "counter"),
-      .interval = get<Json::Int>(sig, "interval")
+      .counter = get<Json::Int>(root, "counter"),
+      .interval = get<Json::Int>(root, "interval")
     };
 
     return std::make_tuple(addr, kcfg);
+  }
+
+  Json::Value make_json(const tcp_signature& sig)
+  {
+    Json::Value root;
+    root["protocol"] = Json::String("TCP");
+    
+    auto addr = std::get<tcp::address>(sig);
+    root["args"]["host"] = Json::String(addr.host);
+    root["args"]["port"] = Json::String(addr.port);
+
+    auto kcfg = std::get<tcp::keepalive_config>(sig);
+    root["args"]["counter"] = Json::Int(kcfg.counter);
+    root["args"]["interval"] = Json::Int(kcfg.interval);
+
+    auto fd_cfg = std::get<fd::read_buffer_size>(sig);
+    root["read_buffer_size"] = Json::UInt64(fd_cfg.value);
+
+    return root;
   }
 
   /* *** Serial Parser *** */
 
   serial::signature parse_serial(const Json::Value& sig)
   {
-    if (!sig)
-      throw bad_json("Missing 'args' keys");
-
     serial::address addr{
       .port = get<Json::String>(sig, "port"),
       .baudrate = get<Json::Int>(sig, "baudrate")
     };
 
     return std::make_tuple(addr);
+  }  
+  
+  Json::Value make_json(const serial_signature& sig)
+  {
+    Json::Value root;
+    root["protocol"] = Json::String("SERIAL");
+    
+    auto addr = std::get<serial::address>(sig);
+    root["args"]["port"] = Json::String(addr.port);
+    root["args"]["baudrate"] = Json::Int(addr.baudrate);
+
+    auto fd_cfg = std::get<fd::read_buffer_size>(sig);
+    root["read_buffer_size"] = Json::UInt64(fd_cfg.value);
+
+    return root;
   }
 
   /* *** Root Parser *** */
@@ -79,9 +92,18 @@ namespace factory {
       .value = get<Json::UInt64>(sig, "read_buffer_size")
     };
     
-    return std::visit([fd_cfg](auto psig) -> auto {
-      return std::tuple_cat(psig, std::make_tuple(fd_cfg));
+    return std::visit(visitor{
+      [fd_cfg](const tcp::signature& s) -> transport_signature_type { return std::tuple_cat(s, std::make_tuple(fd_cfg)); },
+      [fd_cfg](const serial::signature& s) -> transport_signature_type { return std::tuple_cat(s, std::make_tuple(fd_cfg)); }
     }, protocol_sig);
+  }
+
+  Json::Value make_json(const transport_signature_type& sig)
+  {
+    return std::visit(visitor{
+      [](const tcp_signature& s) -> auto { return make_json(s); },
+      [](const serial_signature& s) -> auto { return make_json(s); }
+    }, sig);
   }
 
   transport_ptr open(const transport_signature_type& sig)

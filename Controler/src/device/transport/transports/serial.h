@@ -13,8 +13,8 @@ namespace serial {
 
   /// @brief Represents a serial port like /dev/ttyACM0 with an associated baudrate
   struct address {
-    std::string port;
-    int baudrate;
+    std::string port = "/dev/ttyACM0";
+    int baudrate = 115200;
   };
 
   /// @brief Holds all parameters required to build a valid connection

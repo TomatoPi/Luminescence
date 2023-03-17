@@ -2,14 +2,35 @@
 
 #include "transport/transports/factory.h"
 
+#include <utils/json.h>
+
 #include <future>
 
 namespace opto {
 namespace device {
 
+  using namespace utils;
+
   signature parse_signature(const Json::Value& root)
   {
+    meta::name name{
+      .value = get<Json::String>(root, "name")
+    };
 
+    meta::transport transport = transport::factory::parse_signature(
+      get<const Json::Value&>(root, "transport")
+      );
+
+    return std::make_tuple(name, transport);
+  }
+
+  Json::Value make_json(const signature& sig)
+  {
+    Json::Value root;
+    root["name"] = Json::String(std::get<meta::name>(sig).value);
+    root["transport"] = transport::factory::make_json(std::get<meta::transport>(sig));
+
+    return root;
   }
   
   void factory::push(const signature& sig)
@@ -21,14 +42,9 @@ namespace device {
         , sig)
       );
   }
-  [[nodiscard]] opt_device factory::pull()
+  [[nodiscard]] std::list<device> factory::pull()
   {
-    if (_ready_list.empty())
-      return std::nullopt;
-
-    auto&& dev = std::move(_ready_list.front());
-    _ready_list.pop_front();
-    return std::make_optional<class device>(std::forward<decltype(dev)>(dev));
+    return std::move(_ready_list);
   }
 
   void factory::update()
@@ -36,6 +52,9 @@ namespace device {
     for (auto itr = _build_list.begin() ; itr != _build_list.end() ;)
     try {
       auto& [sig, future] = *itr;
+      if (!future.valid())
+        throw std::runtime_error("Invalid Future");
+        
       if (future.wait_for(std::chrono::microseconds(10)) != std::future_status::timeout)
       {
         auto device = future.get();
