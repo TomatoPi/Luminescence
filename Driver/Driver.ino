@@ -14,24 +14,6 @@
 // #define SERIAL SerialUSB
 #define SERIAL Serial
 
-#ifdef OPTOPOULPE_MAXIMATOR
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 0, 200);
-EthernetServer server(8000);
-#endif
-
-#ifdef OPTOPOULPE_SATELITE
-byte mac[] = { 0xDE, 0xAD, 0xEF, 0xBE, 0xED, 0xFE };
-IPAddress ip(192, 168, 0, 210);
-EthernetServer server(8000);
-#endif
-
-#ifdef OPTOPOULPE_MIRRORS
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 0, 220);
-EthernetServer server(8000);
-#endif
-
 // WS2811_PORTD: 25,26,27,28,14,15,29,11
 
 // Nano : Leds data : D2 : Index select : D3
@@ -87,7 +69,7 @@ EthernetServer server(8000);
 #endif
 
 #define DEVICE_MAC_ADDRESS  0xDE, 0xAD, 0xEF, 0xBE, 0xED, (DEVICE_UID)
-#define DEVICE_IPv4_ADDRESS 192, 168, 0, (DEVICE_UID)
+#define DEVICE_IPv4_ADDRESS 10, 43, 0, (DEVICE_UID)
 #define DEVICE_PORT         0x1936
 
 #define DEVICE_SERIAL_BAUDRATE 115200

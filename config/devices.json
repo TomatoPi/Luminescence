@@ -8,7 +8,7 @@
         "protocol" : "TCP",
         "args" : 
         {
-          "host" : "192.168.0.160",
+          "host" : "10.43.0.160",
           "port" : "6454",
           "counter" : 100,
           "interval" : 1
