@@ -1,5 +1,5 @@
-// #define OPTOPOULPE_MAXIMATOR
-#define OPTOPOULPE_SATELITE
+#define OPTOPOULPE_MAXIMATOR
+// #define OPTOPOULPE_SATELITE
 // #define OPTOPOULPE_MIRRORS
 
 #include <Arduino.h>
@@ -60,10 +60,89 @@ EthernetServer server(8000);
  *  
  *  Rework colormodulation controls ??
  */
+#ifdef OPTOPOULPE_MAXIMATOR
 
-#define SerialUSB_MESSAGE_TIMEOUT 1
-#define SerialUSB_SLEEP_TIMEOUT 0
-#define FRAME_REFRESH_TIMEOUT 0
+  #define DEVICE_UID 0xA0
+  #define DEVICE_RIBBONS_COUNT 8
+  #define DEVICE_RIBBON_SIZE   (8 * 30) /* 10 modules */
+
+#endif
+
+#ifdef OPTOPOULPE_SATELITE
+
+  #define SATELITE_INDEX 0
+
+  #define DEVICE_UID (0xB0 + SATELITE_INDEX)
+  #define DEVICE_RIBBONS_COUNT 1
+  #define DEVICE_RIBBON_SIZE   15 /* 5 modules */
+
+#endif
+
+#ifdef OPTOPOULPE_MIRRORS
+
+  #define DEVICE_UID 0xC0
+  #define DEVICE_RIBBONS_COUNT 1
+  #define DEVICE_RIBBON_SIZE   32 /* Random magic number */
+
+#endif
+
+#define DEVICE_MAC_ADDRESS  0xDE, 0xAD, 0xEF, 0xBE, 0xED, (DEVICE_UID)
+#define DEVICE_IPv4_ADDRESS 192, 168, 0, (DEVICE_UID)
+#define DEVICE_PORT         0x1936
+
+#define DEVICE_SERIAL_BAUDRATE 115200
+
+#define MAX_LEDS_COUNT ((DEVICE_RIBBONS_COUNT) * (DEVICE_RIBBON_SIZE))
+
+namespace ethernet {
+  static byte            mac[] = { DEVICE_MAC_ADDRESS };
+  static IPAddress       ip( DEVICE_IPv4_ADDRESS );
+  static EthernetServer  server( DEVICE_PORT );
+  static EthernetClient  client = EthernetClient();
+}
+
+#define PRINT(x) \
+  Serial.print(x); \
+  if (ethernet::client) \
+    ethernet::client.print(x); \
+  else \
+    ethernet::server.print(x)
+
+#define PRINTLN(x) \
+  Serial.println(x); \
+  if (ethernet::client) \
+    ethernet::client.println(x); \
+  else \
+    ethernet::server.println(x)
+
+#define ENDL() PRINTLN('\0')
+
+namespace LOG {
+
+  enum mode {
+    Debug   = 0,
+    Info    = 1,
+    Warning = 2,
+    Severe  = 3,
+    Critical= 4,
+  };
+
+  struct internal {};
+
+  static mode level = mode::Info;
+
+  bool print(LOG::mode Mode)
+  {
+    if (Mode < LOG::level)
+      return false;
+    
+    PRINT(Ethernet.localIP());
+    PRINT(":");
+    PRINT(DEVICE_PORT);
+    PRINT(" - ");
+    return true;
+  }
+}
 
 using color_t = CRGB;
 using index_t = uint32_t;
@@ -83,9 +162,9 @@ state_t global;
 
 void setup()
 {
-  SERIAL.begin(115200);
+  SERIAL.begin(DEVICE_SERIAL_BAUDRATE);
 
-  Ethernet.begin(mac, ip);
+  Ethernet.begin(ethernet::mac, ethernet::ip);
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
     Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
     // BAIL CRITICAL ERROR
@@ -96,9 +175,17 @@ void setup()
     delay(100);
     // BAIL SEVERE ERROR
   }
+  
+  ethernet::server.begin();
+  if (print(LOG::Info))
+  {
+    PRINT("Opto-v2 : Server is ready at ");
+    PRINT(Ethernet.localIP());
+    ENDL();
+  }
 
 #ifdef OPTOPOULPE_MAXIMATOR
-  FastLED.addLeds<WS2811_PORTD, MaxRibbonsCount>(leds, MaxLedsPerRibbon);
+  FastLED.addLeds<WS2811_PORTD, DEVICE_RIBBONS_COUNT>(leds, DEVICE_RIBBON_SIZE);
 #endif
 #ifdef OPTOPOULPE_SATELITE
   FastLED.addLeds<WS2812B, 3, RGB>(leds, MaxLedsPerRibbon);
@@ -109,7 +196,7 @@ void setup()
 #endif
 
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
-  FastLED.setMaxRefreshRate(50);
+  // FastLED.setMaxRefreshRate(50);
 
   for (size_t i=0 ; i<PRESETS_COUNT ; ++i)
   {
@@ -117,10 +204,6 @@ void setup()
   }
 
   FastLED.delay(1000);
-
-  server.begin();
-  Serial.print("server is ready at ");
-  Serial.println(Ethernet.localIP());
 }
 
 void update_clocks()
@@ -348,26 +431,30 @@ void loop()
       coarse_framerate = (uint8_t)fps;
       
       static uint64_t cptr = 0;
-      SERIAL.print((unsigned long int) cptr++);
-      SERIAL.print(" - ");
-      SERIAL.print("Avg FPS : ");
-      SERIAL.print(fps);
-      SERIAL.print(" : SerialUSB : ");
-      SERIAL.print(update_end - update_begin);
-      SERIAL.print(" : Compute : ");
-      SERIAL.print(compute_end - compute_begin);
-      SERIAL.print(" : Draw : ");
-      SERIAL.print(draw_end - draw_begin);
-      SERIAL.print(" : Drops : ");
-      SERIAL.print(drop_count);
-      SERIAL.print(" : Master Clock : ");
-      SERIAL.println(global.master.bpm);
-      SERIAL.print(" : Strobe Period : ");
-      SERIAL.print(strobe_clock.period);
-      SERIAL.print(" : Coarse FPS : ");
-      SERIAL.print(coarse_framerate);
-      SERIAL.print(" : Ctrl : ");
-      SERIAL.println(global.master.strobe_speed);
+      if (LOG::print(LOG::Info))
+      {
+        PRINT((unsigned long int) cptr++);
+        PRINT(" - ");
+        PRINT("Avg FPS : ");
+        PRINT(fps);
+        PRINT(" : SerialUSB : ");
+        PRINT(update_end - update_begin);
+        PRINT(" : Compute : ");
+        PRINT(compute_end - compute_begin);
+        PRINT(" : Draw : ");
+        PRINT(draw_end - draw_begin);
+        PRINT(" : Drops : ");
+        PRINT(drop_count);
+        PRINT(" : Master Clock : ");
+        PRINTLN(global.master.bpm);
+        PRINT(" : Strobe Period : ");
+        PRINT(strobe_clock.period);
+        PRINT(" : Coarse FPS : ");
+        PRINT(coarse_framerate);
+        PRINT(" : Ctrl : ");
+        PRINTLN(global.master.strobe_speed);
+        ENDL();
+      }
 
       fps_accumulator = 0;
       frame_cptr = 0;
@@ -382,30 +469,35 @@ int read_from_controller() {
   static size_t data_size = 0;
 
   unsigned long timeout_timestamp = millis();
-  EthernetClient client = server.available();
 
-  if (!client || !client.connected())
+  if (ethernet::client && !ethernet::client.connected())
   {
-    // if (client)
-    // {
-    //   client.stop();
-    //   SERIAL.println("Killing dead client");
-    // }
-
-    // client = server.accept();
-    // if (!client)
-    // {
-      // SERIAL.println("SEVERE : No client available");
-      return 0;
-    // }
-
+    if (LOG::print(LOG::Info))
+    {
+      PRINT("Kill dead client ...");
+      ENDL();
+    }
+    ethernet::client.stop();
   }
-  // SERIAL.println("New client accepted");
-  // client.setConnectionTimeout(10000);
 
-  while (client.connected() && 0 < client.available())
+  if (!ethernet::client)
   {
-    int in = client.read();
+    ethernet::client = ethernet::server.accept();
+    if (!ethernet::client)
+      return false;
+    serial_index = 0;
+    Serial.end();
+    Serial.begin(DEVICE_SERIAL_BAUDRATE);
+    if (LOG::print(LOG::Info))
+    {
+      PRINT("New client accepted");
+      ENDL();
+    }
+  }
+
+  while (ethernet::client && ethernet::client.connected() && 0 < ethernet::client.available())
+  {
+    int in = ethernet::client.read();
     if (in < 0)
       continue;
       
@@ -416,8 +508,8 @@ int read_from_controller() {
       // FIX device not responding due to desynchronisation of programs
       if (serial_buffer[0] != 0xFF)
       {
-        client.println("Invalid packet received");
-        SERIAL.println("Invalid packet received");
+        if (LOG::print(LOG::Info))
+            PRINT("Invalid packet received");
         serial_index = 0;
         continue;
       }
@@ -435,14 +527,21 @@ int read_from_controller() {
       // FIX random crashes occuring on bad transferts
       if (sizeof(state_t) < data_address + data_size)
       {
-        SERIAL.println("Invalid packet received");
-        client.println("Invalid packet received");
+        if (LOG::print(LOG::Info))
+            PRINT("Invalid packet received");
         serial_index = 0;
         continue;
       }
       memcpy(((uint8_t*)&global) + data_address, serial_buffer + 4, data_size);
-      client.print("Wrote "); client.print(data_size); client.print(" bytes at addr ");
-      client.print(data_address); client.println();
+
+      if (LOG::print(LOG::Debug))
+      {
+        PRINT("Wrote ");
+        PRINT(data_size);
+        PRINT(" bytes at addr ");
+        PRINT(data_address);
+        ENDL();
+      }
       serial_index = 0;
     }
   }

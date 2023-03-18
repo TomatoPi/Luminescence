@@ -8,7 +8,7 @@
 
 #include <string.h>
 
-namespace opto::midi::jack {
+namespace midi::jack {
 
 int jack_callback(jack_nframes_t nframes, void* args)
 {
@@ -111,7 +111,7 @@ std::vector<raw_message> JackBridge::incomming_midi()
 }
 void JackBridge::send_midi(const raw_message& msg)
 {
-  to_jack.push(msg);
+  to_jack.push(raw_message(msg));
 }
 
 }

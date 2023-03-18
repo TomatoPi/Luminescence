@@ -70,7 +70,7 @@ namespace device {
 
             } while (false);
 
-            std::this_thread::sleep_for(std::chrono::microseconds(10000));
+            std::this_thread::sleep_for(std::chrono::microseconds(1000));
 
             do {
               auto _(dev->lock());
@@ -82,7 +82,7 @@ namespace device {
               dev->_receive_queue.push((opt.value()));
             } while (false);
 
-            std::this_thread::sleep_for(std::chrono::microseconds(10000));
+            std::this_thread::sleep_for(std::chrono::microseconds(1000));
           } // while true
           return 0;
         }, this, std::move(transport), _terminate_transport.get_future());
