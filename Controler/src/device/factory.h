@@ -7,15 +7,16 @@
 #include <variant>
 #include <future>
 #include <optional>
+#include <memory>
 #include <utility>
 #include <list>
 
 namespace opto {
 namespace device {
 
-  using pending_device = std::pair<signature, std::future<class device>>;
-  using maybe_device = std::variant<class device, pending_device, signature>;
-  using opt_device = std::optional<class device>;
+  using device_ptr = std::unique_ptr<class device>;
+  using pending_device = std::pair<signature, std::future<device_ptr>>;
+  using maybe_device = std::variant<device_ptr, pending_device, signature>;
 
   struct build_failure : std::runtime_error {
     build_failure(const std::string& name, const std::string& str) 
@@ -32,14 +33,14 @@ namespace device {
   public :
 
     void push(const signature& sig);
-    [[nodiscard]] std::list<device> pull() noexcept;
+    [[nodiscard]] std::list<device_ptr> pull() noexcept;
     
     void update();  
 
   private :
 
     std::list<pending_device> _build_list;
-    std::list<device>         _ready_list;
+    std::list<device_ptr>     _ready_list;
   };
 
 }

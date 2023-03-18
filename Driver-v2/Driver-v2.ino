@@ -1,7 +1,7 @@
 /// @file Driver-v2.ino : Arduino sketch running on Optopoulpe's led controllers
 
-#define OPTOPOULPE_MAXIMATOR
-// #define OPTOPOULPE_SATELITE
+// #define OPTOPOULPE_MAXIMATOR
+#define OPTOPOULPE_SATELITE
 // #define OPTOPOULPE_MIRRORS
 
 /* *** LIBRARY INCLUDES *** */
@@ -50,19 +50,21 @@
 
 #define PRINT(x) \
   Serial.print(x); \
-  opto::ethernet::server.print(x)
+  if (opto::ethernet::client) \
+    opto::ethernet::client.print(x); \
+  else \
+    opto::ethernet::server.print(x)
 
 #define PRINTLN(x) \
   Serial.println(x); \
-  opto::ethernet::server.println(x)
+  if (opto::ethernet::client) \
+    opto::ethernet::client.println(x); \
+  else \
+    opto::ethernet::server.println(x)
 
-#define CPRINT(x) \
-  Serial.print(x); \
-  opto::ethernet::server.print(x)
+#define CPRINT(x) PRINT(x)
 
-#define CENDL() \
-  Serial.println(""); \
-  client.println("")
+#define CENDL() PRINTLN('\0')
 
 // #define MPRINT(Mode, xx...) \
 //   if (log::level <= Mode) { \
@@ -80,7 +82,7 @@ namespace opto {
     static byte            mac[] = { DEVICE_MAC_ADDRESS };
     static IPAddress       ip( DEVICE_IPv4_ADDRESS );
     static EthernetServer  server( DEVICE_PORT );
-    static EthernetClient  client;
+    static EthernetClient  client = EthernetClient();
   }
 
   namespace leds {
@@ -89,7 +91,7 @@ namespace opto {
     static constexpr uint32_t MaxLedsPerRibbon = DEVICE_RIBBON_SIZE;
     static constexpr uint32_t MaxLedsCount = MaxRibbonsCount * MaxLedsPerRibbon;
 
-    static CRGB leds[MaxLedsCount];
+    static CRGB leds[MaxLedsCount] = {CRGB::Black};
   }
 
   namespace log {
@@ -116,12 +118,14 @@ namespace opto {
       return false;
     
     PRINT(Ethernet.localIP());
+    PRINT(":");
+    PRINT(DEVICE_PORT);
     PRINT(" - ");
     return true;
   }
 
   void endl()
-  { PRINTLN(""); }
+  { PRINTLN('\0'); }
 
   // template <log::mode Mode, typename T, typename ... Args>
   // void print<Mode, log::internal, T, Args...>(T t, Args ...args)
@@ -168,6 +172,8 @@ namespace opto {
       if (!client)
         return false;
       _index = 0;
+      Serial.end();
+      Serial.begin(DEVICE_SERIAL_BAUDRATE);
       if (print(log::Info))
       {
         CPRINT("New client accepted");
@@ -247,6 +253,15 @@ namespace opto {
 
       // Message end
       _index = 0;
+    }
+
+    if (!client.connected())
+    {
+      if (print(log::Debug))
+      {
+        CPRINT("Kill Dead Client End...");
+        CENDL();
+      }
     }
     return true;
   }

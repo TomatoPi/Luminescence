@@ -8,13 +8,13 @@ template <typename T>
 struct locked {
   struct proxy {
     std::lock_guard<std::mutex> _lock;
-    T& _obj;
+    T& ref;
   };
 
   proxy lock()
-  { return proxy{std::lock_guard<std::mutex>(_obj_mutex), _obj}; }
+  { return proxy{std::lock_guard<std::mutex>(_mutex), _obj}; }
 
-  std::mutex _obj_mutex;
+  std::mutex _mutex;
   T          _obj;
 };
 

@@ -22,7 +22,7 @@ int main(int argc, char * const argv[])
 
   // if ("TCP" == argv[1])
   output << "{\n";
-  output << "\"devices\" : {\n";
+  output << "\"devices\" : {\n";  
   {
     output << "\"TCP\" : ";
     signature def{
@@ -61,14 +61,19 @@ int main(int argc, char * const argv[])
   }
   output << "}\n}";
   std::string device_json = output.str();
-  std::cout << device_json << '\n';
   // else
   {
     std::istringstream stream(device_json);
     Json::Value root;
     stream >> root;
 
-    std::vector<std::string> devices_codes = {"TCP", "SERIAL", "DUMMY"};
+
+    std::ifstream file("/home/sfxd/Documents/2.0/progs/Optopoulpe/config/due.json");
+    file >> root["devices"]["FILE"];
+
+    std::cout << root << '\n';
+
+    std::vector<std::string> devices_codes = {"TCP", "SERIAL", "FILE"};
     std::vector<signature> devices_sigs;
     for (auto code : devices_codes)
       devices_sigs.emplace_back(opto::device::parse_signature(root["devices"][code]));
@@ -80,15 +85,15 @@ int main(int argc, char * const argv[])
     while (true)
     {
       devices_manager.update();
-      devices_manager.foreach_device([](class device& dev) -> void {
-          auto opt = dev.receive();
+      devices_manager.foreach_device([](device_ptr& dev) -> void {
+          auto opt = dev->receive();
           if (opt.has_value())
           { 
-            std::cout << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+            std::cout << "[" << std::get<meta::name>(static_cast<signature>(*dev)).value 
                       << "] - Received : " << opt.value().content << '\n';
           }
       });
-      devices_manager.foreach_device([](class device& dev) -> void {
+      devices_manager.foreach_device([](device_ptr& dev) -> void {
           size_t N = 1;
           std::vector<uint8_t> bulk = {'O', 'p', 't', 'o', 0, 0, (uint8_t)(N*3), 0};
           for (size_t i=0 ; i<N ; ++i)
@@ -97,20 +102,21 @@ int main(int argc, char * const argv[])
             bulk.emplace_back(0);
             bulk.emplace_back(i*4);
           }
-
-          switch (dev.send(bulk))
-          {
-            case transport::packet_status::Sent :
-              std::this_thread::sleep_for(std::chrono::microseconds(100));
-              // std::cout << "Packet sent\n";
-              break;
-            case transport::packet_status::Failed :
-              std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
-                << "] - Failed send Packet to addr " << 0 << '\n';
-              break;
-          }
+          dev->send(bulk);
+          // switch ()
+          // {
+          //   case transport::packet_status::Sent :
+          //     std::this_thread::sleep_for(std::chrono::microseconds(100));
+          //     // std::cout << "Packet sent\n";
+          //     break;
+          //   case transport::packet_status::Failed :
+          //     std::cerr << "[" << std::get<meta::name>(static_cast<signature>(dev)).value 
+          //       << "] - Failed send Packet to addr " << 0 << '\n';
+          //     break;
+          // }
       });
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     /* *** While true - end *** */
   }

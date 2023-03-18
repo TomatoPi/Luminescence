@@ -34,7 +34,7 @@ opt_reply read_from_fd(int fd, size_t buffer_size)
   std::string buffer;
   buffer.resize(buffer_size);
 
-  ssize_t nread;
+  ssize_t nread = 0;
   if (-1 == (nread = read(fd, buffer.data(), buffer_size)))
   {
     int err = errno;
@@ -44,11 +44,12 @@ opt_reply read_from_fd(int fd, size_t buffer_size)
       throw std::runtime_error(strerror(err));
   }
   buffer.resize(nread);
+  buffer.append("\0");
 
   if (buffer.size() == 0)
-    throw std::runtime_error("Read failure");
+    return std::nullopt;
 
-  return std::make_optional<reply>(std::move(buffer));
+  return std::make_optional<reply>(buffer);
 }
 
 }

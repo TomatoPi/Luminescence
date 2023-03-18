@@ -57,7 +57,7 @@ int open_serial(const std::tuple<address, fd::read_buffer_size>& sig)
   // no flow control
   toptions.c_cflag &= ~CRTSCTS;
 
-  //toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
+  // toptions.c_cflag &= ~HUPCL; // disable hang-up-on-close to avoid reset
 
   toptions.c_cflag |= CREAD | CLOCAL;  // turn on READ & ignore ctrl lines
   toptions.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl

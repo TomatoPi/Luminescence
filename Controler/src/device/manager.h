@@ -18,7 +18,7 @@ namespace device {
 
     struct registered_devices : std::unordered_map<std::string, signature> {};
     struct pending_devices : std::list<std::string> {};
-    struct active_devices : std::list<class device> {};
+    struct active_devices : std::list<device_ptr> {};
     struct failed_devices : std::list<std::string> {};
 
     void register_device(const signature& sig)
@@ -55,17 +55,17 @@ namespace device {
       for (auto itr = _actives.begin(); itr != _actives.end() ;)
       try {
         auto& dev = *itr;
-        if (!dev.alive())
+        if (!dev->alive())
           throw std::runtime_error("Bad device running");
         fn(dev);
         ++itr;
       }
       catch (std::runtime_error& e)
       {
-        std::cerr << "[" << std::get<meta::name>(static_cast<signature>(*itr)).value 
+        std::cerr << "[" << std::get<meta::name>(static_cast<signature>(**itr)).value 
                   << "] - Failure on device : " << e.what() << '\n';
         std::cerr << "    Reload device ...\n";
-        _builder.push(static_cast<signature>(*itr));
+        _builder.push(static_cast<signature>(**itr));
         itr = _actives.erase(itr);
       }
     }

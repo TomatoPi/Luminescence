@@ -38,11 +38,11 @@ namespace device {
     _build_list.emplace_back(
       sig,
       std::async(std::launch::async, 
-        [](const signature& s) -> auto { return device(s); }
+        [](const signature& s) -> auto { return std::make_unique<device>(s); }
         , sig)
       );
   }
-  [[nodiscard]] std::list<device> factory::pull() noexcept
+  [[nodiscard]] std::list<device_ptr> factory::pull() noexcept
   {
     return std::move(_ready_list);
   }
@@ -68,7 +68,9 @@ namespace device {
     }
     catch (std::runtime_error& e)
     {
-      throw build_failure(std::get<meta::name>(itr->first).value, e.what());
+      auto name = std::get<meta::name>(itr->first);
+      itr = _build_list.erase(itr);
+      throw build_failure(name.value, e.what());
     }
   }
 }
