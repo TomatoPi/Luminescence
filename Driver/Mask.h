@@ -15,15 +15,15 @@ struct Mask {
     bool should_wrap;
     bool enable;
     
-    bool should_hide(uint8_t rel_pos) const {
+    uint8_t should_hide(uint8_t rel_pos) const {
       if (!enable)
-        return false;
+        return 255;
       else
       {
         uint8_t m = min8(rel_pos, center);
         uint8_t M = max8(rel_pos, center);
         uint8_t dist_to_center = should_wrap ? min8(M - m, m + (255 - M)) : M - m;
-        return dist_to_center > (half_width + 1);
+        return scale8(dist_to_center, half_width);
       }
     }
 };

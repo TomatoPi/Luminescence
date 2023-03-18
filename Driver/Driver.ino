@@ -396,9 +396,12 @@ void loop()
         }
           
         for (uint32_t i = 0; i < ribbon_leds_count; ++i) {
-          CRGB c = compo.eval(palette, time, i, ribbon_leds_count);
+          const uint8_t rel_pos = compo.slicer.map_ribbon_to_slice(i, ribbon_leds_count);
+          uint8_t mask_phase = compo.mask.should_hide(rel_pos);
+
+          CRGB c = ::eval(palette,position_in_palette(compo.palette_range_ctrl.range(), rel_pos));
           CRGB o = ribbon_ptr[i];
-          nscale8_video(&c, 1, bright);
+          nscale8_video(&c, 1, scale8_video(bright, mask_phase));
          
           ribbon_ptr[i] = CRGB(max8(c.r, o.r), max8(c.g, o.g), max8(c.b, o.b));
         }

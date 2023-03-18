@@ -17,8 +17,8 @@ struct Composition {
               uint32_t ribbon_size) const
     {
         const uint8_t rel_pos = slicer.map_ribbon_to_slice(position_in_ribbon, ribbon_size);
-        return mask.should_hide(rel_pos) ? CRGB::Black : ::eval(palette,
-            position_in_palette(palette_range_ctrl.range(), rel_pos)
-        );
+        CRGB color = ::eval(palette,position_in_palette(palette_range_ctrl.range(), rel_pos));
+        uint8_t dim = mask.should_hide(rel_pos);
+        return CRGB(scale8(color.r, dim), scale8(color.g, dim), scale8(color.b, dim));
     }
 };
