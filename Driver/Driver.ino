@@ -129,7 +129,7 @@ namespace LOG {
 
   struct internal {};
 
-  static mode level = mode::Info;
+  static mode level = mode::Debug;
 
   bool print(LOG::mode Mode)
   {
@@ -148,7 +148,7 @@ using color_t = CRGB;
 using index_t = uint32_t;
 using coef_t = float;
 
-color_t leds[MaxLedsCount];
+color_t leds[MAX_LEDS_COUNT];
 
 Clock master_clock;
 Clock osc_clocks[PRESETS_COUNT];
@@ -196,7 +196,7 @@ void setup()
 #endif
 
   FastLED.setMaxPowerInVoltsAndMilliamps(5, 10000);
-  // FastLED.setMaxRefreshRate(50);
+  FastLED.setMaxRefreshRate(50);
 
   for (size_t i=0 ; i<PRESETS_COUNT ; ++i)
   {
@@ -266,8 +266,8 @@ void loop()
     for (uint8_t ribbon = 0 ; ribbon < ribbons_count ; ++ribbon)
     {
       uint8_t feedback = feedback_per_group[0];//Global.ribbons[ribbon].group];
-      uint32_t ribbon_length = min(30 * global.setup.ribbons_lengths[ribbon], MaxLedsPerRibbon);
-      CRGB* ribbon_ptr = leds + ribbon * MaxLedsPerRibbon;
+      uint32_t ribbon_length = min(30 * global.setup.ribbons_lengths[ribbon], DEVICE_RIBBON_SIZE);
+      CRGB* ribbon_ptr = leds + ribbon * DEVICE_RIBBON_SIZE;
       
       if (feedback == 0)
         fill_solid(ribbon_ptr, ribbon_length, CRGB::Black);
@@ -509,7 +509,10 @@ int read_from_controller() {
       if (serial_buffer[0] != 0xFF)
       {
         if (LOG::print(LOG::Info))
-            PRINT("Invalid packet received");
+        {
+          PRINT("Invalid packet received : Bad Header :");
+          PRINT((int)serial_buffer[0]);
+        }
         serial_index = 0;
         continue;
       }
@@ -528,7 +531,7 @@ int read_from_controller() {
       if (sizeof(state_t) < data_address + data_size)
       {
         if (LOG::print(LOG::Info))
-            PRINT("Invalid packet received");
+            PRINT("Invalid packet received : Bad Addr");
         serial_index = 0;
         continue;
       }
